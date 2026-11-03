@@ -2,7 +2,7 @@
 
 A mobile-friendly Obsidian plugin for maintaining a structured catalogue of 2 euro coins. The plugin stores every coin as a Markdown note with YAML frontmatter, keeps covers in the vault, can synchronize official issues from Numista, and provides a searchable dashboard with ownership tracking.
 
-> Current plugin version: **0.5.46**  
+> Current plugin version: **0.5.47**  
 > Minimum Obsidian version: **1.8.0**  
 > Desktop-only: **No**. The plugin also works in Obsidian Mobile.
 
