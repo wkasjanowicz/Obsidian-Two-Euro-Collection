@@ -22,7 +22,7 @@
 }
 .twoeuro-placeholder{font-size:28px;font-weight:700;color:var(--text-faint)}
 .twoeuro-info{padding:6px}.twoeuro-country{font-size:.66rem;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.twoeuro-title{font-size:.72rem;font-weight:700;line-height:1.12;margin:2px 0;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.twoeuro-title{font-size:.72rem;font-weight:700;line-height:1.12;margin:2px 0;display:-webkit-box;-webkit-line-clamp:2;line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .twoeuro-meta,.twoeuro-status{font-size:.62rem;line-height:1.18}
 .twoeuro-meta{color:var(--text-muted)}
 .twoeuro-status{margin-top:4px;font-weight:600}.is-owned .twoeuro-status{color:var(--color-green)}
@@ -74,8 +74,8 @@
 .twoeuro-cover-manager-left{min-width:0}.twoeuro-cover-manager-section{font-size:.85rem;font-weight:650;color:var(--interactive-accent);margin:14px 0 7px}.twoeuro-cover-manager-action-group{display:grid;grid-template-columns:1fr;gap:7px}.twoeuro-cover-manager-action-group button{width:100%;min-height:34px}.twoeuro-cover-manager-save{display:flex;justify-content:flex-end;margin:10px 0 2px}.twoeuro-cover-manager-save button{min-width:130px}.twoeuro-cover-manager-data .setting-item{padding:7px 0}.twoeuro-cover-manager-data .setting-item-info{margin-right:12px}@media(min-width:900px){.twoeuro-cover-manager-action-group{grid-template-columns:repeat(2,minmax(0,1fr))}}
 
 /* 0.5.41 - wider coin manager */
-.modal:has(.twoeuro-cover-manager){width:min(1380px,94vw);max-width:1380px;min-width:min(980px,94vw);}
-.modal:has(.twoeuro-cover-manager) .modal-content{max-width:none;width:100%;}
+.modal.twoeuro-cover-manager-modal{width:min(1380px,94vw);max-width:1380px;min-width:min(980px,94vw);}
+.modal.twoeuro-cover-manager-modal .modal-content{max-width:none;width:100%;}
 .twoeuro-cover-manager{max-width:none;width:100%;box-sizing:border-box;}
 .twoeuro-cover-manager-layout{grid-template-columns:minmax(380px,.9fr) minmax(520px,1.35fr);gap:28px;align-items:start;}
 .twoeuro-cover-manager-preview{min-height:430px;}
@@ -94,12 +94,12 @@
 .twoeuro-cover-manager-action-group button{min-height:38px;height:auto;white-space:normal;line-height:1.25;padding:8px 10px;text-align:center;overflow-wrap:anywhere;}
 .twoeuro-cover-manager-save button{min-width:160px;min-height:38px;white-space:normal;}
 @media(max-width:1050px){
-  .modal:has(.twoeuro-cover-manager){width:96vw;min-width:0;max-width:96vw;}
+  .modal.twoeuro-cover-manager-modal{width:96vw;min-width:0;max-width:96vw;}
   .twoeuro-cover-manager-layout{grid-template-columns:minmax(300px,.85fr) minmax(420px,1.15fr);gap:18px;}
   .twoeuro-cover-manager-data .setting-item{grid-template-columns:minmax(150px,.65fr) minmax(220px,1.35fr);}
 }
 @media(max-width:760px){
-  .modal:has(.twoeuro-cover-manager){width:98vw;max-width:98vw;min-width:0;}
+  .modal.twoeuro-cover-manager-modal{width:98vw;max-width:98vw;min-width:0;}
   .twoeuro-cover-manager-layout{grid-template-columns:1fr;gap:14px;}
   .twoeuro-cover-manager-preview{min-height:240px;}
   .twoeuro-cover-manager-data .setting-item{grid-template-columns:1fr;gap:5px;}
@@ -107,11 +107,11 @@
 }
 
 /* 0.5.42 - balanced manager width */
-.modal:has(.twoeuro-cover-manager){width:min(1120px,88vw);max-width:1120px;min-width:min(820px,88vw);}
+.modal.twoeuro-cover-manager-modal{width:min(1120px,88vw);max-width:1120px;min-width:min(820px,88vw);}
 .twoeuro-cover-manager-layout{grid-template-columns:minmax(320px,.9fr) minmax(440px,1.1fr);gap:20px;}
 .twoeuro-cover-manager-preview{min-height:360px;}
-@media(max-width:950px){.modal:has(.twoeuro-cover-manager){width:94vw;max-width:94vw;min-width:0}.twoeuro-cover-manager-layout{grid-template-columns:minmax(280px,.8fr) minmax(380px,1.2fr);gap:14px}}
-@media(max-width:760px){.modal:has(.twoeuro-cover-manager){width:98vw;max-width:98vw;min-width:0}.twoeuro-cover-manager-layout{grid-template-columns:1fr}.twoeuro-cover-manager-preview{min-height:230px}}
+@media(max-width:950px){.modal.twoeuro-cover-manager-modal{width:94vw;max-width:94vw;min-width:0}.twoeuro-cover-manager-layout{grid-template-columns:minmax(280px,.8fr) minmax(380px,1.2fr);gap:14px}}
+@media(max-width:760px){.modal.twoeuro-cover-manager-modal{width:98vw;max-width:98vw;min-width:0}.twoeuro-cover-manager-layout{grid-template-columns:1fr}.twoeuro-cover-manager-preview{min-height:230px}}
 
 /* 0.5.45 - owned coins use a red card background */
 .twoeuro-card.is-owned{background:color-mix(in srgb,var(--color-red) 20%,var(--background-primary));border-color:color-mix(in srgb,var(--color-red) 58%,var(--background-modifier-border));}

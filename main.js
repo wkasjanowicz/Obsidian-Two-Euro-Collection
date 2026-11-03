@@ -193,7 +193,10 @@ class EuroSettings extends PluginSettingTab {
 
 class CoinCoverManagerModal extends Modal {
   constructor(app,plugin,row,displaySrc=''){super(app);this.plugin=plugin;this.row=row;this.displaySrc=displaySrc;this.form=null;}
-  async onOpen(){await this.render();}
+  async onOpen(){
+    this.modalEl.addClass('twoeuro-cover-manager-modal');
+    await this.render();
+  }
   async buildEditableForm(container,fresh){const p=this.plugin,t=(k,v)=>p.t(k,v),f={...fresh};this.form=f;const input=(key,field,ph='',desc='')=>{const item=new Setting(container).setName(t(key));if(desc)item.setDesc(t(desc));item.addText(x=>x.setValue(tx(f[field])).setPlaceholder(ph?t(ph):'').onChange(v=>f[field]=v));};
     input('coin.country','country');input('coin.year','year');input('coin.title','title');new Setting(container).setName(t('coin.type')).addDropdown(d=>d.addOption('commemorative',t('coin.commemorative')).addOption('national',t('coin.national')).setValue(f.coin_type||'commemorative').onChange(v=>f.coin_type=v));input('coin.mint','mint_mark');new Setting(container).setName(t('coin.owned')).addToggle(x=>x.setValue(isTrue(f.owned)).onChange(v=>f.owned=v));input('coin.quantity','quantity');input('coin.date','acquisition_date');input('coin.price','acquisition_price');input('coin.currency','acquisition_currency');input('coin.condition','condition');input('coin.coverUrl','cover_url');
     const ref=new Setting(container).setName(t('coin.referenceYear')).setDesc(t('coin.referenceYearDesc')),listId=`cover-manager-years-${Date.now()}`,list=container.createEl('datalist',{attr:{id:listId}});for(const year of p.getReferenceYearSuggestions(f,fresh.file))list.createEl('option',{attr:{value:String(year)}});ref.addText(x=>{x.setValue(tx(f.reference_year)).setPlaceholder(t('coin.referenceYearPh'));x.inputEl.setAttribute('list',listId);x.onChange(v=>f.reference_year=v);});
