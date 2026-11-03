@@ -43,6 +43,7 @@
     "action.save": "Zapisz",
     "action.cancel": "Anuluj",
     "action.sync": "Synchronizuj",
+    "action.syncFiltered": "Synchronizuj wybrany zakres",
     "action.downloadCovers": "Pobierz okładki",
     "action.removeUnofficial": "Wyczyść nieoficjalne",
     "coverManager.title": "Okładka i dane monety",

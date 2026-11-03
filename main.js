@@ -47,6 +47,7 @@ const BASE_LANGUAGE = {
   "action.save": "Save",
   "action.cancel": "Cancel",
   "action.sync": "Synchronize",
+  "action.syncFiltered": "Synchronize filtered range",
   "action.downloadCovers": "Download covers",
   "action.removeUnofficial": "Clean unofficial imports",
   "coverManager.title": "Coin cover and data",
@@ -129,7 +130,7 @@ const BASE_LANGUAGE = {
   "summary.owned": "Owned: {owned} / {total}",
   "error.required": "Country, year and title are required.",
   "notice.saved": "Coin saved.",
-  "notice.loaded": "2 Euro Collection 0.5.41 loaded",
+  "notice.loaded": "2 Euro Collection {version} loaded",
   "indicator.missing": "Cover reference year is missing",
   "indicator.exact": "Image matches the coin year",
   "indicator.reference": "Image from reference coin: {country}, {type}, {year}",
@@ -223,7 +224,12 @@ class EuroFiltersView extends ItemView {
   render(){const p=this.plugin,t=(k,v)=>p.t(k,v),c=this.contentEl;c.empty();c.addClass('twoeuro-sidebar');c.createEl('h3',{cls:'twoeuro-sidebar-section-title',text:t('sidebar.actions')});
     const actions=c.createDiv({cls:'twoeuro-sidebar-actions'});
     actions.createEl('button',{text:`+ ${t('action.add')}`,cls:'mod-cta'}).onclick=()=>new CoinModal(this.app,p).open();
-    actions.createEl('button',{text:t('action.sync')}).onclick=()=>p.syncNumista();
+    actions.createEl('button',{
+      text:t('action.sync')
+    }).onclick=()=>p.syncNumista();
+    actions.createEl('button',{
+      text:t('action.syncFiltered')
+    }).onclick=()=>p.syncNumista(p.getNumistaSyncScope());
     actions.createEl('button',{text:t('action.downloadCovers')}).onclick=()=>p.backfillCovers();
     const selectedCount=p.getSelectedCoinFiles().length;
     c.createDiv({cls:'twoeuro-sidebar-selected',text:t('sidebar.selected',{count:selectedCount})});
@@ -428,7 +434,466 @@ module.exports = class TwoEuroCollectionPlugin extends Plugin {
     }catch(error){errors++;console.error('Remove unofficial import',row.file?.path,error);}}
     await this.refreshDashboards();this.refreshFilterViews();notice.setMessage(this.t('notice.removeUnofficial',{removed,protected:protectedCount,errors}));setTimeout(()=>notice.hide(),8000);
   }
-  async syncNumista(){if(!tx(this.settings.numistaApiKey)){new Notice('Uzupełnij klucz API Numista.');return;}const progress=new Notice(this.t('notice.syncOfficial'),0),current=this.getRows(),by=new Map(current.map(r=>[[r.numista_id,r.year,r.mint_mark].join(':'),r])),detailsCache=new Map(),issuesCache=new Map();let page=1,created=0,updated=0,unchanged=0,skipped=0,errors=0,processed=0;try{while(page<=20){const q=new URLSearchParams({q:'2 Euros',object_type:'147',page:String(page),count:'100',lang:'en'}),listing=await this.api(`/types?${q}`),types=listing.types||[];if(!types.length)break;for(const basic of types){processed++;progress.setMessage(`Synchronizacja katalogu: typ ${processed}`);try{const id=tx(basic.id);if(!id){skipped++;continue;}let d=detailsCache.get(id);if(!d){d=await this.api(`/types/${encodeURIComponent(id)}?lang=en`);detailsCache.set(id,d);}if(!this.isOfficialTwoEuroType(d)){skipped++;continue;}let raw=issuesCache.get(id);if(!raw){raw=await this.api(`/types/${encodeURIComponent(id)}/issues?lang=en`);issuesCache.set(id,raw);}const issues=Array.isArray(raw)?raw:(raw.issues||[]),uniq=new Map();for(const i of issues){const year=tx(i.gregorian_year||i.year),mint=tx(i.mint_letter);if(!Number(year))continue;const key=`${year}|${mint}`,prev=uniq.get(key);if(!prev||Number(i.mintage||0)>Number(prev.mintage||0))uniq.set(key,i);}const kind=tx(d.object_type?.name).toLowerCase(),coinType=kind.includes('commemorative')||tx(d.commemorated_topic)?'commemorative':'national',sourceImage=this.pickImage(d);for(const issueRow of uniq.values()){const issue=tx(issueRow.id),year=tx(issueRow.gregorian_year||issueRow.year),mint=tx(issueRow.mint_letter),old=by.get([id,year,mint].join(':'));const photoMeta=this.photoMetadata(d),valuation=await this.issueNumismaticValues(id,issue);const data={...(old||{}),country:countryName(d.issuer?.name),year,title:normalizeCoinTitle(d.title),coin_type:coinType,mint_mark:mint,source:'numista',numista_id:id,numista_issue_id:issue,numista_url:tx(d.url),mintage:issueRow.mintage??null,official_issue:true,object_type_id:tx(d.object_type?.id),object_type_name:tx(d.object_type?.name),...photoMeta,numismatic_value_currency:valuation.currency,numismatic_values:valuation.values,numismatic_value_unc:valuation.unc,cover:old?.cover,cover_url:old?.cover_locked?old?.cover_url:(sourceImage||old?.cover_url),reference_year:old?.reference_year,cover_locked:old?.cover_locked||old?.own_cover||false,own_cover:old?.own_cover||false};if(old){const before=JSON.stringify([old.country,old.title,old.coin_type,old.numista_url,old.mintage,old.cover_url,old.reference_year,old.cover_locked,old.photo_author,old.photo_license,old.numismatic_value_currency,old.numismatic_values,old.numismatic_value_unc]),after=JSON.stringify([data.country,data.title,data.coin_type,data.numista_url,data.mintage,data.cover_url,data.reference_year,data.cover_locked,data.photo_author,data.photo_license,data.numismatic_value_currency,data.numismatic_values,data.numismatic_value_unc]);if(before===after){unchanged++;continue;}await this.upsert(data,old.file);updated++;}else{await this.upsert(data,null);created++;}by.set([id,year,mint].join(':'),{...data,file:old?.file});}}catch(error){errors++;console.error('Synchronizacja typu Numista',basic?.id,error);}}if(types.length<100)break;page++;}progress.setMessage(`Katalog: nowe ${created}, zaktualizowane ${updated}, bez zmian ${unchanged}, pominięte ${skipped}, błędy ${errors}.`);setTimeout(()=>progress.hide(),8000);}catch(error){progress.setMessage(`Synchronizacja katalogu przerwana: ${error?.message||error}`);console.error(error);}}
+
+  getNumistaSyncScope(){
+  const state=this.getDashboardState();
+  return {
+    country:tx(state.country),
+    year:tx(state.year),
+    coinType:['national','commemorative'].includes(state.mode)
+      ? state.mode
+      : ''
+  };
+  }
+
+  matchesNumistaSyncCountry(numistaCountry,selectedCountry){
+  if(!selectedCountry)return true;
+  const source=countryName(numistaCountry);
+  const selected=countryName(selectedCountry);
+  return source.localeCompare(
+    selected,
+    undefined,
+    {sensitivity:'base'}
+  )===0;
+  }
+
+async syncNumista(scope=null){
+  if(!tx(this.settings.numistaApiKey)){
+    new Notice('Uzupełnij klucz API Numista.');
+    return;
+  }
+
+  const syncScope={
+    country:tx(scope?.country),
+    year:tx(scope?.year),
+    coinType:tx(scope?.coinType)
+  };
+
+  const scopeLabels=[];
+
+  if(syncScope.country){
+    scopeLabels.push(syncScope.country);
+  }
+
+  if(syncScope.year){
+    scopeLabels.push(syncScope.year);
+  }
+
+  if(syncScope.coinType){
+    scopeLabels.push(
+      syncScope.coinType==='commemorative'
+        ?this.t('filter.commemorative')
+        :this.t('filter.national')
+    );
+  }
+
+  const filteredSync=
+    Boolean(syncScope.country)||
+    Boolean(syncScope.year)||
+    Boolean(syncScope.coinType);
+
+  const progress=new Notice(
+    filteredSync
+      ?`Synchronizacja Numista: ${scopeLabels.join(' / ')}`
+      :this.t('notice.syncOfficial'),
+    0
+  );
+
+  const current=this.getRows();
+
+  const by=new Map(
+    current.map(row=>[
+      [
+        row.numista_id,
+        row.year,
+        row.mint_mark
+      ].join(':'),
+      row
+    ])
+  );
+
+  const detailsCache=new Map();
+  const issuesCache=new Map();
+
+  let page=1;
+  let created=0;
+  let updated=0;
+  let unchanged=0;
+  let skipped=0;
+  let errors=0;
+  let processed=0;
+
+  try{
+    while(page<=20){
+      const q=new URLSearchParams({
+        q:'2 Euros',
+        object_type:'147',
+        page:String(page),
+        count:'100',
+        lang:'en'
+      });
+
+      const listing=await this.api(`/types?${q}`);
+      const types=listing.types||[];
+
+      if(!types.length){
+        break;
+      }
+
+      for(const basic of types){
+        processed++;
+
+        progress.setMessage(
+          filteredSync
+            ?`Synchronizacja ${scopeLabels.join(' / ')}: typ ${processed}`
+            :`Synchronizacja katalogu: typ ${processed}`
+        );
+
+        try{
+          const id=tx(basic.id);
+
+          if(!id){
+            skipped++;
+            continue;
+          }
+
+          let d=detailsCache.get(id);
+
+          if(!d){
+            d=await this.api(
+              `/types/${encodeURIComponent(id)}?lang=en`
+            );
+
+            detailsCache.set(id,d);
+          }
+
+          /*
+           * Najpierw odrzucamy elementy, które nie są oficjalnymi
+           * emisjami 2 euro.
+           */
+          if(!this.isOfficialTwoEuroType(d)){
+            skipped++;
+            continue;
+          }
+          if(
+            syncScope.country &&
+            !this.matchesNumistaSyncCountry(
+              d.issuer?.name,
+              syncScope.country
+            )
+          ){
+            skipped++;
+            continue;
+          }
+          /*
+           * Filtr kraju stosujemy przed pobraniem listy emisji.
+           */
+          if(
+            syncScope.country&&
+            !this.matchesNumistaSyncCountry(
+              d.issuer?.name,
+              syncScope.country
+            )
+          ){
+            skipped++;
+            continue;
+          }
+
+          /*
+           * Ustalenie lokalnego typu monety.
+           */
+          const kind=tx(
+            d.object_type?.name
+          ).toLowerCase();
+
+          const coinType=
+            kind.includes('commemorative')||
+            Boolean(tx(d.commemorated_topic))
+              ?'commemorative'
+              :'national';
+
+          /*
+           * Filtr typu stosujemy przed pobraniem listy emisji.
+           */
+          if(
+            syncScope.coinType&&
+            coinType!==syncScope.coinType
+          ){
+            skipped++;
+            continue;
+          }
+
+          /*
+           * Dopiero po sprawdzeniu kraju i typu pobieramy emisje.
+           */
+          let raw=issuesCache.get(id);
+
+          if(!raw){
+            raw=await this.api(
+              `/types/${encodeURIComponent(id)}/issues?lang=en`
+            );
+
+            issuesCache.set(id,raw);
+          }
+
+          const issues=Array.isArray(raw)
+            ?raw
+            :(raw.issues||[]);
+
+          /*
+           * Grupowanie po roku i mennicy. Jeśli Numista zwróci
+           * więcej niż jeden rekord dla tej samej kombinacji,
+           * pozostawiamy rekord z największym nakładem.
+           */
+          const uniq=new Map();
+
+          for(const issueRow of issues){
+            const year=tx(
+              issueRow.gregorian_year||
+              issueRow.year
+            );
+
+            const mint=tx(issueRow.mint_letter);
+
+            if(!Number(year)){
+              continue;
+            }
+
+            /*
+             * Filtr roku można zastosować już tutaj, dzięki czemu
+             * niepotrzebne roczniki nie trafiają do uniq.
+             */
+            if(
+              syncScope.year&&
+              year!==syncScope.year
+            ){
+              continue;
+            }
+
+            const key=`${year}|${mint}`;
+            const previous=uniq.get(key);
+
+            if(
+              !previous||
+              Number(issueRow.mintage||0)>
+                Number(previous.mintage||0)
+            ){
+              uniq.set(key,issueRow);
+            }
+          }
+
+          /*
+           * Jeśli po filtrowaniu roku nie została żadna emisja,
+           * przechodzimy do kolejnego typu.
+           */
+          if(!uniq.size){
+            skipped++;
+            continue;
+          }
+
+          const sourceImage=this.pickImage(d);
+          const photoMeta=this.photoMetadata(d);
+
+          for(const issueRow of uniq.values()){
+            const issue=tx(issueRow.id);
+            const year=tx(
+              issueRow.gregorian_year||
+              issueRow.year
+            );
+            const mint=tx(issueRow.mint_letter);
+
+            if(
+              syncScope.year &&
+              year!==syncScope.year
+            ){
+              skipped++;
+              continue;
+            }
+
+            const old=by.get(
+              [id,year,mint].join(':')
+            );
+
+            const photoMeta=this.photoMetadata(d);
+            const valuation=await this.issueNumismaticValues(
+              id,
+              issue
+            );
+
+            // dalszy obecny kod
+
+            const data={
+              ...(old||{}),
+
+              country:countryName(d.issuer?.name),
+              year,
+              title:normalizeCoinTitle(d.title),
+              coin_type:coinType,
+              mint_mark:mint,
+
+              source:'numista',
+              numista_id:id,
+              numista_issue_id:issue,
+              numista_url:tx(d.url),
+
+              mintage:issueRow.mintage??null,
+
+              official_issue:true,
+              object_type_id:tx(d.object_type?.id),
+              object_type_name:tx(d.object_type?.name),
+
+              ...photoMeta,
+
+              numismatic_value_currency:
+                valuation.currency,
+
+              numismatic_values:
+                valuation.values,
+
+              numismatic_value_unc:
+                valuation.unc,
+
+              cover:old?.cover,
+
+              cover_url:old?.cover_locked
+                ?old?.cover_url
+                :(sourceImage||old?.cover_url),
+
+              reference_year:old?.reference_year,
+
+              cover_locked:
+                old?.cover_locked||
+                old?.own_cover||
+                false,
+
+              own_cover:
+                old?.own_cover||
+                false
+            };
+
+            if(old){
+              const before=JSON.stringify([
+                old.country,
+                old.title,
+                old.coin_type,
+                old.numista_url,
+                old.mintage,
+                old.cover_url,
+                old.reference_year,
+                old.cover_locked,
+                old.photo_author,
+                old.photo_license,
+                old.numismatic_value_currency,
+                old.numismatic_values,
+                old.numismatic_value_unc
+              ]);
+
+              const after=JSON.stringify([
+                data.country,
+                data.title,
+                data.coin_type,
+                data.numista_url,
+                data.mintage,
+                data.cover_url,
+                data.reference_year,
+                data.cover_locked,
+                data.photo_author,
+                data.photo_license,
+                data.numismatic_value_currency,
+                data.numismatic_values,
+                data.numismatic_value_unc
+              ]);
+
+              if(before===after){
+                unchanged++;
+                continue;
+              }
+
+              await this.upsert(
+                data,
+                old.file
+              );
+
+              updated++;
+            }else{
+              await this.upsert(
+                data,
+                null
+              );
+
+              created++;
+            }
+
+            by.set(
+              rowKey,
+              {
+                ...data,
+                file:old?.file
+              }
+            );
+          }
+        }catch(error){
+          errors++;
+
+          console.error(
+            'Synchronizacja typu Numista',
+            basic?.id,
+            error
+          );
+        }
+      }
+
+      if(types.length<100){
+        break;
+      }
+
+      page++;
+    }
+
+    /*
+     * Po synchronizacji odświeżamy dashboard i panel filtrów.
+     */
+    await this.refreshDashboards();
+    this.refreshFilterViews();
+
+    const scopeSummary=filteredSync
+      ?` Zakres: ${scopeLabels.join(' / ')}.`
+      :' Zakres: cały katalog.';
+
+
+    progress.setMessage(
+      `Katalog: nowe ${created}, `+
+      `zaktualizowane ${updated}, `+
+      `bez zmian ${unchanged}, `+
+      `pominięte ${skipped}, `+
+      `błędy ${errors}.`+
+      scopeSummary
+    );
+
+    setTimeout(
+      ()=>progress.hide(),
+      8000
+    );
+
+    return {
+      created,
+      updated,
+      unchanged,
+      skipped,
+      errors,
+      scope:syncScope
+    };
+  }catch(error){
+    progress.setMessage(
+      `Synchronizacja katalogu przerwana: ${
+        error?.message||error
+      }`
+    );
+
+    console.error(error);
+  }
+}
+
   async backfillCovers(){if(!tx(this.settings.numistaApiKey)){new Notice('Uzupełnij klucz API Numista.');return;}const candidates=this.getRows().filter(r=>r.source==='numista'&&!r.cover_locked&&!this.coverSrc(r)),progress=new Notice(`Okładki: 0 / ${candidates.length}`,0),cache=new Map();let downloaded=0,skipped=0,errors=0,index=0;for(const r of candidates){index++;progress.setMessage(`Okładki: ${index} / ${candidates.length} · pobrano ${downloaded} · błędy ${errors}`);try{let d=cache.get(r.numista_id);if(!d){d=await this.api(`/types/${encodeURIComponent(r.numista_id)}?lang=en`);cache.set(r.numista_id,d);}const url=this.pickImage(d)||r.cover_url;if(!url){skipped++;continue;}const path=await this.downloadCover(url,r.numista_id,r.numista_issue_id);await this.upsert({...r,cover_path:path,cover_url:url,cover_locked:false},r.file);downloaded++;}catch(error){errors++;console.error('Pobieranie okładki',r.file?.path,error);}}progress.setMessage(`Okładki: pobrano ${downloaded}, pominięto ${skipped}, zablokowane pominięte, błędy ${errors}.`);setTimeout(()=>progress.hide(),8000);return {downloaded,skipped,errors};}
   async dedupe(){const g=new Map();for(const r of this.getRows()){const k=[r.country,r.year,r.title,r.mint_mark].map(x=>tx(x).toLowerCase()).join('|');if(!g.has(k))g.set(k,[]);g.get(k).push(r);}let n=0;for(const a of g.values()){if(a.length<2)continue;const keep=a.find(x=>x.owned)||a[0];for(const r of a)if(r!==keep&&!r.owned&&r.file instanceof TFile){await this.app.vault.delete(r.file);n++;}}return n;}
   async migrateCoverLinks() {
