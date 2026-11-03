@@ -261,7 +261,18 @@ class EuroFiltersView extends ItemView {
 }
 
 module.exports = class TwoEuroCollectionPlugin extends Plugin {
-  async onload(){console.log(`2 Euro Collection ${this.manifest.version} starting`);await this.loadSettings();await this.loadExternalLanguages();this.dashboardState={mode:'all',country:'',year:'',searchText:'',sortMode:'yearAsc'};this.selectedCoinPaths=new Set();this.registerView(VIEW_TYPE_FILTERS,leaf=>new EuroFiltersView(leaf,this));this.addCommand({id:'two-euro-open-filters',name:this.t('sidebar.open'),callback:()=>this.activateFiltersView()});this.addRibbonIcon('circle-dollar-sign','2 Euro Collection',()=>this.openDashboard());this.addCommand({id:'two-euro-open',name:this.t('command.open'),callback:()=>this.openDashboard()});this.addCommand({id:'two-euro-add',name:this.t('command.add'),callback:()=>new CoinModal(this.app,this).open()});this.addCommand({id:'two-euro-sync',name:this.t('command.sync'),callback:()=>this.syncNumista()});this.addCommand({id:'two-euro-covers',name:this.t('command.covers'),callback:()=>this.backfillCovers()});this.addCommand({id:'two-euro-remove-current-background',name:this.t('command.removeCurrentBackground'),callback:()=>this.removeBackgroundFromCurrentCoin()});this.addCommand({id:'two-euro-catalog-preset-current',name:this.t('command.catalogPresetCurrent'),callback:()=>this.applyCatalogPresetToCurrentCoin()});this.addCommand({id:'two-euro-dedupe',name:this.t('command.dedupe'),callback:async()=>new Notice(`Usunięto duplikatów: ${await this.dedupe()}`)});
+  async onload(){console.log(`2 Euro Collection ${this.manifest.version} starting`);await this.loadSettings();await this.loadExternalLanguages();this.dashboardState={mode:'all',country:'',year:'',searchText:'',sortMode:'yearAsc'};this.selectedCoinPaths=new Set();
+    this.registerView(
+      VIEW_TYPE_FILTERS,
+      leaf=>new EuroFiltersView(leaf,this)
+    );
+    this.registerEvent(
+      this.app.workspace.on(
+        'layout-change',
+        ()=>this.closeFiltersViewIfDashboardClosed()
+      )
+    );
+  this.addCommand({id:'two-euro-open-filters',name:this.t('sidebar.open'),callback:()=>this.activateFiltersView()});this.addRibbonIcon('circle-dollar-sign','2 Euro Collection',()=>this.openDashboard());this.addCommand({id:'two-euro-open',name:this.t('command.open'),callback:()=>this.openDashboard()});this.addCommand({id:'two-euro-add',name:this.t('command.add'),callback:()=>new CoinModal(this.app,this).open()});this.addCommand({id:'two-euro-sync',name:this.t('command.sync'),callback:()=>this.syncNumista()});this.addCommand({id:'two-euro-covers',name:this.t('command.covers'),callback:()=>this.backfillCovers()});this.addCommand({id:'two-euro-remove-current-background',name:this.t('command.removeCurrentBackground'),callback:()=>this.removeBackgroundFromCurrentCoin()});this.addCommand({id:'two-euro-catalog-preset-current',name:this.t('command.catalogPresetCurrent'),callback:()=>this.applyCatalogPresetToCurrentCoin()});this.addCommand({id:'two-euro-dedupe',name:this.t('command.dedupe'),callback:async()=>new Notice(`Usunięto duplikatów: ${await this.dedupe()}`)});
   this.addCommand({id:'two-euro-init-reference-fields',name:this.t('command.initFields'),callback:async()=>{const result=await this.initializeReferenceFields();new Notice(`Uzupełniono pola: ${result.updated}; bez zmian: ${result.unchanged}.`);}});
   this.addCommand({
     id: 'two-euro-migrate-covers',
@@ -955,6 +966,21 @@ async syncNumista(scope=null){
   async deleteSelectedCoins(){const rows=this.getSelectedCoinFiles();if(!rows.length){new Notice(this.t('notice.noSelection'));return;}if(!window.confirm(this.t('confirm.deleteSelected',{count:rows.length})))return;let count=0;for(const row of rows){try{await this.app.vault.delete(row.file);count++;}catch(error){console.error('Delete coin',row.file?.path,error);}}this.clearCoinSelection();await this.refreshDashboards();this.refreshFilterViews();new Notice(this.t('notice.batchDelete',{count}));}
   getDashboardState(){return {...(this.dashboardState||{mode:'all',country:'',year:'',searchText:'',sortMode:'yearAsc'})};}
   setDashboardState(next){this.dashboardState={...this.getDashboardState(),...next};}
+  closeFiltersViewIfDashboardClosed(){
+  window.setTimeout(()=>{
+    const hasDashboard=document.querySelector('.twoeuro-view');
+
+    if(hasDashboard){
+      return;
+    }
+
+    const leaves=this.app.workspace.getLeavesOfType(VIEW_TYPE_FILTERS);
+
+    for(const leaf of leaves){
+      leaf.detach();
+    }
+  },100);
+  }
   async activateFiltersView(){let leaf=this.app.workspace.getLeavesOfType(VIEW_TYPE_FILTERS)[0];if(!leaf){leaf=this.app.workspace.getRightLeaf(false);await leaf.setViewState({type:VIEW_TYPE_FILTERS,active:true});}this.app.workspace.revealLeaf(leaf);if(leaf.view instanceof EuroFiltersView)leaf.view.render();}
   refreshFilterViews(){for(const leaf of this.app.workspace.getLeavesOfType(VIEW_TYPE_FILTERS)){if(leaf.view instanceof EuroFiltersView)leaf.view.render();}}
   async refreshDashboards(){
