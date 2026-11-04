@@ -189,7 +189,7 @@ try {
     'package-lock.json',
     'scripts/release.js',
     '.github/workflows/release.yml',
-    StarterData / starter - pack.json,
+    'StarterData/starter-pack.json',
   ]);
 
   run('git', ['commit', '-m', `Release ${targetVersion}`]);
@@ -197,8 +197,21 @@ try {
 } catch (error) {
   console.error('\nRelease failed. Restoring files changed by the release script...');
   try {
-    run('git', ['restore', '--staged', 'manifest.json', 'README.md', 'README_PL.md']);
-    run('git', ['restore', 'manifest.json', 'README.md', 'README_PL.md']);
+    run('git', [
+      'restore',
+      '--staged',
+      'manifest.json',
+      'README.md',
+      'README_PL.md',
+      'StarterData/starter-pack.json',
+    ]);
+    run('git', [
+      'restore',
+      'manifest.json',
+      'README.md',
+      'README_PL.md',
+      'StarterData/starter-pack.json',
+    ]);
   } catch {}
   throw error;
 }
