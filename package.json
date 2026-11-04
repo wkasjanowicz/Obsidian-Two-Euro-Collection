@@ -9,7 +9,11 @@
     "release:patch": "node scripts/release.js patch",
     "release:minor": "node scripts/release.js minor",
     "release:major": "node scripts/release.js major",
-    "release:version": "node scripts/release.js"
+    "release:version": "node scripts/release.js",
+    "outdated": "npm outdated",
+    "audit": "npm audit",
+    "audit:prod": "npm audit --omit=dev",
+    "security": "npm audit && npm outdated"
   },
   "devDependencies": {
     "prettier": "^3.9.10"
