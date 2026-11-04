@@ -13,7 +13,8 @@
     "outdated": "npm outdated",
     "audit": "npm audit",
     "audit:prod": "npm audit --omit=dev",
-    "security": "npm audit && npm outdated"
+    "security": "npm audit && npm outdated",
+    "beta": "node scripts/beta.js"
   },
   "devDependencies": {
     "prettier": "^3.9.10"
