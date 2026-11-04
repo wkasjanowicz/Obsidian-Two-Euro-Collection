@@ -51,6 +51,7 @@ jobs:
           test -f styles.css
           test -f README.md
           test -f README_PL.md
+          test -f StarterData/starter-pack.json
 
       - name: Validate JavaScript and manifest
         shell: bash
@@ -116,6 +117,7 @@ jobs:
             main.js
             styles.css
             manifest.json
+            StarterData/starter-pack.json
 
       - name: Create GitHub Release
         if: steps.existing.outputs.exists == 'false'
@@ -128,6 +130,7 @@ jobs:
             main.js \
             manifest.json \
             styles.css \
+            "StarterData/starter-pack.json#starter-pack.json" \
             --title "$VERSION" \
             --target "${{ github.sha }}" \
             --generate-notes \

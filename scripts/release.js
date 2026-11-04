@@ -138,6 +138,21 @@ try {
 console.log(`Preparing release ${currentVersion} -> ${targetVersion}`);
 
 manifest.version = targetVersion;
+const starterPackFile = 'StarterData/starter-pack.json';
+
+if (fs.existsSync(starterPackFile)) {
+  const starterPack = JSON.parse(read(starterPackFile));
+
+  if (starterPack.schemaVersion !== 1 || !Array.isArray(starterPack.coins)) {
+    fail('Invalid StarterData/starter-pack.json');
+  }
+
+  starterPack.pluginVersion = targetVersion;
+
+  write(starterPackFile, `${JSON.stringify(starterPack, null, 2)}\n`);
+
+  console.log(`starter-pack.json: updated to ${targetVersion}`);
+}
 write(manifestFile, `${JSON.stringify(manifest, null, 2)}\n`);
 updateReadme('README.md', `> Current plugin version: **${targetVersion}**`);
 updateReadme('README_PL.md', `> Aktualna wersja wtyczki: **${targetVersion}**`);
@@ -174,6 +189,7 @@ try {
     'package-lock.json',
     'scripts/release.js',
     '.github/workflows/release.yml',
+    StarterData / starter - pack.json,
   ]);
 
   run('git', ['commit', '-m', `Release ${targetVersion}`]);

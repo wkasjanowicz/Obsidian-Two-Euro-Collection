@@ -5,7 +5,9 @@
 A mobile-friendly Obsidian plugin for maintaining a structured catalogue of 2 euro coins. The plugin stores every coin as a Markdown note with YAML frontmatter, keeps covers in the vault, can synchronize official issues from Numista, and provides a searchable dashboard with ownership tracking.
 
 <!-- VERSION-START -->
+
 > Current plugin version: **0.5.52**
+
 <!-- VERSION-END -->
 
 > Minimum Obsidian version: **1.8.0**  
@@ -102,7 +104,34 @@ Do not remove that code block if the dashboard is to remain visible.
 
 ## Generating the initial catalogue
 
-There are two ways to create the initial data.
+There are three ways to create the initial data.
+
+## Starter collection
+
+2 Euro Collection includes an optional starter collection containing selected coin entries with prepared local cover images.
+
+The starter collection is intended to make the first setup easier. It does not represent the author's ownership status and does not mark any imported coin as owned.
+
+### Install the starter collection
+
+1. Install and enable **2 Euro Collection**.
+2. Open the Obsidian Command Palette.
+3. Run:
+
+   **2 Euro Collection: Install starter collection**
+
+4. Confirm the operation.
+5. Open the collection dashboard.
+
+The plugin downloads the starter pack corresponding exactly to the installed plugin version and creates the missing coin notes and local cover files.
+
+Imported starter coins are created with:
+
+````yaml
+owned: false
+quantity: 1
+cover_locked: true
+own_cover: true
 
 ### Option A: synchronize from Numista
 
@@ -185,7 +214,7 @@ reference_year: '1999'
 cover_locked: true
 own_cover: false
 ---
-```
+````
 
 You may inspect or edit these notes directly, but using the plugin editor is safer because it normalizes fields and refreshes the dashboard.
 

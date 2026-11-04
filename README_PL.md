@@ -5,7 +5,9 @@
 Mobilna wtyczka do Obsidian służąca do prowadzenia uporządkowanego katalogu monet 2 euro. Każda moneta jest zapisywana jako notatka Markdown z frontmatter YAML, okładki są przechowywane lokalnie w vault, a katalog może być synchronizowany z Numista. Wtyczka udostępnia dashboard z wyszukiwaniem, filtrami i oznaczaniem posiadanych monet.
 
 <!-- VERSION-START -->
+
 > Aktualna wersja wtyczki: **0.5.52**
+
 <!-- VERSION-END -->
 
 > Minimalna wersja Obsidian: **1.8.0**  
@@ -102,7 +104,23 @@ Nie usuwaj tego bloku, jeżeli dashboard ma być nadal wyświetlany.
 
 ## Generowanie danych początkowych
 
-Dane początkowe można utworzyć na dwa sposoby.
+Dane początkowe można utworzyć na trzy sposoby.
+
+### Wariant 0: Kolekcja początkowa
+
+2 Euro Collection udostępnia opcjonalną kolekcję początkową zawierającą wybrane monety wraz z przygotowanymi lokalnymi okładkami. Kolekcja początkowa ułatwia pierwszą konfigurację pluginu. Nie zawiera informacji o stanie posiadania autora i nie oznacza importowanych monet jako posiadanych.
+
+### Instalacja kolekcji początkowej
+
+1. Zainstaluj i włącz **2 Euro Collection**.
+2. Otwórz paletę poleceń Obsidian.
+3. Uruchom: **2 Euro Collection: Zainstaluj kolekcję początkową**
+4. Potwierdź operację.
+5. Otwórz dashboard kolekcji.
+
+Plugin pobiera Starter Pack odpowiadający dokładnie zainstalowanej wersji pluginu, a następnie tworzy brakujące notatki monet oraz lokalne pliki okładek. Monety z kolekcji początkowej są tworzone z ustawieniami:
+
+````yaml owned: false quantity: 1 cover_locked: true own_cover: true
 
 ### Wariant A: synchronizacja z Numista
 
@@ -185,7 +203,7 @@ reference_year: '1999'
 cover_locked: true
 own_cover: false
 ---
-```
+````
 
 Notatki można przeglądać i edytować bezpośrednio, ale bezpieczniej używać edytora wtyczki, ponieważ normalizuje on pola i odświeża dashboard.
 
