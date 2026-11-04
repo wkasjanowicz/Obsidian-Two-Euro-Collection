@@ -1,19 +1,92 @@
 const fs = require('fs');
 const { execSync } = require('child_process');
 
-const version = process.argv[2];
+const requestedVersion = process.argv[2];
 
-if (!version) {
-  console.error('Usage: node scripts/release.js <version>');
-  console.error('Example: node scripts/release.js 0.5.49');
+if (!requestedVersion) {
+  console.error(
+    'Usage: node scripts/release.js <patch|minor|major|version>'
+  );
   process.exit(1);
+}
+
+const manifestPath = 'manifest.json';
+
+if (!fs.existsSync(manifestPath)) {
+  console.error('manifest.json not found.');
+  process.exit(1);
+}
+
+const currentManifest = JSON.parse(
+  fs.readFileSync(manifestPath, 'utf8')
+);
+
+const currentVersion = currentManifest.version;
+
+if (!/^\d+\.\d+\.\d+$/.test(currentVersion)) {
+  console.error(
+    `Invalid current version in manifest.json: ${currentVersion}`
+  );
+  process.exit(1);
+}
+
+function incrementVersion(current, type) {
+  let [major, minor, patch] = current
+    .split('.')
+    .map(Number);
+
+  switch (type) {
+    case 'patch':
+      patch++;
+      break;
+
+    case 'minor':
+      minor++;
+      patch = 0;
+      break;
+
+    case 'major':
+      major++;
+      minor = 0;
+      patch = 0;
+      break;
+
+    default:
+      throw new Error(
+        `Unknown version increment: ${type}`
+      );
+  }
+
+  return `${major}.${minor}.${patch}`;
+}
+
+let version;
+
+if (
+  ['patch', 'minor', 'major'].includes(
+    requestedVersion
+  )
+) {
+  version = incrementVersion(
+    currentVersion,
+    requestedVersion
+  );
+} else {
+  version = requestedVersion;
 }
 
 if (!/^\d+\.\d+\.\d+$/.test(version)) {
-  console.error(`Invalid version: ${version}`);
-  console.error('Expected format: X.Y.Z, for example 0.5.49');
+  console.error(
+    `Invalid target version: ${version}`
+  );
   process.exit(1);
 }
+
+console.log('');
+console.log(
+  `Preparing release: ${currentVersion} -> ${version}`
+);
+console.log('');
 
 
 // ------------------------------------------------------------
