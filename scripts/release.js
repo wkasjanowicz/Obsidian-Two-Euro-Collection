@@ -1,97 +1,33 @@
 const fs = require('fs');
-const { execSync } = require('child_process');
+const { execFileSync } = require('child_process');
 
-const requestedVersion = process.argv[2];
+const root = process.cwd();
+const manifestFile = 'manifest.json';
+const requiredFiles = [
+  manifestFile,
+  'main.js',
+  'styles.css',
+  'README.md',
+  'README_PL.md'
+];
 
-if (!requestedVersion) {
-  console.error(
-    'Usage: node scripts/release.js <patch|minor|major|version>'
-  );
+function fail(message) {
+  console.error(`\nERROR: ${message}\n`);
   process.exit(1);
 }
 
-const manifestPath = 'manifest.json';
-
-if (!fs.existsSync(manifestPath)) {
-  console.error('manifest.json not found.');
-  process.exit(1);
+function run(command, args = [], options = {}) {
+  return execFileSync(command, args, {
+    cwd: root,
+    encoding: 'utf8',
+    stdio: options.capture ? ['ignore', 'pipe', 'pipe'] : 'inherit',
+    ...options
+  });
 }
 
-const currentManifest = JSON.parse(
-  fs.readFileSync(manifestPath, 'utf8')
-);
-
-const currentVersion = currentManifest.version;
-
-if (!/^\d+\.\d+\.\d+$/.test(currentVersion)) {
-  console.error(
-    `Invalid current version in manifest.json: ${currentVersion}`
-  );
-  process.exit(1);
+function capture(command, args = []) {
+  return run(command, args, { capture: true }).trim();
 }
-
-function incrementVersion(current, type) {
-  let [major, minor, patch] = current
-    .split('.')
-    .map(Number);
-
-  switch (type) {
-    case 'patch':
-      patch++;
-      break;
-
-    case 'minor':
-      minor++;
-      patch = 0;
-      break;
-
-    case 'major':
-      major++;
-      minor = 0;
-      patch = 0;
-      break;
-
-    default:
-      throw new Error(
-        `Unknown version increment: ${type}`
-      );
-  }
-
-  return `${major}.${minor}.${patch}`;
-}
-
-let version;
-
-if (
-  ['patch', 'minor', 'major'].includes(
-    requestedVersion
-  )
-) {
-  version = incrementVersion(
-    currentVersion,
-    requestedVersion
-  );
-} else {
-  version = requestedVersion;
-}
-
-if (!/^\d+\.\d+\.\d+$/.test(version)) {
-  console.error(
-    `Invalid target version: ${version}`
-  );
-  process.exit(1);
-}
-
-console.log('');
-console.log(
-  `Preparing release: ${currentVersion} -> ${version}`
-);
-console.log('');
-
-
-// ------------------------------------------------------------
-// Helpers
-// ------------------------------------------------------------
 
 function read(file) {
   return fs.readFileSync(file, 'utf8');
@@ -101,206 +37,125 @@ function write(file, content) {
   fs.writeFileSync(file, content, 'utf8');
 }
 
-function exists(file) {
-  if (!fs.existsSync(file)) {
-    console.error(`Required file not found: ${file}`);
-    process.exit(1);
+function validVersion(version) {
+  return /^\d+\.\d+\.\d+$/.test(version);
+}
+
+function compareVersions(a, b) {
+  const av = a.split('.').map(Number);
+  const bv = b.split('.').map(Number);
+  for (let i = 0; i < 3; i++) {
+    if (av[i] !== bv[i]) return av[i] - bv[i];
   }
+  return 0;
 }
 
-
-// ------------------------------------------------------------
-// Validate required files
-// ------------------------------------------------------------
-
-[
-  'manifest.json',
-  'main.js',
-  'styles.css',
-  'README.md',
-  'README_PL.md'
-].forEach(exists);
-
-
-// ------------------------------------------------------------
-// Check Git repository
-// ------------------------------------------------------------
-
-try {
-  execSync('git rev-parse --is-inside-work-tree', {
-    stdio: 'ignore'
-  });
-} catch {
-  console.error('Current directory is not a Git repository.');
-  process.exit(1);
+function incrementVersion(current, type) {
+  let [major, minor, patch] = current.split('.').map(Number);
+  if (type === 'patch') patch += 1;
+  else if (type === 'minor') { minor += 1; patch = 0; }
+  else if (type === 'major') { major += 1; minor = 0; patch = 0; }
+  else fail(`Unknown increment type: ${type}`);
+  return `${major}.${minor}.${patch}`;
 }
-
-
-// ------------------------------------------------------------
-// Prevent release from an already dirty working tree
-// ------------------------------------------------------------
-
-const gitStatus = execSync('git status --porcelain', {
-  encoding: 'utf8'
-}).trim();
-
-if (gitStatus) {
-  console.error('');
-  console.error('Working tree contains uncommitted changes:');
-  console.error('');
-  console.error(gitStatus);
-  console.error('');
-  console.error(
-    'Commit or discard existing changes before preparing a release.'
-  );
-
-  process.exit(1);
-}
-
-
-// ------------------------------------------------------------
-// Update manifest.json
-// ------------------------------------------------------------
-
-const manifest = JSON.parse(read('manifest.json'));
-
-const oldVersion = manifest.version;
-
-if (oldVersion === version) {
-  console.error(
-    `manifest.json already contains version ${version}.`
-  );
-  process.exit(1);
-}
-
-manifest.version = version;
-
-write(
-  'manifest.json',
-  JSON.stringify(manifest, null, 2) + '\n'
-);
-
-console.log(
-  `manifest.json: ${oldVersion} -> ${version}`
-);
-
-
-// ------------------------------------------------------------
-// Update README files
-// ------------------------------------------------------------
 
 function updateReadme(file, line) {
+  const markerRegex = /<!-- VERSION-START -->[\s\S]*?<!-- VERSION-END -->/;
+  const legacyRegex = /^>\s*(Current plugin version|Aktualna wersja wtyczki):.*$/m;
+  const block = `<!-- VERSION-START -->\n${line}\n<!-- VERSION-END -->`;
   let content = read(file);
 
-  const block =
-    `<!-- VERSION-START -->\n` +
-    `${line}\n` +
-    `<!-- VERSION-END -->`;
-
-  const markerRegex =
-    /<!-- VERSION-START -->[\s\S]*?<!-- VERSION-END -->/;
-
   if (markerRegex.test(content)) {
-    content = content.replace(
-      markerRegex,
-      block
-    );
+    content = content.replace(markerRegex, block);
+  } else if (legacyRegex.test(content)) {
+    content = content.replace(legacyRegex, block);
   } else {
-    // Migration from older README without markers.
-    const versionLine =
-      /^>\s*(Current plugin version|Aktualna wersja wtyczki):.*$/m;
-
-    if (!versionLine.test(content)) {
-      console.error(
-        `Version line not found in ${file}`
-      );
-      process.exit(1);
-    }
-
-    content = content.replace(
-      versionLine,
-      block
-    );
+    fail(`Version marker or version line not found in ${file}`);
   }
 
   write(file, content);
-
-  console.log(
-    `${file}: updated to ${version}`
-  );
 }
 
-updateReadme(
-  'README.md',
-  `> Current plugin version: **${version}**`
-);
-
-updateReadme(
-  'README_PL.md',
-  `> Aktualna wersja wtyczki: **${version}**`
-);
-
-
-// ------------------------------------------------------------
-// Validate JavaScript
-// ------------------------------------------------------------
-
-console.log('Checking main.js syntax...');
+for (const file of requiredFiles) {
+  if (!fs.existsSync(file)) fail(`Required file not found: ${file}`);
+}
 
 try {
-  execSync('node --check main.js', {
-    stdio: 'inherit'
-  });
+  if (capture('git', ['rev-parse', '--is-inside-work-tree']) !== 'true') {
+    fail('Current directory is not a Git repository.');
+  }
 } catch {
-  console.error('');
-  console.error('main.js contains a syntax error.');
-  console.error('Release preparation aborted.');
-  process.exit(1);
+  fail('Current directory is not a Git repository.');
 }
 
+const branch = capture('git', ['branch', '--show-current']);
+if (branch !== 'main') fail(`Release must be created from main, current branch: ${branch || '(detached HEAD)'}`);
 
-// ------------------------------------------------------------
-// Validate JSON
-// ------------------------------------------------------------
+const dirty = capture('git', ['status', '--porcelain']);
+if (dirty) fail(`Working tree is not clean:\n${dirty}\nCommit or discard changes first.`);
 
-console.log('Checking manifest.json...');
+console.log('Fetching origin/main and tags...');
+run('git', ['fetch', 'origin', 'main', '--tags']);
+
+const localHead = capture('git', ['rev-parse', 'HEAD']);
+const remoteHead = capture('git', ['rev-parse', 'origin/main']);
+if (localHead !== remoteHead) {
+  fail('Local main is not identical to origin/main. Pull/rebase or push pending commits before releasing.');
+}
+
+const manifest = JSON.parse(read(manifestFile));
+const currentVersion = manifest.version;
+if (!validVersion(currentVersion)) fail(`Invalid version in manifest.json: ${currentVersion}`);
+
+const request = process.argv[2];
+if (!request) fail('Usage: npm run release:patch | release:minor | release:major | npm run release:version -- X.Y.Z');
+
+const targetVersion = ['patch', 'minor', 'major'].includes(request)
+  ? incrementVersion(currentVersion, request)
+  : request;
+
+if (!validVersion(targetVersion)) fail(`Invalid target version: ${targetVersion}`);
+if (compareVersions(targetVersion, currentVersion) <= 0) {
+  fail(`Target version ${targetVersion} must be greater than current version ${currentVersion}.`);
+}
 
 try {
-  JSON.parse(read('manifest.json'));
+  capture('git', ['rev-parse', '-q', '--verify', `refs/tags/${targetVersion}`]);
+  fail(`Git tag ${targetVersion} already exists.`);
 } catch (error) {
-  console.error(
-    `Invalid manifest.json: ${error.message}`
-  );
-  process.exit(1);
+  if (error.status === 1 || error.status === 128) {
+    // Expected: tag does not exist.
+  } else if (error.message && error.message.startsWith('Git tag')) {
+    throw error;
+  }
 }
 
+console.log(`Preparing release ${currentVersion} -> ${targetVersion}`);
 
-// ------------------------------------------------------------
-// Summary
-// ------------------------------------------------------------
+manifest.version = targetVersion;
+write(manifestFile, `${JSON.stringify(manifest, null, 2)}\n`);
+updateReadme('README.md', `> Current plugin version: **${targetVersion}**`);
+updateReadme('README_PL.md', `> Aktualna wersja wtyczki: **${targetVersion}**`);
 
-console.log('');
-console.log('--------------------------------');
-console.log(`Release ${version} prepared.`);
-console.log('--------------------------------');
-console.log('');
+try {
+  console.log('Validating main.js...');
+  run('node', ['--check', 'main.js']);
+  console.log('Validating JSON files...');
+  JSON.parse(read(manifestFile));
+  const plFile = fs.existsSync('Languages/pl.json') ? 'Languages/pl.json' : (fs.existsSync('pl.json') ? 'pl.json' : null);
+  if (plFile) JSON.parse(read(plFile));
 
-console.log('Changed files:');
+  run('git', ['add', 'manifest.json', 'README.md', 'README_PL.md']);
+  run('git', ['commit', '-m', `Release ${targetVersion}`]);
+  run('git', ['push', 'origin', 'main']);
+} catch (error) {
+  console.error('\nRelease failed. Restoring files changed by the release script...');
+  try {
+    run('git', ['restore', '--staged', 'manifest.json', 'README.md', 'README_PL.md']);
+    run('git', ['restore', 'manifest.json', 'README.md', 'README_PL.md']);
+  } catch {}
+  throw error;
+}
 
-const changed = execSync(
-  'git status --short',
-  { encoding: 'utf8' }
-).trim();
-
-console.log(changed || '(none)');
-
-console.log('');
-console.log('Next commands:');
-console.log('');
-console.log('git add manifest.json README.md README_PL.md');
-console.log(`git commit -m "Release ${version}"`);
-console.log('git push');
-console.log('');
-console.log(
-  'GitHub Actions will create the GitHub Release after the push.'
-);
+console.log(`\nRelease ${targetVersion} commit was pushed.`);
+console.log('GitHub Actions will create the tag and GitHub Release.');
