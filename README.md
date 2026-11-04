@@ -1,10 +1,15 @@
 # 2 Euro Collection for Obsidian
 
+[![Dependency Security](https://github.com/wkasjanowicz/Obsidian-Two-Euro-Collection/actions/workflows/security.yml/badge.svg?branch=main)](https://github.com/wkasjanowicz/Obsidian-Two-Euro-Collection/actions/workflows/security.yml)
+
 A mobile-friendly Obsidian plugin for maintaining a structured catalogue of 2 euro coins. The plugin stores every coin as a Markdown note with YAML frontmatter, keeps covers in the vault, can synchronize official issues from Numista, and provides a searchable dashboard with ownership tracking.
 
 <!-- VERSION-START -->
+
 > Current plugin version: **0.5.51**
-<!-- VERSION-END --> 
+
+<!-- VERSION-END -->
+
 > Minimum Obsidian version: **1.8.0**  
 > Desktop-only: **No**. The plugin also works in Obsidian Mobile.
 
@@ -91,6 +96,7 @@ The dashboard note contains the plugin code block:
 
 ````markdown
 ```two-euro-collection
+
 ```
 ````
 
@@ -163,7 +169,7 @@ coin_id: coin-12345-67890
 denomination: 2
 currency: EUR
 country: Finland
-year: "1999"
+year: '1999'
 coin_type: national
 title: 2 Euro (1st type, 1st map)
 mint_mark: M
@@ -174,10 +180,10 @@ acquisition_price: 4.50
 acquisition_currency: EUR
 condition: UNC
 source: numista
-numista_id: "12345"
-numista_issue_id: "67890"
-cover: "[[11 - Collections/2 Euro/Covers/Finland-1999-National-M.png]]"
-reference_year: "1999"
+numista_id: '12345'
+numista_issue_id: '67890'
+cover: '[[11 - Collections/2 Euro/Covers/Finland-1999-National-M.png]]'
+reference_year: '1999'
 cover_locked: true
 own_cover: false
 ---

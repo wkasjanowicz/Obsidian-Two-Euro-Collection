@@ -1,10 +1,15 @@
 # 2 Euro Collection dla Obsidian
 
+[![Dependency Security](https://github.com/wkasjanowicz/Obsidian-Two-Euro-Collection/actions/workflows/security.yml/badge.svg?branch=main)](https://github.com/wkasjanowicz/Obsidian-Two-Euro-Collection/actions/workflows/security.yml)
+
 Mobilna wtyczka do Obsidian służąca do prowadzenia uporządkowanego katalogu monet 2 euro. Każda moneta jest zapisywana jako notatka Markdown z frontmatter YAML, okładki są przechowywane lokalnie w vault, a katalog może być synchronizowany z Numista. Wtyczka udostępnia dashboard z wyszukiwaniem, filtrami i oznaczaniem posiadanych monet.
 
 <!-- VERSION-START -->
+
 > Aktualna wersja wtyczki: **0.5.51**
+
 <!-- VERSION-END -->
+
 > Minimalna wersja Obsidian: **1.8.0**  
 > Tylko desktop: **Nie**. Wtyczka działa również w Obsidian Mobile.
 
@@ -91,6 +96,7 @@ Notatka dashboardu zawiera blok kodu:
 
 ````markdown
 ```two-euro-collection
+
 ```
 ````
 
@@ -163,7 +169,7 @@ coin_id: coin-12345-67890
 denomination: 2
 currency: EUR
 country: Finland
-year: "1999"
+year: '1999'
 coin_type: national
 title: 2 Euro (1st type, 1st map)
 mint_mark: M
@@ -174,10 +180,10 @@ acquisition_price: 4.50
 acquisition_currency: EUR
 condition: UNC
 source: numista
-numista_id: "12345"
-numista_issue_id: "67890"
-cover: "[[11 - Collections/2 Euro/Covers/Finland-1999-National-M.png]]"
-reference_year: "1999"
+numista_id: '12345'
+numista_issue_id: '67890'
+cover: '[[11 - Collections/2 Euro/Covers/Finland-1999-National-M.png]]'
+reference_year: '1999'
 cover_locked: true
 own_cover: false
 ---
