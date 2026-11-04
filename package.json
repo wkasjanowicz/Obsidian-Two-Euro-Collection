@@ -14,9 +14,11 @@
     "audit": "npm audit",
     "audit:prod": "npm audit --omit=dev",
     "security": "npm audit && npm outdated",
-    "beta": "node scripts/beta.js"
+    "beta": "node scripts/beta.js",
+    "starter-pack": "node scripts/build-starter-pack.js"
   },
   "devDependencies": {
-    "prettier": "^3.9.10"
+    "prettier": "^3.9.10",
+    "yaml": "^2.9.1"
   }
 }

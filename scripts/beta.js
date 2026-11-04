@@ -118,6 +118,29 @@ run('npm', ['audit', '--audit-level=high']);
 // Prepare temporary beta assets
 // ------------------------------------------------------------
 
+const starterPackPath = path.resolve('StarterData/starter-pack.json');
+
+if (!fs.existsSync(starterPackPath)) {
+  fail('StarterData/starter-pack.json not found. ' + 'Run npm run starter-pack first.');
+}
+
+const starterPack = JSON.parse(fs.readFileSync(starterPackPath, 'utf8'));
+
+if (starterPack.schemaVersion !== 1 || !Array.isArray(starterPack.coins)) {
+  fail('StarterData/starter-pack.json has an invalid format.');
+}
+
+if (!starterPack.coins.length) {
+  fail('StarterData/starter-pack.json contains no coins.');
+}
+
+const coinsWithoutCover = starterPack.coins.filter((coin) => !coin.cover?.base64);
+
+if (coinsWithoutCover.length) {
+  fail(`Starter pack contains ${coinsWithoutCover.length} ` + 'coin(s) without a cover.');
+}
+
+console.log(`Starter pack: ${starterPack.coins.length} coins`);
 const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'two-euro-beta-'));
 
 const files = ['main.js', 'styles.css'];
@@ -125,6 +148,17 @@ const files = ['main.js', 'styles.css'];
 for (const file of files) {
   fs.copyFileSync(file, path.join(tmpRoot, file));
 }
+const betaStarterPack = {
+  ...starterPack,
+  pluginVersion: betaVersion,
+};
+
+fs.writeFileSync(
+  path.join(tmpRoot, 'starter-pack.json'),
+  JSON.stringify(betaStarterPack, null, 2) + '\n',
+  'utf8'
+);
+console.log(`Starter pack version: ${betaStarterPack.pluginVersion}`);
 
 const betaManifest = {
   ...manifest,
@@ -151,7 +185,7 @@ run('gh', [
   path.join(tmpRoot, 'main.js'),
   path.join(tmpRoot, 'manifest.json'),
   path.join(tmpRoot, 'styles.css'),
-
+  path.join(tmpRoot, 'starter-pack.json'),
   '--title',
   betaVersion,
 
