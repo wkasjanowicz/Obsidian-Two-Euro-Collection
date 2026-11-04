@@ -1,4 +1,4 @@
-name: Create Obsidian release
+name: Create Obsidian Release
 
 on:
   push:
@@ -20,22 +20,25 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Read version from manifest.json
+      - name: Read plugin version
         id: version
         shell: bash
         run: |
           VERSION=$(node -p "require('./manifest.json').version")
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          echo "Plugin version: $VERSION"
+          echo "Version: $VERSION"
 
-      - name: Validate required files
+      - name: Validate required release files
         shell: bash
         run: |
           test -f main.js
           test -f manifest.json
           test -f styles.css
 
-      - name: Validate manifest version
+      - name: Validate main.js
+        run: node --check main.js
+
+      - name: Validate version
         shell: bash
         run: |
           VERSION="${{ steps.version.outputs.version }}"
@@ -60,7 +63,7 @@ jobs:
             echo "exists=false" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Create release
+      - name: Create GitHub Release
         if: steps.existing.outputs.exists == 'false'
         env:
           GH_TOKEN: ${{ github.token }}
