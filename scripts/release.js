@@ -3,13 +3,7 @@ const { execFileSync } = require('child_process');
 
 const root = process.cwd();
 const manifestFile = 'manifest.json';
-const requiredFiles = [
-  manifestFile,
-  'main.js',
-  'styles.css',
-  'README.md',
-  'README_PL.md'
-];
+const requiredFiles = [manifestFile, 'main.js', 'styles.css', 'README.md', 'README_PL.md'];
 
 function fail(message) {
   console.error(`\nERROR: ${message}\n`);
@@ -21,7 +15,7 @@ function run(command, args = [], options = {}) {
     cwd: root,
     encoding: 'utf8',
     stdio: options.capture ? ['ignore', 'pipe', 'pipe'] : 'inherit',
-    ...options
+    ...options,
   });
 }
 
@@ -53,9 +47,14 @@ function compareVersions(a, b) {
 function incrementVersion(current, type) {
   let [major, minor, patch] = current.split('.').map(Number);
   if (type === 'patch') patch += 1;
-  else if (type === 'minor') { minor += 1; patch = 0; }
-  else if (type === 'major') { major += 1; minor = 0; patch = 0; }
-  else fail(`Unknown increment type: ${type}`);
+  else if (type === 'minor') {
+    minor += 1;
+    patch = 0;
+  } else if (type === 'major') {
+    major += 1;
+    minor = 0;
+    patch = 0;
+  } else fail(`Unknown increment type: ${type}`);
   return `${major}.${minor}.${patch}`;
 }
 
@@ -89,7 +88,8 @@ try {
 }
 
 const branch = capture('git', ['branch', '--show-current']);
-if (branch !== 'main') fail(`Release must be created from main, current branch: ${branch || '(detached HEAD)'}`);
+if (branch !== 'main')
+  fail(`Release must be created from main, current branch: ${branch || '(detached HEAD)'}`);
 
 const dirty = capture('git', ['status', '--porcelain']);
 if (dirty) fail(`Working tree is not clean:\n${dirty}\nCommit or discard changes first.`);
@@ -100,7 +100,9 @@ run('git', ['fetch', 'origin', 'main', '--tags']);
 const localHead = capture('git', ['rev-parse', 'HEAD']);
 const remoteHead = capture('git', ['rev-parse', 'origin/main']);
 if (localHead !== remoteHead) {
-  fail('Local main is not identical to origin/main. Pull/rebase or push pending commits before releasing.');
+  fail(
+    'Local main is not identical to origin/main. Pull/rebase or push pending commits before releasing.'
+  );
 }
 
 const manifest = JSON.parse(read(manifestFile));
@@ -108,7 +110,10 @@ const currentVersion = manifest.version;
 if (!validVersion(currentVersion)) fail(`Invalid version in manifest.json: ${currentVersion}`);
 
 const request = process.argv[2];
-if (!request) fail('Usage: npm run release:patch | release:minor | release:major | npm run release:version -- X.Y.Z');
+if (!request)
+  fail(
+    'Usage: npm run release:patch | release:minor | release:major | npm run release:version -- X.Y.Z'
+  );
 
 const targetVersion = ['patch', 'minor', 'major'].includes(request)
   ? incrementVersion(currentVersion, request)
@@ -138,14 +143,39 @@ updateReadme('README.md', `> Current plugin version: **${targetVersion}**`);
 updateReadme('README_PL.md', `> Aktualna wersja wtyczki: **${targetVersion}**`);
 
 try {
+  console.log('Formatting source files...');
+  run('npx', [
+    'prettier',
+    '--write',
+    'main.js',
+    'scripts/**/*.js',
+    '*.json',
+    '.github/workflows/*.yml',
+  ]);
+
   console.log('Validating main.js...');
   run('node', ['--check', 'main.js']);
   console.log('Validating JSON files...');
   JSON.parse(read(manifestFile));
-  const plFile = fs.existsSync('Languages/pl.json') ? 'Languages/pl.json' : (fs.existsSync('pl.json') ? 'pl.json' : null);
+  const plFile = fs.existsSync('Languages/pl.json')
+    ? 'Languages/pl.json'
+    : fs.existsSync('pl.json')
+      ? 'pl.json'
+      : null;
   if (plFile) JSON.parse(read(plFile));
 
-  run('git', ['add', 'manifest.json', 'README.md', 'README_PL.md']);
+  run('git', [
+    'add',
+    'main.js',
+    'manifest.json',
+    'README.md',
+    'README_PL.md',
+    'package.json',
+    'package-lock.json',
+    'scripts/release.js',
+    '.github/workflows/release.yml',
+  ]);
+
   run('git', ['commit', '-m', `Release ${targetVersion}`]);
   run('git', ['push', 'origin', 'main']);
 } catch (error) {

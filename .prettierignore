@@ -1,0 +1,7 @@
+node_modules/
+.git/
+.obsidian/
+Assets/
+Covers/
+Coins/
+*.min.js

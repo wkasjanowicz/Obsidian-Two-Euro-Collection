@@ -3,9 +3,15 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
+    "format": "prettier --write \"main.js\" \"scripts/**/*.js\" \"*.json\" \".github/workflows/*.yml\"",
+    "format:check": "prettier --check \"main.js\" \"scripts/**/*.js\" \"*.json\" \".github/workflows/*.yml\"",
+    "validate": "node --check main.js && npm run format:check",
     "release:patch": "node scripts/release.js patch",
     "release:minor": "node scripts/release.js minor",
     "release:major": "node scripts/release.js major",
     "release:version": "node scripts/release.js"
+  },
+  "devDependencies": {
+    "prettier": "^3.9.10"
   }
 }
