@@ -5,7 +5,7 @@
 Mobilna wtyczka do Obsidian służąca do prowadzenia uporządkowanego katalogu monet 2 euro. Każda moneta jest zapisywana jako notatka Markdown z frontmatter YAML, okładki są przechowywane lokalnie w vault, a katalog może być synchronizowany z Numista. Wtyczka udostępnia dashboard z wyszukiwaniem, filtrami i oznaczaniem posiadanych monet.
 
 <!-- VERSION-START -->
-> Aktualna wersja wtyczki: **0.6.0**
+> Aktualna wersja wtyczki: **0.6.1**
 <!-- VERSION-END -->
 
 > Minimalna wersja Obsidian: **1.8.0**  
