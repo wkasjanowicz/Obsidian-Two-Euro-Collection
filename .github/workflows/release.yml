@@ -117,7 +117,6 @@ jobs:
             main.js
             styles.css
             manifest.json
-            StarterData/starter-pack.json
 
       - name: Create GitHub Release
         if: steps.existing.outputs.exists == 'false'
@@ -130,7 +129,6 @@ jobs:
             main.js \
             manifest.json \
             styles.css \
-            "StarterData/starter-pack.json#starter-pack.json" \
             --title "$VERSION" \
             --target "${{ github.sha }}" \
             --generate-notes \

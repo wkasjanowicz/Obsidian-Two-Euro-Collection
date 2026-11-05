@@ -1900,12 +1900,10 @@ module.exports = class TwoEuroCollectionPlugin extends Plugin {
     }
   }
   async installStarterCollection() {
-    const version = this.manifest.version;
-
     const url =
-      'https://github.com/wkasjanowicz/' +
-      'Obsidian-Two-Euro-Collection/releases/download/' +
-      `${encodeURIComponent(version)}/starter-pack.json`;
+      'https://raw.githubusercontent.com/' +
+      'wkasjanowicz/Obsidian-Two-Euro-Collection/' +
+      'main/StarterData/starter-pack.json';
 
     const response = await requestUrl({
       url,
