@@ -1,7 +1,7 @@
 {
   "id": "two-euro-collection",
   "name": "2 Euro Collection",
-  "version": "0.6.1",
+  "version": "0.6.2",
   "minAppVersion": "1.8.0",
   "description": "2 Euro coin collection with filtered ownership totals, enforced title normalization, owned-card highlighting and complete English documentation.",
   "author": "Wojciech Kasjanowicz",
