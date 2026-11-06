@@ -5,7 +5,9 @@
 Mobilna wtyczka do Obsidian służąca do prowadzenia uporządkowanego katalogu monet 2 euro. Każda moneta jest zapisywana jako notatka Markdown z frontmatter YAML, okładki są przechowywane lokalnie w vault, a katalog może być synchronizowany z Numista. Wtyczka udostępnia dashboard z wyszukiwaniem, filtrami i oznaczaniem posiadanych monet.
 
 <!-- VERSION-START -->
+
 > Aktualna wersja wtyczki: **0.6.1**
+
 <!-- VERSION-END -->
 
 > Minimalna wersja Obsidian: **1.8.0**  
@@ -65,81 +67,84 @@ Docelowa struktura katalogu wtyczki:
 
 > Po podmianie istniejącej wersji przeładuj Obsidian. Na telefonie upewnij się, że cały katalog `.obsidian/plugins/two-euro-collection` został zsynchronizowany z urządzeniem.
 
-## Pierwsze uruchomienie i struktura katalogów
+### Pierwsze uruchomienie i konfiguracja początkowa
 
-1. Otwórz **Ustawienia → 2 Euro Collection**.
-2. Sprawdź domyślne ścieżki:
-   - Katalog główny: `11 - Collections`
-   - Nazwa kolekcji: `2 Euro`
-   - Katalog monet: `Coins`
-   - Katalog okładek: `Covers`
-3. Wybierz **Utwórz / napraw strukturę → Wykonaj**.
-4. Uruchom polecenie **2 Euro Collection: Otwórz kolekcję** albo użyj ikony na wstążce.
+Po zainstalowaniu wtyczki otwórz **Ustawienia → 2 Euro Collection**.
 
-Wtyczka tworzy w razie potrzeby następującą strukturę:
+Przed rozpoczęciem pracy sprawdź ustawienia lokalizacji kolekcji:
 
-```text
-11 - Collections/
-└── 2 Euro/
-    ├── 🪙 Kolekcja 2 Euro.md
-    ├── Coins/
-    │   ├── Austria/
-    │   ├── Belgium/
-    │   └── ...
-    ├── Covers/
-    └── .history/
-```
+- **Katalog główny** – katalog nadrzędny, w którym będzie przechowywana kolekcja;
+- **Nazwa kolekcji** – nazwa katalogu kolekcji 2 euro;
+- **Katalog monet** – katalog zawierający notatki poszczególnych monet;
+- **Katalog okładek** – katalog przeznaczony na lokalne obrazy monet.
+
+W sekcji **Konfiguracja początkowa** dostępne są dwa kroki inicjalizacji.
+
+#### Krok 1: Utwórz strukturę kolekcji
+
+Wybierz **Utwórz strukturę**.
+
+Wtyczka utworzy katalogi wymagane do działania kolekcji oraz główny dashboard. Ten krok należy wykonać jako pierwszy podczas konfiguracji nowego vault.
+
+Przykładowa struktura:
+
+`````text
+2 Euro/
+├── 🪙 Kolekcja 2 Euro.md
+├── Coins/
+└── Covers/
 
 Notatka dashboardu zawiera blok kodu:
 
 ````markdown
 ```two-euro-collection
 
-```
+`````
+
 ````
 
 Nie usuwaj tego bloku, jeżeli dashboard ma być nadal wyświetlany.
 
-## Generowanie danych początkowych
+#### Krok 2: Zainstaluj kolekcję startową
 
-Dane początkowe można utworzyć na trzy sposoby.
+Ten krok jest opcjonalny.
 
-### Wariant 0: Kolekcja początkowa
+Wybierz **Zainstaluj kolekcję startową**, aby dodać przygotowany zestaw przykładowych monet wraz z lokalnymi okładkami.
 
-2 Euro Collection udostępnia opcjonalną kolekcję początkową zawierającą wybrane monety wraz z przygotowanymi lokalnymi okładkami. Kolekcja początkowa ułatwia pierwszą konfigurację pluginu. Nie zawiera informacji o stanie posiadania autora i nie oznacza importowanych monet jako posiadanych.
+Kolekcja startowa ma ułatwić rozpoczęcie pracy z wtyczką. Nie reprezentuje kolekcji autora i wszystkie zaimportowane monety są początkowo oznaczone jako nieposiadane.
 
-### Instalacja kolekcji początkowej
+Podczas instalacji:
 
-1. Zainstaluj i włącz **2 Euro Collection**.
-2. Otwórz paletę poleceń Obsidian.
-3. Uruchom: **2 Euro Collection: Zainstaluj kolekcję początkową**
-4. Potwierdź operację.
-5. Otwórz dashboard kolekcji.
+- tworzone są tylko brakujące monety;
+- istniejące monety nie są zastępowane;
+- istniejące dane użytkownika nie są modyfikowane;
+- przygotowane okładki są zapisywane lokalnie;
+- okładki z kolekcji startowej są chronione przed automatycznym zastąpieniem.
 
-Plugin pobiera Starter Pack odpowiadający dokładnie zainstalowanej wersji pluginu, a następnie tworzy brakujące notatki monet oraz lokalne pliki okładek. Monety z kolekcji początkowej są tworzone z ustawieniami:
+Ponowne uruchomienie instalacji kolekcji startowej nie powinno tworzyć duplikatów istniejących monet.
 
-````yaml owned: false quantity: 1 cover_locked: true own_cover: true
+Po zakończeniu konfiguracji otwórz kolekcję za pomocą ikony wstążki lub polecenia 2 Euro Collection: Otwórz kolekcję.
 
-### Wariant A: synchronizacja z Numista
+#### Dalsze uzupełnianie kolekcji
 
-1. Skonfiguruj klucz API Numista zgodnie z następną sekcją.
-2. Otwórz dashboard kolekcji.
-3. Otwórz prawy panel **2 Euro Collection**, jeżeli nie jest widoczny.
-4. Wybierz **Synchronizuj**.
-5. Poczekaj na zakończenie komunikatu postępu.
-6. Wybierz **Pobierz okładki**, aby zapisać brakujące obrazy lokalnie.
+Po wykonaniu konfiguracji początkowej katalog można rozwijać na dwa sposoby:
 
-Synchronizacja tworzy lub aktualizuje notatki Markdown dla oficjalnych emisji 2 euro. Wtyczka rozróżnia roczniki i warianty mennic oraz zachowuje lokalne informacje o posiadaniu i chronione lub własne okładki.
+**1. Synchronizacja z Numista**
+- Skonfiguruj klucz API Numista.
+- Otwórz dashboard kolekcji.
+- Otwórz prawy panel 2 Euro Collection, jeżeli nie jest widoczny.
+- Wybierz Synchronizuj.
+- Poczekaj na zakończenie synchronizacji.
+- W razie potrzeby wybierz Pobierz okładki, aby pobrać brakujące obrazy.
 
-### Wariant B: ręczne dodanie monety
+Synchronizacja tworzy lub aktualizuje notatki dla oficjalnych emisji 2 euro. Zachowywane są lokalne informacje o posiadaniu oraz chronione lub własne okładki.
 
-1. Wybierz **+ Dodaj** w prawym panelu albo uruchom polecenie **2 Euro Collection: Dodaj monetę**.
-2. Uzupełnij co najmniej pola **Kraj**, **Rok** i **Tytuł / motyw**.
-3. Wybierz typ **Narodowa** albo **Okolicznościowa**.
-4. Dodaj oznaczenie mennicy, jeśli emisja ma wariant menniczy.
-5. Wybierz **Zapisz**.
-
-Wpisy ręczne otrzymują `source: manual` i nie są usuwane przez polecenie czyszczenia nieoficjalnych importów Numista.
+**2. Ręczne dodawanie monet**
+- Wybierz + Dodaj w prawym panelu albo uruchom polecenie 2 Euro Collection: Dodaj monetę.
+- Uzupełnij co najmniej pola Kraj, Rok i Tytuł / motyw.
+- Wybierz typ Narodowa albo Okolicznościowa.
+- Dodaj oznaczenie mennicy, jeżeli emisja ma wariant menniczy.
+- Wybierz Zapisz.
 
 ## Konfiguracja API Numista
 

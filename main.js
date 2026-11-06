@@ -16,7 +16,7 @@ const {
 
 const VIEW_TYPE_FILTERS = 'two-euro-filters-view';
 const DEFAULTS = {
-  rootFolder: '11 - Collections',
+  rootFolder: '/',
   collectionFolder: '2 Euro',
   coinsFolder: 'Coins',
   coversFolder: 'Covers',
@@ -173,6 +173,19 @@ const BASE_LANGUAGE = {
   'command.normalizeTitles': 'Normalize 2 Euro coin titles',
   'notice.titlesNormalized':
     'Titles normalized: {updated}; unchanged: {unchanged}; errors: {errors}.',
+
+  'settings.initialSetup': 'Initial configuration',
+  'settings.initStructure': 'Step 1: Create collection structure',
+  'settings.initStructureDesc':
+    'Creates the folders required by the 2 Euro Collection plugin and the main collection dashboard. Run this step first when configuring a new vault.',
+  'settings.initStructureButton': 'Create structure',
+  'settings.initStructureDone': 'Collection structure is ready.',
+
+  'settings.initStarterPack': 'Step 2: Install starter collection',
+  'settings.initStarterPackDesc':
+    'Installs the starter set of example coins and their prepared covers. Run this step after creating the collection structure.',
+  'settings.initStarterPackButton': 'Install starter collection',
+  'settings.initStarterPackDone': 'Starter collection installed.',
 };
 function formatText(template, vars = {}) {
   return String(template).replace(/\{(\w+)\}/g, (_, k) =>
@@ -430,15 +443,38 @@ class EuroSettings extends PluginSettingTab {
         await p.saveSettings();
       });
     });
-    new Setting(c).setName(t('settings.structure')).addButton((b) =>
-      b
-        .setButtonText(t('settings.execute'))
-        .setCta()
-        .onClick(async () => {
-          await p.ensureDashboard();
-          new Notice(t('settings.structure'));
+    c.createEl('h3', {
+      text: t('settings.initialSetup'),
+    });
+    new Setting(c)
+      .setName(t('settings.initStructure'))
+      .setDesc(t('settings.initStructureDesc'))
+      .addButton((b) =>
+        b
+          .setButtonText(t('settings.initStructureButton'))
+          .setCta()
+          .onClick(async () => {
+            await p.ensureDashboard();
+            new Notice(t('settings.initStructureDone'));
+          })
+      );
+
+    new Setting(c)
+      .setName(t('settings.initStarterPack'))
+      .setDesc(t('settings.initStarterPackDesc'))
+      .addButton((b) =>
+        b.setButtonText(t('settings.initStarterPackButton')).onClick(async () => {
+          const confirmed = window.confirm(t('confirm.installStarter'));
+          if (!confirmed) return;
+
+          try {
+            await p.installStarterCollection();
+          } catch (error) {
+            console.error('Starter collection installation', error);
+            new Notice(error?.message || String(error));
+          }
         })
-    );
+      );
   }
 }
 
@@ -1073,7 +1109,7 @@ module.exports = class TwoEuroCollectionPlugin extends Plugin {
     await this.ensureStructure();
     const p = this.dashboard();
     if (!(await this.app.vault.adapter.exists(p)))
-      await this.app.vault.create(p, '# 🪙 Kolekcja 2 Euro\n\n```two-euro-collection\n```\n');
+      await this.app.vault.create(p, '```two-euro-collection\n```\n');
     return p;
   }
   async openDashboard() {

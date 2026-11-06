@@ -143,6 +143,18 @@
     "image.reference": "Okładka referencyjna: {year}",
     "preview.close": "Zamknij podgląd",
     "command.normalizeTitles": "Napraw wszystkie nazwy 2 Euros → 2 Euro",
-    "notice.titlesNormalized": "Naprawiono nazwy: {updated}; bez zmian: {unchanged}; błędy: {errors}."
+    "notice.titlesNormalized": "Naprawiono nazwy: {updated}; bez zmian: {unchanged}; błędy: {errors}.",
+
+    "settings.initialSetup": "Konfiguracja początkowa",
+
+    "settings.initStructure": "Krok 1: Utwórz strukturę kolekcji",
+    "settings.initStructureDesc": "Tworzy katalogi wymagane przez wtyczkę 2 Euro Collection oraz główny widok kolekcji. Ten krok należy wykonać jako pierwszy podczas konfiguracji nowego magazynu.",
+    "settings.initStructureButton": "Utwórz strukturę",
+    "settings.initStructureDone": "Struktura kolekcji jest gotowa.",
+
+    "settings.initStarterPack": "Krok 2: Zainstaluj kolekcję startową",
+    "settings.initStarterPackDesc": "Instaluje początkowy zestaw przykładowych monet wraz z przygotowanymi okładkami. Ten krok wykonaj po utworzeniu struktury kolekcji.",
+    "settings.initStarterPackButton": "Zainstaluj kolekcję startową",
+    "settings.initStarterPackDone": "Kolekcja startowa została zainstalowana."
   }
 }

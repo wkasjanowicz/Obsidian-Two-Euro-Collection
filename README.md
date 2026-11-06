@@ -5,7 +5,9 @@
 A mobile-friendly Obsidian plugin for maintaining a structured catalogue of 2 euro coins. The plugin stores every coin as a Markdown note with YAML frontmatter, keeps covers in the vault, can synchronize official issues from Numista, and provides a searchable dashboard with ownership tracking.
 
 <!-- VERSION-START -->
+
 > Current plugin version: **0.6.1**
+
 <!-- VERSION-END -->
 
 > Minimum Obsidian version: **1.8.0**  
@@ -65,90 +67,82 @@ The final plugin directory should look like this:
 
 > When replacing an existing version, reload Obsidian after copying the files. On mobile, make sure the complete `.obsidian/plugins/two-euro-collection` folder is synchronized to the device.
 
-## First run and initial folder structure
+### First run and initial configuration
 
-1. Open **Settings → 2 Euro Collection**.
-2. Review the default paths:
-   - Root folder: `11 - Collections`
-   - Collection name: `2 Euro`
-   - Coins folder: `Coins`
-   - Covers folder: `Covers`
-3. Select **Create / repair structure → Run**.
-4. Run the command **2 Euro Collection: Open collection**, or use the ribbon icon.
+After installing the plugin, open **Settings → 2 Euro Collection**.
+Before starting, review the collection location settings:
 
-The plugin creates this structure when required:
+- **Root folder** – the parent folder where the collection will be stored;
+- **Collection name** – the name of the 2 euro collection folder;
+- **Coins folder** – the folder containing individual coin notes;
+- **Covers folder** – the folder used for local coin images.
 
-```text
-11 - Collections/
-└── 2 Euro/
-    ├── 🪙 Kolekcja 2 Euro.md
-    ├── Coins/
-    │   ├── Austria/
-    │   ├── Belgium/
-    │   └── ...
-    ├── Covers/
-    └── .history/
-```
+The **Initial configuration** section contains two setup steps.
 
-The dashboard note contains the plugin code block:
+#### Step 1: Create collection structure
+
+Select **Create structure**.
+The plugin creates the folders required by 2 Euro Collection and the main collection dashboard. Run this step first when configuring a new vault.
+
+Example structure:
+
+`````text
+2 Euro/
+ ├── 🪙 Kolekcja 2 Euro.md
+ ├── Coins/
+ └── Covers/
+
+The 🪙 Kolekcja 2 Euro.md note contains the code block used by the plugin to render the collection dashboard::
 
 ````markdown
 ```two-euro-collection
 
-```
+`````
+
 ````
 
 Do not remove that code block if the dashboard is to remain visible.
 
-## Generating the initial catalogue
+#### Step 2: Install starter collection
 
-There are three ways to create the initial data.
+This step is optional.
 
-## Starter collection
+Select **Install starter collection** to add a prepared set of example coins together with their local cover images.
 
-2 Euro Collection includes an optional starter collection containing selected coin entries with prepared local cover images.
+The starter collection is designed to make the initial setup easier. It does not represent the author's collection, and all imported coins initially remain marked as not owned.
 
-The starter collection is intended to make the first setup easier. It does not represent the author's ownership status and does not mark any imported coin as owned.
+During installation:
 
-### Install the starter collection
+ -only missing coins are created;
+- existing coins are not replaced;
+- existing user data is not modified;
+- prepared cover images are stored locally;
+- starter collection covers are protected from automatic replacement.
 
-1. Install and enable **2 Euro Collection**.
-2. Open the Obsidian Command Palette.
-3. Run:
+Running the starter collection installation again should not create duplicates of existing coins.
 
-   **2 Euro Collection: Install starter collection**
+After completing the initial configuration, open the collection using the ribbon icon or the **2 Euro Collection: Open collection** command.
 
-4. Confirm the operation.
-5. Open the collection dashboard.
+#### Adding more coins
 
-The plugin downloads the starter pack corresponding exactly to the installed plugin version and creates the missing coin notes and local cover files.
+After the initial configuration, the catalogue can be expanded in two ways:
 
-Imported starter coins are created with:
+**Synchronize with Numista**
+- Configure your Numista API key.
+- Open the collection dashboard.
+- Open the **2 Euro Collection** sidebar if it is not already visible.
+- Select **Synchronize**.
+- Wait for the synchronization to finish.
+- If required, select **Download covers** to download missing local images.
 
-````yaml
-owned: false
-quantity: 1
-cover_locked: true
-own_cover: true
+Synchronization creates or updates notes for official 2 euro issues while preserving local ownership data and protected or custom covers.
 
-### Option A: synchronize from Numista
-
-1. Configure the Numista API key as described below.
-2. Open the collection dashboard.
-3. Open the right-side **2 Euro Collection** panel if it is not already visible.
-4. Select **Synchronize**.
-5. Wait for the progress notice to finish.
-6. Select **Download covers** to download missing local images.
-
-Synchronization creates or updates Markdown notes for official 2 euro issues. The plugin distinguishes year and mint variants, and preserves ownership data and protected/custom covers already stored locally.
-
-### Option B: add coins manually
-
-1. Select **+ Add** in the right sidebar, or run **2 Euro Collection: Add coin**.
-2. Enter at least **Country**, **Year**, and **Title / design**.
-3. Choose **National** or **Commemorative**.
-4. Add a mint mark when the issue has a mint variant.
-5. Select **Save**.
+**Add coins manually**
+- Select + Add in the sidebar or run 2 Euro Collection: Add coin.
+- Enter at least Country, Year, and Title / design.
+- Select National or Commemorative.
+- Add a mint mark when the issue has a mint variant.
+- Select Save.
 
 Manual entries use `source: manual` and are not removed by the command that cleans unofficial Numista imports.
 
