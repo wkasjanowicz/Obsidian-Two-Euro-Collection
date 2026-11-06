@@ -152,9 +152,39 @@
     "settings.initStructureButton": "Utwórz strukturę",
     "settings.initStructureDone": "Struktura kolekcji jest gotowa.",
 
-    "settings.initStarterPack": "Krok 2: Zainstaluj kolekcję startową",
-    "settings.initStarterPackDesc": "Instaluje początkowy zestaw przykładowych monet wraz z przygotowanymi okładkami. Ten krok wykonaj po utworzeniu struktury kolekcji.",
     "settings.initStarterPackButton": "Zainstaluj kolekcję startową",
-    "settings.initStarterPackDone": "Kolekcja startowa została zainstalowana."
+    "settings.initStarterPackDone": "Kolekcja startowa została zainstalowana.",
+    "settings.initReferenceData": "Krok 2: Zainicjuj dane referencyjne",
+    "settings.initReferenceDataDesc": "Inicjalizuje listę obsługiwanych emitentów monet 2 euro, lat i typów używanych przez filtry oraz synchronizację filtrowaną z Numista.",
+    "settings.initReferenceDataButton": "Zainicjuj dane referencyjne",
+    "settings.initReferenceDataDone": "Dane referencyjne zostały zainicjowane: {issuers} emitentów i {years} lat.",
+
+    "settings.initStarterPack": "Krok 3: Zainstaluj kolekcję startową",
+    "settings.initStarterPackDesc": "Opcjonalnie instaluje początkowy zestaw przykładowych monet wraz z przygotowanymi okładkami. Wykonaj ten krok po zainicjowaniu danych referencyjnych.",
+
+    "settings.referenceData": "Dane referencyjne",
+    "settings.referenceDataDesc": "Dodatkowi emitenci i lata będą dostępni podczas synchronizacji filtrowanej nawet wtedy, gdy w kolekcji nie ma jeszcze odpowiadających im monet.",
+    "settings.additionalIssuer": "Dodaj emitenta",
+    "settings.additionalIssuerDesc": "Dodaj emitenta, który ma być dostępny w synchronizacji filtrowanej z Numista.",
+    "settings.issuerPlaceholder": "np. nowe państwo",
+    "settings.addIssuerButton": "Dodaj emitenta",
+    "settings.issuerAdded": "Dodano emitenta: {issuer}.",
+    "settings.issuerExists": "Emitent jest już dostępny.",
+    "settings.additionalIssuers": "Dodatkowi emitenci",
+    "settings.removeIssuer": "Usuń",
+
+    "settings.additionalYear": "Dodaj rok",
+    "settings.additionalYearDesc": "Dodaj rok spoza zakresu generowanego automatycznie.",
+    "settings.yearPlaceholder": "np. 2028",
+    "settings.addYearButton": "Dodaj rok",
+    "settings.yearAdded": "Dodano rok: {year}.",
+    "settings.invalidYear": "Podaj rok z zakresu od 1999 do 2200.",
+    "settings.additionalYears": "Dodatkowe lata",
+    "settings.removeYear": "Usuń",
+
+    "settings.referenceYearFrom": "Pierwszy rok referencyjny",
+    "settings.referenceYearFromDesc": "Pierwszy rok wyświetlany w zakresie synchronizacji.",
+    "settings.futureYears": "Lata przyszłe",
+    "settings.futureYearsDesc": "Liczba lat po bieżącym roku dostępnych do synchronizacji."
   }
 }

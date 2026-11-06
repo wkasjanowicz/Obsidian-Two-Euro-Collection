@@ -15,6 +15,34 @@ const {
 } = obsidian;
 
 const VIEW_TYPE_FILTERS = 'two-euro-filters-view';
+const DEFAULT_REFERENCE_ISSUERS = [
+  'Andorra',
+  'Austria',
+  'Belgium',
+  'Bulgaria',
+  'Croatia',
+  'Cyprus',
+  'Estonia',
+  'Finland',
+  'France',
+  'Germany',
+  'Greece',
+  'Ireland',
+  'Italy',
+  'Latvia',
+  'Lithuania',
+  'Luxembourg',
+  'Malta',
+  'Monaco',
+  'Netherlands',
+  'Portugal',
+  'San Marino',
+  'Slovakia',
+  'Slovenia',
+  'Spain',
+  'Vatican',
+];
+
 const DEFAULTS = {
   rootFolder: '/',
   collectionFolder: '2 Euro',
@@ -23,7 +51,15 @@ const DEFAULTS = {
   numistaApiKey: '',
   columns: 6,
   language: 'auto',
+
+  referenceDataInitialized: false,
+  referenceIssuers: [],
+  additionalIssuers: [],
+  additionalYears: [],
+  referenceYearFrom: 1999,
+  futureYears: 1,
 };
+
 const BASE_LANGUAGE = {
   'command.open': 'Open collection',
   'command.add': 'Add coin',
@@ -181,11 +217,48 @@ const BASE_LANGUAGE = {
   'settings.initStructureButton': 'Create structure',
   'settings.initStructureDone': 'Collection structure is ready.',
 
-  'settings.initStarterPack': 'Step 2: Install starter collection',
   'settings.initStarterPackDesc':
     'Installs the starter set of example coins and their prepared covers. Run this step after creating the collection structure.',
   'settings.initStarterPackButton': 'Install starter collection',
   'settings.initStarterPackDone': 'Starter collection installed.',
+  'settings.initReferenceData': 'Step 2: Initialize reference data',
+  'settings.initReferenceDataDesc':
+    'Initializes the list of supported 2 euro issuers, years and coin types used for filtering and filtered Numista synchronization.',
+  'settings.initReferenceDataButton': 'Initialize reference data',
+  'settings.initReferenceDataDone':
+    'Reference data initialized: {issuers} issuers and {years} years.',
+
+  'settings.initStarterPack': 'Step 3: Install starter collection',
+  'settings.initStarterPackDesc':
+    'Optionally installs the starter set of example coins and their prepared covers. Run this step after initializing reference data.',
+
+  'settings.referenceData': 'Reference data',
+  'settings.referenceDataDesc':
+    'Additional issuers and years are available in filtered synchronization even when no matching coin exists in the collection.',
+  'settings.additionalIssuer': 'Add issuer',
+  'settings.additionalIssuerDesc':
+    'Add an additional issuer that should be available for filtered Numista synchronization.',
+  'settings.issuerPlaceholder': 'e.g. New country',
+  'settings.addIssuerButton': 'Add issuer',
+  'settings.issuerAdded': 'Issuer added: {issuer}.',
+  'settings.issuerExists': 'The issuer is already available.',
+  'settings.additionalIssuers': 'Additional issuers',
+  'settings.removeIssuer': 'Remove',
+
+  'settings.additionalYear': 'Add year',
+  'settings.additionalYearDesc': 'Add a year outside the automatically generated range.',
+  'settings.yearPlaceholder': 'e.g. 2028',
+  'settings.addYearButton': 'Add year',
+  'settings.yearAdded': 'Year added: {year}.',
+  'settings.invalidYear': 'Enter a year between 1999 and 2200.',
+  'settings.additionalYears': 'Additional years',
+  'settings.removeYear': 'Remove',
+
+  'settings.referenceYearFrom': 'First reference year',
+  'settings.referenceYearFromDesc': 'The first year displayed in the synchronization range.',
+  'settings.futureYears': 'Future years',
+  'settings.futureYearsDesc':
+    'Number of years after the current year available for synchronization.',
 };
 function formatText(template, vars = {}) {
   return String(template).replace(/\{(\w+)\}/g, (_, k) =>
@@ -446,6 +519,9 @@ class EuroSettings extends PluginSettingTab {
     c.createEl('h3', {
       text: t('settings.initialSetup'),
     });
+    // ============================================================
+    // Step 1: Create collection structure
+    // ============================================================
     new Setting(c)
       .setName(t('settings.initStructure'))
       .setDesc(t('settings.initStructureDesc'))
@@ -459,6 +535,34 @@ class EuroSettings extends PluginSettingTab {
           })
       );
 
+    // ============================================================
+    // Step 2: Initialize reference data
+    // ============================================================
+
+    new Setting(c)
+      .setName(t('settings.initReferenceData'))
+      .setDesc(t('settings.initReferenceDataDesc'))
+      .addButton((button) =>
+        button
+          .setButtonText(t('settings.initReferenceDataButton'))
+          .setCta()
+          .onClick(async () => {
+            const result = await p.initializeReferenceData();
+
+            new Notice(
+              t('settings.initReferenceDataDone', {
+                issuers: result.issuers,
+                years: result.years,
+              })
+            );
+
+            this.display();
+          })
+      );
+
+    // ============================================================
+    // Step 3: Install starter collection
+    // ============================================================
     new Setting(c)
       .setName(t('settings.initStarterPack'))
       .setDesc(t('settings.initStarterPackDesc'))
@@ -475,6 +579,179 @@ class EuroSettings extends PluginSettingTab {
           }
         })
       );
+    // ============================================================
+    // Reference data
+    // ============================================================
+
+    c.createEl('h3', {
+      text: t('settings.referenceData'),
+    });
+
+    c.createEl('p', {
+      text: t('settings.referenceDataDesc'),
+    });
+
+    new Setting(c)
+      .setName(t('settings.referenceYearFrom'))
+      .setDesc(t('settings.referenceYearFromDesc'))
+      .addText((text) => {
+        text.inputEl.type = 'number';
+        text.inputEl.min = '1999';
+        text.inputEl.max = '2200';
+
+        text.setValue(String(p.settings.referenceYearFrom || 1999)).onChange(async (value) => {
+          const year = Number(value);
+
+          if (!Number.isInteger(year) || year < 1999 || year > 2200) {
+            return;
+          }
+
+          p.settings.referenceYearFrom = year;
+          await p.saveSettings();
+          p.refreshFilterViews();
+        });
+      });
+
+    new Setting(c)
+      .setName(t('settings.futureYears'))
+      .setDesc(t('settings.futureYearsDesc'))
+      .addSlider((slider) =>
+        slider
+          .setLimits(0, 10, 1)
+          .setValue(Number(p.settings.futureYears) || 1)
+          .setDynamicTooltip()
+          .onChange(async (value) => {
+            p.settings.futureYears = value;
+            await p.saveSettings();
+            p.refreshFilterViews();
+          })
+      );
+
+    // ============================================================
+    // 12. Add additional issuer
+    // ============================================================
+
+    let issuerToAdd = '';
+
+    new Setting(c)
+      .setName(t('settings.additionalIssuer'))
+      .setDesc(t('settings.additionalIssuerDesc'))
+      .addText((text) =>
+        text.setPlaceholder(t('settings.issuerPlaceholder')).onChange((value) => {
+          issuerToAdd = value;
+        })
+      )
+      .addButton((button) =>
+        button
+          .setButtonText(t('settings.addIssuerButton'))
+          .setCta()
+          .onClick(async () => {
+            const issuer = countryName(issuerToAdd);
+
+            if (!issuer) {
+              return;
+            }
+
+            const added = await p.addReferenceIssuer(issuer);
+
+            if (added) {
+              new Notice(
+                t('settings.issuerAdded', {
+                  issuer,
+                })
+              );
+
+              this.display();
+            } else {
+              new Notice(t('settings.issuerExists'));
+            }
+          })
+      );
+    const additionalIssuers = Array.isArray(p.settings.additionalIssuers)
+      ? p.settings.additionalIssuers
+      : [];
+
+    if (additionalIssuers.length) {
+      c.createEl('h4', {
+        text: t('settings.additionalIssuers'),
+      });
+
+      for (const issuer of additionalIssuers) {
+        new Setting(c).setName(issuer).addButton((button) =>
+          button
+            .setButtonText(t('settings.removeIssuer'))
+            .setWarning()
+            .onClick(async () => {
+              await p.removeReferenceIssuer(issuer);
+              this.display();
+            })
+        );
+      }
+    }
+
+    let yearToAdd = '';
+
+    new Setting(c)
+      .setName(t('settings.additionalYear'))
+      .setDesc(t('settings.additionalYearDesc'))
+      .addText((text) => {
+        text.inputEl.type = 'number';
+        text.inputEl.min = '1999';
+        text.inputEl.max = '2200';
+
+        text.setPlaceholder(t('settings.yearPlaceholder')).onChange((value) => {
+          yearToAdd = value;
+        });
+      })
+      .addButton((button) =>
+        button
+          .setButtonText(t('settings.addYearButton'))
+          .setCta()
+          .onClick(async () => {
+            const year = Number(yearToAdd);
+
+            if (!Number.isInteger(year) || year < 1999 || year > 2200) {
+              new Notice(t('settings.invalidYear'));
+              return;
+            }
+
+            const added = await p.addReferenceYear(year);
+
+            if (added) {
+              new Notice(
+                t('settings.yearAdded', {
+                  year,
+                })
+              );
+
+              this.display();
+            } else {
+              new Notice(t('settings.invalidYear'));
+            }
+          })
+      );
+
+    const additionalYears = Array.isArray(p.settings.additionalYears)
+      ? p.settings.additionalYears
+      : [];
+
+    if (additionalYears.length) {
+      c.createEl('h4', {
+        text: t('settings.additionalYears'),
+      });
+
+      for (const year of additionalYears) {
+        new Setting(c).setName(String(year)).addButton((button) =>
+          button
+            .setButtonText(t('settings.removeYear'))
+            .setWarning()
+            .onClick(async () => {
+              await p.removeReferenceYear(year);
+              this.display();
+            })
+        );
+      }
+    }
   }
 }
 
@@ -787,16 +1064,26 @@ class EuroFiltersView extends ItemView {
     c.createDiv({ cls: 'twoeuro-sidebar-label', text: t('coin.country') });
     const country = c.createEl('select', { cls: 'twoeuro-sidebar-select' });
     country.createEl('option', { text: t('filter.countries'), attr: { value: '' } });
-    [...new Set(rows.map((r) => r.country).filter(Boolean))]
-      .sort((a, b) => a.localeCompare(b, p.getLanguage()))
-      .forEach((v) => country.createEl('option', { text: v, attr: { value: v } }));
+    p.getReferenceIssuers().forEach((value) => {
+      country.createEl('option', {
+        text: value,
+        attr: {
+          value,
+        },
+      });
+    });
     country.value = state.country || '';
     c.createDiv({ cls: 'twoeuro-sidebar-label', text: t('coin.year') });
     const year = c.createEl('select', { cls: 'twoeuro-sidebar-select' });
     year.createEl('option', { text: t('filter.years'), attr: { value: '' } });
-    [...new Set(rows.map((r) => r.year).filter(Boolean))]
-      .sort((a, b) => Number(b) - Number(a))
-      .forEach((v) => year.createEl('option', { text: v, attr: { value: v } }));
+    p.getReferenceYears().forEach((value) => {
+      year.createEl('option', {
+        text: value,
+        attr: {
+          value,
+        },
+      });
+    });
     year.value = state.year || '';
     c.createDiv({ cls: 'twoeuro-sidebar-label', text: t('coin.type') });
     const mode = c.createEl('select', { cls: 'twoeuro-sidebar-select' });
@@ -1004,7 +1291,18 @@ module.exports = class TwoEuroCollectionPlugin extends Plugin {
     new Notice(this.t('notice.loaded', { version: this.manifest.version }));
   }
   async loadSettings() {
-    this.settings = Object.assign({}, DEFAULTS, await this.loadData());
+    const saved = (await this.loadData()) || {};
+
+    this.settings = {
+      ...DEFAULTS,
+      ...saved,
+
+      referenceIssuers: Array.isArray(saved.referenceIssuers) ? saved.referenceIssuers : [],
+
+      additionalIssuers: Array.isArray(saved.additionalIssuers) ? saved.additionalIssuers : [],
+
+      additionalYears: Array.isArray(saved.additionalYears) ? saved.additionalYears : [],
+    };
   }
   languagesFolder() {
     return normalizePath(`${this.manifest.dir}/Languages`);
@@ -1067,6 +1365,180 @@ module.exports = class TwoEuroCollectionPlugin extends Plugin {
   async saveSettings() {
     await this.saveData(this.settings);
   }
+  async initializeReferenceData() {
+    const existingIssuers = Array.isArray(this.settings.referenceIssuers)
+      ? this.settings.referenceIssuers
+      : [];
+
+    this.settings.referenceIssuers = [
+      ...new Set([...DEFAULT_REFERENCE_ISSUERS, ...existingIssuers.map(countryName)]),
+    ].sort((a, b) => a.localeCompare(b, this.getLanguage()));
+
+    this.settings.referenceDataInitialized = true;
+
+    if (!Number(this.settings.referenceYearFrom)) {
+      this.settings.referenceYearFrom = 1999;
+    }
+
+    if (!Number.isFinite(Number(this.settings.futureYears))) {
+      this.settings.futureYears = 1;
+    }
+
+    if (!Array.isArray(this.settings.additionalIssuers)) {
+      this.settings.additionalIssuers = [];
+    }
+
+    if (!Array.isArray(this.settings.additionalYears)) {
+      this.settings.additionalYears = [];
+    }
+
+    await this.saveSettings();
+    this.refreshFilterViews();
+
+    return {
+      issuers: this.settings.referenceIssuers.length,
+      years: this.getReferenceYears().length,
+    };
+  }
+
+  getReferenceIssuers() {
+    const rows = this.getRows();
+
+    const builtIn = this.settings.referenceDataInitialized
+      ? this.settings.referenceIssuers
+      : DEFAULT_REFERENCE_ISSUERS;
+
+    const additional = Array.isArray(this.settings.additionalIssuers)
+      ? this.settings.additionalIssuers
+      : [];
+
+    const fromCollection = rows.map((row) => countryName(row.country)).filter(Boolean);
+
+    return [
+      ...new Set(
+        [...builtIn, ...additional, ...fromCollection].map(countryName).map(tx).filter(Boolean)
+      ),
+    ].sort((a, b) => a.localeCompare(b, this.getLanguage()));
+  }
+
+  getReferenceYears() {
+    const firstYear = Math.max(1999, Number(this.settings.referenceYearFrom) || 1999);
+
+    const futureYears = Math.max(0, Math.min(10, Number(this.settings.futureYears) || 1));
+
+    const lastYear = new Date().getFullYear() + futureYears;
+    const years = new Set();
+
+    for (let year = firstYear; year <= lastYear; year++) {
+      years.add(String(year));
+    }
+
+    const additional = Array.isArray(this.settings.additionalYears)
+      ? this.settings.additionalYears
+      : [];
+
+    for (const year of additional) {
+      const normalized = Number(year);
+
+      if (Number.isInteger(normalized) && normalized >= 1999 && normalized <= 2200) {
+        years.add(String(normalized));
+      }
+    }
+
+    for (const row of this.getRows()) {
+      const normalized = Number(row.year);
+
+      if (Number.isInteger(normalized)) {
+        years.add(String(normalized));
+      }
+    }
+
+    return [...years].sort((a, b) => Number(b) - Number(a));
+  }
+
+  async addReferenceIssuer(value) {
+    const issuer = countryName(value);
+
+    if (!issuer) {
+      return false;
+    }
+
+    const current = Array.isArray(this.settings.additionalIssuers)
+      ? this.settings.additionalIssuers
+      : [];
+
+    const alreadyExists = this.getReferenceIssuers().some(
+      (item) =>
+        countryName(item).localeCompare(issuer, undefined, {
+          sensitivity: 'base',
+        }) === 0
+    );
+
+    if (alreadyExists) {
+      return false;
+    }
+
+    this.settings.additionalIssuers = [...current, issuer].sort((a, b) =>
+      a.localeCompare(b, this.getLanguage())
+    );
+
+    await this.saveSettings();
+    this.refreshFilterViews();
+
+    return true;
+  }
+
+  async removeReferenceIssuer(value) {
+    const issuer = countryName(value);
+
+    this.settings.additionalIssuers = (this.settings.additionalIssuers || []).filter(
+      (item) =>
+        countryName(item).localeCompare(issuer, undefined, {
+          sensitivity: 'base',
+        }) !== 0
+    );
+
+    await this.saveSettings();
+    this.refreshFilterViews();
+  }
+
+  async addReferenceYear(value) {
+    const year = Number(value);
+
+    if (!Number.isInteger(year) || year < 1999 || year > 2200) {
+      return false;
+    }
+
+    const normalized = String(year);
+    const current = Array.isArray(this.settings.additionalYears)
+      ? this.settings.additionalYears.map(String)
+      : [];
+
+    if (this.getReferenceYears().includes(normalized)) {
+      return false;
+    }
+
+    this.settings.additionalYears = [...new Set([...current, normalized])].sort(
+      (a, b) => Number(a) - Number(b)
+    );
+
+    await this.saveSettings();
+    this.refreshFilterViews();
+
+    return true;
+  }
+
+  async removeReferenceYear(value) {
+    const year = String(Number(value));
+
+    this.settings.additionalYears = (this.settings.additionalYears || [])
+      .map(String)
+      .filter((item) => item !== year);
+
+    await this.saveSettings();
+    this.refreshFilterViews();
+  }
+
   join(...a) {
     return normalizePath(
       a
@@ -1486,35 +1958,11 @@ module.exports = class TwoEuroCollectionPlugin extends Plugin {
       .map((item) => `${String(item.grade || '').toUpperCase()}: ${item.price} ${currency}`)
       .join(' · ');
   }
+
   officialEuroIssuers() {
-    return new Set([
-      'Andorra',
-      'Austria',
-      'Belgium',
-      'Bulgaria',
-      'Croatia',
-      'Cyprus',
-      'Estonia',
-      'Finland',
-      'France',
-      'Germany',
-      'Greece',
-      'Ireland',
-      'Italy',
-      'Latvia',
-      'Lithuania',
-      'Luxembourg',
-      'Malta',
-      'Monaco',
-      'Netherlands',
-      'Portugal',
-      'San Marino',
-      'Slovakia',
-      'Slovenia',
-      'Spain',
-      'Vatican',
-    ]);
+    return new Set(this.getReferenceIssuers());
   }
+
   isOfficialTwoEuroType(details) {
     if (!this.isTwoEuro(details)) return false;
     const issuer = countryName(details?.issuer?.name),
