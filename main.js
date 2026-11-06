@@ -1641,7 +1641,6 @@ module.exports = class TwoEuroCollectionPlugin extends Plugin {
     const detailsCache = new Map();
     const issuesCache = new Map();
 
-    let page = 1;
     let created = 0;
     let updated = 0;
     let unchanged = 0;
@@ -1649,255 +1648,269 @@ module.exports = class TwoEuroCollectionPlugin extends Plugin {
     let errors = 0;
     let processed = 0;
 
+    const objectTypes =
+      syncScope.coinType === 'national'
+        ? ['1']
+        : syncScope.coinType === 'commemorative'
+          ? ['2']
+          : ['1', '2'];
+
     try {
-      while (page <= 20) {
-        const q = new URLSearchParams({
-          q: '2 Euros',
-          object_type: '147',
-          page: String(page),
-          count: '100',
-          lang: 'en',
-        });
+      for (const objectType of objectTypes) {
+        let page = 1;
 
-        const listing = await this.api(`/types?${q}`);
-        const types = listing.types || [];
+        while (page <= 20) {
+          const q = new URLSearchParams({
+            q: '2 Euros',
+            object_type: objectType,
+            page: String(page),
+            count: '100',
+            lang: 'en',
+          });
 
-        if (!types.length) {
-          break;
-        }
+          const listing = await this.api(`/types?${q}`);
+          const types = listing.types || [];
 
-        for (const basic of types) {
-          processed++;
+          if (!types.length) {
+            break;
+          }
 
-          progress.setMessage(
-            filteredSync
-              ? `Synchronizacja ${scopeLabels.join(' / ')}: typ ${processed}`
-              : `Synchronizacja katalogu: typ ${processed}`
-          );
+          for (const basic of types) {
+            processed++;
 
-          try {
-            const id = tx(basic.id);
+            const objectTypeLabel =
+              objectType === '1' ? this.t('filter.national') : this.t('filter.commemorative');
 
-            if (!id) {
-              skipped++;
-              continue;
-            }
+            progress.setMessage(
+              filteredSync
+                ? `Synchronizacja ${scopeLabels.join(' / ')} · ${objectTypeLabel}: rekord ${processed}`
+                : `Synchronizacja katalogu · ${objectTypeLabel}: rekord ${processed}`
+            );
 
-            let d = detailsCache.get(id);
+            try {
+              const id = tx(basic.id);
 
-            if (!d) {
-              d = await this.api(`/types/${encodeURIComponent(id)}?lang=en`);
+              if (!id) {
+                skipped++;
+                continue;
+              }
 
-              detailsCache.set(id, d);
-            }
+              let d = detailsCache.get(id);
 
-            /*
-             * Najpierw odrzucamy elementy, które nie są oficjalnymi
-             * emisjami 2 euro.
-             */
-            if (!this.isOfficialTwoEuroType(d)) {
-              skipped++;
-              continue;
-            }
-            if (
-              syncScope.country &&
-              !this.matchesNumistaSyncCountry(d.issuer?.name, syncScope.country)
-            ) {
-              skipped++;
-              continue;
-            }
+              if (!d) {
+                d = await this.api(`/types/${encodeURIComponent(id)}?lang=en`);
 
-            /*
-             * Ustalenie lokalnego typu monety.
-             */
-            const kind = tx(d.object_type?.name).toLowerCase();
+                detailsCache.set(id, d);
+              }
 
-            const coinType =
-              kind.includes('commemorative') || Boolean(tx(d.commemorated_topic))
-                ? 'commemorative'
-                : 'national';
-
-            /*
-             * Filtr typu stosujemy przed pobraniem listy emisji.
-             */
-            if (syncScope.coinType && coinType !== syncScope.coinType) {
-              skipped++;
-              continue;
-            }
-
-            /*
-             * Dopiero po sprawdzeniu kraju i typu pobieramy emisje.
-             */
-            let raw = issuesCache.get(id);
-
-            if (!raw) {
-              raw = await this.api(`/types/${encodeURIComponent(id)}/issues?lang=en`);
-
-              issuesCache.set(id, raw);
-            }
-
-            const issues = Array.isArray(raw) ? raw : raw.issues || [];
-
-            /*
-             * Grupowanie po roku i mennicy. Jeśli Numista zwróci
-             * więcej niż jeden rekord dla tej samej kombinacji,
-             * pozostawiamy rekord z największym nakładem.
-             */
-            const uniq = new Map();
-
-            for (const issueRow of issues) {
-              const year = tx(issueRow.gregorian_year || issueRow.year);
-
-              const mint = tx(issueRow.mint_letter);
-
-              if (!Number(year)) {
+              /*
+               * Najpierw odrzucamy elementy, które nie są oficjalnymi
+               * emisjami 2 euro.
+               */
+              if (!this.isOfficialTwoEuroType(d)) {
+                skipped++;
+                continue;
+              }
+              if (
+                syncScope.country &&
+                !this.matchesNumistaSyncCountry(d.issuer?.name, syncScope.country)
+              ) {
+                skipped++;
                 continue;
               }
 
               /*
-               * Filtr roku można zastosować już tutaj, dzięki czemu
-               * niepotrzebne roczniki nie trafiają do uniq.
+               * Ustalenie lokalnego typu monety.
                */
-              if (syncScope.year && year !== syncScope.year) {
+              const kind = tx(d.object_type?.name).toLowerCase();
+
+              const coinType =
+                kind.includes('commemorative') || Boolean(tx(d.commemorated_topic))
+                  ? 'commemorative'
+                  : 'national';
+
+              /*
+               * Filtr typu stosujemy przed pobraniem listy emisji.
+               */
+              if (syncScope.coinType && coinType !== syncScope.coinType) {
+                skipped++;
                 continue;
               }
 
-              const key = `${year}|${mint}`;
-              const previous = uniq.get(key);
+              /*
+               * Dopiero po sprawdzeniu kraju i typu pobieramy emisje.
+               */
+              let raw = issuesCache.get(id);
 
-              if (!previous || Number(issueRow.mintage || 0) > Number(previous.mintage || 0)) {
-                uniq.set(key, issueRow);
+              if (!raw) {
+                raw = await this.api(`/types/${encodeURIComponent(id)}/issues?lang=en`);
+
+                issuesCache.set(id, raw);
               }
-            }
 
-            /*
-             * Jeśli po filtrowaniu roku nie została żadna emisja,
-             * przechodzimy do kolejnego typu.
-             */
-            if (!uniq.size) {
-              skipped++;
-              continue;
-            }
+              const issues = Array.isArray(raw) ? raw : raw.issues || [];
 
-            const sourceImage = this.pickImage(d);
-            const photoMeta = this.photoMetadata(d);
+              /*
+               * Grupowanie po roku i mennicy. Jeśli Numista zwróci
+               * więcej niż jeden rekord dla tej samej kombinacji,
+               * pozostawiamy rekord z największym nakładem.
+               */
+              const uniq = new Map();
 
-            for (const issueRow of uniq.values()) {
-              const issue = tx(issueRow.id);
-              const year = tx(issueRow.gregorian_year || issueRow.year);
-              const mint = tx(issueRow.mint_letter);
+              for (const issueRow of issues) {
+                const year = tx(issueRow.gregorian_year || issueRow.year);
 
-              const rowKey = [id, year, mint].join(':');
+                const mint = tx(issueRow.mint_letter);
 
-              const old = by.get(rowKey);
-
-              const valuation = await this.issueNumismaticValues(id, issue);
-
-              // dalszy obecny kod
-
-              const data = {
-                ...(old || {}),
-
-                country: countryName(d.issuer?.name),
-                year,
-                title: normalizeCoinTitle(d.title),
-                coin_type: coinType,
-                mint_mark: mint,
-
-                source: 'numista',
-                numista_id: id,
-                numista_issue_id: issue,
-                numista_url: tx(d.url),
-
-                mintage: issueRow.mintage ?? null,
-
-                official_issue: true,
-                object_type_id: tx(d.object_type?.id),
-                object_type_name: tx(d.object_type?.name),
-
-                ...photoMeta,
-
-                numismatic_value_currency: valuation.currency,
-
-                numismatic_values: valuation.values,
-
-                numismatic_value_unc: valuation.unc,
-
-                cover: old?.cover,
-
-                cover_url: old?.cover_locked ? old?.cover_url : sourceImage || old?.cover_url,
-
-                reference_year: old?.reference_year,
-
-                cover_locked: old?.cover_locked || old?.own_cover || false,
-
-                own_cover: old?.own_cover || false,
-              };
-
-              if (old) {
-                const before = JSON.stringify([
-                  old.country,
-                  old.title,
-                  old.coin_type,
-                  old.numista_url,
-                  old.mintage,
-                  old.cover_url,
-                  old.reference_year,
-                  old.cover_locked,
-                  old.photo_author,
-                  old.photo_license,
-                  old.numismatic_value_currency,
-                  old.numismatic_values,
-                  old.numismatic_value_unc,
-                ]);
-
-                const after = JSON.stringify([
-                  data.country,
-                  data.title,
-                  data.coin_type,
-                  data.numista_url,
-                  data.mintage,
-                  data.cover_url,
-                  data.reference_year,
-                  data.cover_locked,
-                  data.photo_author,
-                  data.photo_license,
-                  data.numismatic_value_currency,
-                  data.numismatic_values,
-                  data.numismatic_value_unc,
-                ]);
-
-                if (before === after) {
-                  unchanged++;
+                if (!Number(year)) {
                   continue;
                 }
 
-                await this.upsert(data, old.file);
+                /*
+                 * Filtr roku można zastosować już tutaj, dzięki czemu
+                 * niepotrzebne roczniki nie trafiają do uniq.
+                 */
+                if (syncScope.year && year !== syncScope.year) {
+                  continue;
+                }
 
-                updated++;
-              } else {
-                await this.upsert(data, null);
+                const key = `${year}|${mint}`;
+                const previous = uniq.get(key);
 
-                created++;
+                if (!previous || Number(issueRow.mintage || 0) > Number(previous.mintage || 0)) {
+                  uniq.set(key, issueRow);
+                }
               }
 
-              by.set(rowKey, {
-                ...data,
-                file: old?.file,
-              });
+              /*
+               * Jeśli po filtrowaniu roku nie została żadna emisja,
+               * przechodzimy do kolejnego typu.
+               */
+              if (!uniq.size) {
+                skipped++;
+                continue;
+              }
+
+              const sourceImage = this.pickImage(d);
+              const photoMeta = this.photoMetadata(d);
+
+              for (const issueRow of uniq.values()) {
+                const issue = tx(issueRow.id);
+                const year = tx(issueRow.gregorian_year || issueRow.year);
+                const mint = tx(issueRow.mint_letter);
+
+                const rowKey = [id, year, mint].join(':');
+
+                const old = by.get(rowKey);
+
+                const valuation = await this.issueNumismaticValues(id, issue);
+
+                // dalszy obecny kod
+
+                const data = {
+                  ...(old || {}),
+
+                  country: countryName(d.issuer?.name),
+                  year,
+                  title: normalizeCoinTitle(d.title),
+                  coin_type: coinType,
+                  mint_mark: mint,
+
+                  source: 'numista',
+                  numista_id: id,
+                  numista_issue_id: issue,
+                  numista_url: tx(d.url),
+
+                  mintage: issueRow.mintage ?? null,
+
+                  official_issue: true,
+                  object_type_id: tx(d.object_type?.id),
+                  object_type_name: tx(d.object_type?.name),
+
+                  ...photoMeta,
+
+                  numismatic_value_currency: valuation.currency,
+
+                  numismatic_values: valuation.values,
+
+                  numismatic_value_unc: valuation.unc,
+
+                  cover: old?.cover,
+
+                  cover_url: old?.cover_locked ? old?.cover_url : sourceImage || old?.cover_url,
+
+                  reference_year: old?.reference_year,
+
+                  cover_locked: old?.cover_locked || old?.own_cover || false,
+
+                  own_cover: old?.own_cover || false,
+                };
+
+                if (old) {
+                  const before = JSON.stringify([
+                    old.country,
+                    old.title,
+                    old.coin_type,
+                    old.numista_url,
+                    old.mintage,
+                    old.cover_url,
+                    old.reference_year,
+                    old.cover_locked,
+                    old.photo_author,
+                    old.photo_license,
+                    old.numismatic_value_currency,
+                    old.numismatic_values,
+                    old.numismatic_value_unc,
+                  ]);
+
+                  const after = JSON.stringify([
+                    data.country,
+                    data.title,
+                    data.coin_type,
+                    data.numista_url,
+                    data.mintage,
+                    data.cover_url,
+                    data.reference_year,
+                    data.cover_locked,
+                    data.photo_author,
+                    data.photo_license,
+                    data.numismatic_value_currency,
+                    data.numismatic_values,
+                    data.numismatic_value_unc,
+                  ]);
+
+                  if (before === after) {
+                    unchanged++;
+                    continue;
+                  }
+
+                  await this.upsert(data, old.file);
+
+                  updated++;
+                } else {
+                  await this.upsert(data, null);
+
+                  created++;
+                }
+
+                by.set(rowKey, {
+                  ...data,
+                  file: old?.file,
+                });
+              }
+            } catch (error) {
+              errors++;
+
+              console.error('Synchronizacja typu Numista', basic?.id, error);
             }
-          } catch (error) {
-            errors++;
-
-            console.error('Synchronizacja typu Numista', basic?.id, error);
           }
-        }
 
-        if (types.length < 100) {
-          break;
-        }
+          if (types.length < 100) {
+            break;
+          }
 
-        page++;
+          page++;
+        }
       }
 
       /*
