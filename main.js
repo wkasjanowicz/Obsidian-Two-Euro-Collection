@@ -1840,10 +1840,18 @@ module.exports = class TwoEuroCollectionPlugin extends Plugin {
     );
   }
   isTwoEuro(d) {
-    const n = Number(d?.value?.numeric_value),
-      c = tx(d?.value?.currency?.name).toLowerCase(),
-      f = tx(d?.value?.currency?.full_name).toLowerCase();
-    return n === 2 && (c === 'euro' || f === 'euro' || f.startsWith('euro ('));
+    const numericValue = Number(d?.value?.numeric_value);
+
+    const currencyName = tx(d?.value?.currency?.name).trim().toLowerCase();
+
+    const currencyFullName = tx(d?.value?.currency?.full_name).trim().toLowerCase();
+
+    const isEuroCurrency =
+      currencyName === 'euro' ||
+      currencyFullName === 'euro' ||
+      currencyFullName.startsWith('euro (');
+
+    return numericValue === 2 && isEuroCurrency;
   }
   async downloadCover(url, id, issue) {
     if (!/^https?:/i.test(url)) return '';
@@ -1971,8 +1979,10 @@ module.exports = class TwoEuroCollectionPlugin extends Plugin {
     const officialObject =
       objectId === 1 ||
       objectId === 2 ||
+      objectId === 3 ||
       objectName === 'standard circulation coins' ||
-      objectName === 'circulating commemorative coins';
+      objectName === 'circulating commemorative coins' ||
+      objectName === 'non-circulating coins';
     if (!officialObject || !this.officialEuroIssuers().has(issuer)) return false;
     const haystack = [details?.title, details?.object_type?.name, details?.issuer?.name]
       .map(tx)
@@ -2100,25 +2110,38 @@ module.exports = class TwoEuroCollectionPlugin extends Plugin {
       syncScope.coinType === 'national'
         ? ['1']
         : syncScope.coinType === 'commemorative'
-          ? ['2']
-          : ['1', '2'];
+          ? ['2', '3']
+          : ['1', '2', '3'];
+
+    const pageSize = 50;
 
     try {
       for (const objectType of objectTypes) {
         let page = 1;
 
-        while (page <= 20) {
+        while (true) {
+          if (page > 200) {
+            throw new Error(
+              `Numista pagination safety limit exceeded for object type ${objectType}.`
+            );
+          }
+
           const q = new URLSearchParams({
             q: '2 Euros',
             object_type: objectType,
             page: String(page),
-            count: '100',
+            count: String(pageSize),
             lang: 'en',
           });
 
           const listing = await this.api(`/types?${q}`);
           const types = listing.types || [];
-
+          console.log('NUMISTA PAGE:', {
+            objectType,
+            page,
+            pageSize,
+            returned: types.length,
+          });
           if (!types.length) {
             break;
           }
@@ -2171,9 +2194,14 @@ module.exports = class TwoEuroCollectionPlugin extends Plugin {
                * Ustalenie lokalnego typu monety.
                */
               const kind = tx(d.object_type?.name).toLowerCase();
+              const objectTypeId = Number(d.object_type?.id);
 
               const coinType =
-                kind.includes('commemorative') || Boolean(tx(d.commemorated_topic))
+                objectTypeId === 2 ||
+                objectTypeId === 3 ||
+                kind.includes('commemorative') ||
+                kind.includes('non-circulating') ||
+                Boolean(tx(d.commemorated_topic))
                   ? 'commemorative'
                   : 'national';
 
@@ -2353,7 +2381,7 @@ module.exports = class TwoEuroCollectionPlugin extends Plugin {
             }
           }
 
-          if (types.length < 100) {
+          if (types.length < pageSize) {
             break;
           }
 
