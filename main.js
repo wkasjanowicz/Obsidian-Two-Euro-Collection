@@ -2127,12 +2127,21 @@ module.exports = class TwoEuroCollectionPlugin extends Plugin {
           }
 
           const q = new URLSearchParams({
-            q: '2 Euros',
             object_type: objectType,
             page: String(page),
             count: String(pageSize),
             lang: 'en',
           });
+
+          if (syncScope.year) {
+            q.set('year', String(syncScope.year));
+          }
+
+          const issuerCode = this.getNumistaIssuerCode(syncScope.country);
+
+          if (issuerCode) {
+            q.set('issuer', issuerCode);
+          }
 
           const listing = await this.api(`/types?${q}`);
           const types = listing.types || [];
