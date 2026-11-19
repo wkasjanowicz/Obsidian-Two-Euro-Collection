@@ -158,6 +158,9 @@ updateReadme('README.md', `> Current plugin version: **${targetVersion}**`);
 updateReadme('README_PL.md', `> Aktualna wersja wtyczki: **${targetVersion}**`);
 
 try {
+  console.log('Embedding translations into main.js...');
+  run('node', ['scripts/embed-languages.js']);
+
   console.log('Formatting source files...');
   run('npx', [
     'prettier',

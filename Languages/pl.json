@@ -30,7 +30,7 @@
     "action.imagePreset": "Sposób przetwarzania",
     "action.duplicateSelected": "Duplikuj",
     "action.deleteSelected": "Usuń",
-    "confirm.deleteSelected": "Usunąć zaznaczone monety ({count})? Tej operacji nie można cofnąć.",
+    "confirm.deleteSelected": "Usunąć zaznaczone monety ({count}) i ich nieużywane okładki? Pliki zostaną przeniesione do kosza.",
     "notice.noSelection": "Najpierw zaznacz co najmniej jedną monetę.",
     "notice.batchBackground": "Usuwanie tła: wykonano {done}, pominięto {skipped}, błędy {errors}.",
     "notice.batchCatalog": "Moneta katalogowa: wykonano {done}, pominięto {skipped}, błędy {errors}.",
@@ -38,7 +38,7 @@
     "notice.coverNamesNormalized": "Uporządkowano nazwy okładek: {renamed}; pominięto: {skipped}; błędy: {errors}.",
     "confirm.removeUnofficial": "Usunąć nieoficjalne importy Numista? Zachowane zostaną monety posiadane, zablokowane, z własnym coverem oraz wpisy ręczne.",
     "notice.removeUnofficial": "Usunięto nieoficjalne wpisy: {removed}; zachowano chronione: {protected}; błędy: {errors}.",
-    "notice.syncOfficial": "Synchronizacja pobiera wyłącznie oficjalne monety 2 euro: obiegowe standardowe i obiegowe okolicznościowe.",
+    "notice.syncOfficial": "Synchronizacja pobiera wyłącznie oficjalne monety 2 euro: obiegowe standardowe i okolicznościowe.",
     "notice.batchDuplicate": "Utworzono duplikatów: {count}.",
     "notice.batchDelete": "Usunięto monet: {count}.",
     "sidebar.filtersSorting": "Filtry i Sortowanie",
@@ -144,24 +144,19 @@
     "preview.close": "Zamknij podgląd",
     "command.normalizeTitles": "Napraw wszystkie nazwy 2 Euros → 2 Euro",
     "notice.titlesNormalized": "Naprawiono nazwy: {updated}; bez zmian: {unchanged}; błędy: {errors}.",
-
     "settings.initialSetup": "Konfiguracja początkowa",
-
     "settings.initStructure": "Krok 1: Utwórz strukturę kolekcji",
     "settings.initStructureDesc": "Tworzy katalogi wymagane przez wtyczkę 2 Euro Collection oraz główny widok kolekcji. Ten krok należy wykonać jako pierwszy podczas konfiguracji nowego magazynu.",
     "settings.initStructureButton": "Utwórz strukturę",
     "settings.initStructureDone": "Struktura kolekcji jest gotowa.",
-
     "settings.initStarterPackButton": "Zainstaluj kolekcję startową",
     "settings.initStarterPackDone": "Kolekcja startowa została zainstalowana.",
     "settings.initReferenceData": "Krok 2: Zainicjuj dane referencyjne",
     "settings.initReferenceDataDesc": "Inicjalizuje listę obsługiwanych emitentów monet 2 euro, lat i typów używanych przez filtry oraz synchronizację filtrowaną z Numista.",
     "settings.initReferenceDataButton": "Zainicjuj dane referencyjne",
     "settings.initReferenceDataDone": "Dane referencyjne zostały zainicjowane: {issuers} emitentów i {years} lat.",
-
     "settings.initStarterPack": "Krok 3: Zainstaluj kolekcję startową",
     "settings.initStarterPackDesc": "Opcjonalnie instaluje początkowy zestaw przykładowych monet wraz z przygotowanymi okładkami. Wykonaj ten krok po zainicjowaniu danych referencyjnych.",
-
     "settings.referenceData": "Dane referencyjne",
     "settings.referenceDataDesc": "Dodatkowi emitenci i lata będą dostępni podczas synchronizacji filtrowanej nawet wtedy, gdy w kolekcji nie ma jeszcze odpowiadających im monet.",
     "settings.additionalIssuer": "Dodaj emitenta",
@@ -172,7 +167,6 @@
     "settings.issuerExists": "Emitent jest już dostępny.",
     "settings.additionalIssuers": "Dodatkowi emitenci",
     "settings.removeIssuer": "Usuń",
-
     "settings.additionalYear": "Dodaj rok",
     "settings.additionalYearDesc": "Dodaj rok spoza zakresu generowanego automatycznie.",
     "settings.yearPlaceholder": "np. 2028",
@@ -181,10 +175,27 @@
     "settings.invalidYear": "Podaj rok z zakresu od 1999 do 2200.",
     "settings.additionalYears": "Dodatkowe lata",
     "settings.removeYear": "Usuń",
-
     "settings.referenceYearFrom": "Pierwszy rok referencyjny",
     "settings.referenceYearFromDesc": "Pierwszy rok wyświetlany w zakresie synchronizacji.",
     "settings.futureYears": "Lata przyszłe",
-    "settings.futureYearsDesc": "Liczba lat po bieżącym roku dostępnych do synchronizacji."
+    "settings.futureYearsDesc": "Liczba lat po bieżącym roku dostępnych do synchronizacji.",
+    "settings.yearExists": "Ten rok jest już dostępny.",
+    "notice.apiKeyMissing": "Uzupełnij klucz API Numista w ustawieniach wtyczki.",
+    "notice.dedupe": "Usunięto duplikatów: {count}.",
+    "notice.initFields": "Uzupełniono pola: {updated}; bez zmian: {unchanged}.",
+    "notice.coversMigrated": "Naprawiono odwołań do okładek: {count}.",
+    "notice.foldersNormalized": "Przeniesiono plików: {count}.",
+    "notice.verifyOfficial": "Weryfikacja oficjalnych emisji: {current} / {total}",
+    "notice.syncScope": "Synchronizacja Numista: {scope}",
+    "notice.syncProgress": "Synchronizacja {scope} · {type}: rekord {count}",
+    "notice.syncProgressAll": "Synchronizacja katalogu · {type}: rekord {count}",
+    "notice.syncDone": "Katalog: nowe {created}, zaktualizowane {updated}, bez zmian {unchanged}, pominięte {skipped}, błędy {errors}. Zakres: {scope}.",
+    "notice.syncScopeAll": "cały katalog",
+    "notice.syncAborted": "Synchronizacja katalogu przerwana: {message}",
+    "notice.coversProgress": "Okładki: {current} / {total} · pobrano {downloaded} · błędy {errors}",
+    "notice.coversDone": "Okładki: pobrano {downloaded}, pominięto {skipped}, błędy {errors}. Zablokowane okładki nie zostały zmienione.",
+    "error.noNumistaId": "Ta moneta nie ma numista_id.",
+    "error.noNumistaCover": "Numista nie zwróciła okładki.",
+    "error.noNumistaIssue": "Nie znaleziono pasującej emisji Numista."
   }
 }

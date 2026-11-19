@@ -15,7 +15,8 @@
     "audit:prod": "npm audit --omit=dev",
     "security": "npm audit && npm outdated",
     "beta": "node scripts/beta.js",
-    "starter-pack": "node scripts/build-starter-pack.js"
+    "starter-pack": "node scripts/build-starter-pack.js",
+    "languages": "node scripts/embed-languages.js"
   },
   "devDependencies": {
     "prettier": "^3.9.10",
