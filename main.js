@@ -281,6 +281,8 @@ const BASE_LANGUAGE = {
     'Covers: {current} / {total} · downloaded {downloaded} · errors {errors}',
   'notice.coversDone':
     'Covers: downloaded {downloaded}, skipped {skipped}, errors {errors}. Locked covers were not changed.',
+  'error.numistaAuth':
+    'Numista rejected the API key (HTTP {status}). Check the key in the plugin settings.',
   'error.noNumistaId': 'This coin has no numista_id.',
   'error.noNumistaCover': 'Numista did not return a cover image.',
   'error.noNumistaIssue': 'Matching Numista issue not found.',
@@ -511,6 +513,8 @@ const BUILTIN_LANGUAGES = {
       'error.noNumistaId': 'Ta moneta nie ma numista_id.',
       'error.noNumistaCover': 'Numista nie zwróciła okładki.',
       'error.noNumistaIssue': 'Nie znaleziono pasującej emisji Numista.',
+      'error.numistaAuth':
+        'Numista odrzuciła klucz API (HTTP {status}). Sprawdź klucz w ustawieniach wtyczki.',
     },
   },
 };
@@ -2123,14 +2127,33 @@ module.exports = class TwoEuroCollectionPlugin extends Plugin {
     }
     throw lastError;
   }
+  isNumistaAuthError(error) {
+    return Boolean(error?.numistaAuth);
+  }
   async api(path) {
-    const r = await this.requestWithRetry(
-      {
-        url: `https://api.numista.com/v3${path}`,
-        headers: { 'Numista-API-Key': tx(this.settings.numistaApiKey), accept: 'application/json' },
-      },
-      { minIntervalMs: 1250, maxAttempts: 5, label: 'Numista API' }
-    );
+    let r;
+    try {
+      r = await this.requestWithRetry(
+        {
+          url: `https://api.numista.com/v3${path}`,
+          headers: {
+            'Numista-API-Key': tx(this.settings.numistaApiKey),
+            accept: 'application/json',
+          },
+        },
+        { minIntervalMs: 1250, maxAttempts: 5, label: 'Numista API' }
+      );
+    } catch (error) {
+      const match = String(error?.message || '').match(/status\s+(\d+)/i),
+        status = Number(error?.status || (match && match[1]) || 0);
+      if (status === 401 || status === 403) {
+        const authError = new Error(this.t('error.numistaAuth', { status }));
+        authError.status = status;
+        authError.numistaAuth = true;
+        throw authError;
+      }
+      throw error;
+    }
     if (r.status >= 400) throw new Error(`Numista HTTP ${r.status}`);
     return r.json || JSON.parse(r.text || '{}');
   }
@@ -2403,6 +2426,7 @@ module.exports = class TwoEuroCollectionPlugin extends Plugin {
       );
       return match ? tx(match.code) : '';
     } catch (error) {
+      if (this.isNumistaAuthError(error)) throw error;
       console.warn('Numista issuers unavailable', error);
       return '';
     }
@@ -2514,7 +2538,12 @@ module.exports = class TwoEuroCollectionPlugin extends Plugin {
              * If Numista rejects the server-side filters, fall back to the
              * unfiltered search. Country, year and type are still checked locally.
              */
-            if (page !== 1 || !useServerFilters || !(q.has('year') || q.has('issuer'))) {
+            if (
+              this.isNumistaAuthError(error) ||
+              page !== 1 ||
+              !useServerFilters ||
+              !(q.has('year') || q.has('issuer'))
+            ) {
               throw error;
             }
 

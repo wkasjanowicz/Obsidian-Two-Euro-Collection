@@ -196,6 +196,7 @@
     "notice.coversDone": "Okładki: pobrano {downloaded}, pominięto {skipped}, błędy {errors}. Zablokowane okładki nie zostały zmienione.",
     "error.noNumistaId": "Ta moneta nie ma numista_id.",
     "error.noNumistaCover": "Numista nie zwróciła okładki.",
-    "error.noNumistaIssue": "Nie znaleziono pasującej emisji Numista."
+    "error.noNumistaIssue": "Nie znaleziono pasującej emisji Numista.",
+    "error.numistaAuth": "Numista odrzuciła klucz API (HTTP {status}). Sprawdź klucz w ustawieniach wtyczki."
   }
 }
