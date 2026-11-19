@@ -2487,6 +2487,7 @@ module.exports = class TwoEuroCollectionPlugin extends Plugin {
     let skipped = 0;
     let errors = 0;
     let processed = 0;
+    const report = [];
 
     const objectTypes =
       syncScope.coinType === 'national'
@@ -2578,9 +2579,13 @@ module.exports = class TwoEuroCollectionPlugin extends Plugin {
 
             try {
               const id = tx(basic.id);
+              const skip = (reason) => {
+                skipped++;
+                report.push({ id, title: tx(basic.title), reason });
+              };
 
               if (!id) {
-                skipped++;
+                skip('no id');
                 continue;
               }
 
@@ -2597,14 +2602,16 @@ module.exports = class TwoEuroCollectionPlugin extends Plugin {
                * emisjami 2 euro.
                */
               if (!this.isOfficialTwoEuroType(d)) {
-                skipped++;
+                skip(
+                  `not official 2 euro (issuer: ${tx(d.issuer?.name)}, type: ${tx(d.object_type?.name)}, value: ${tx(d.value?.text)})`
+                );
                 continue;
               }
               if (
                 syncScope.country &&
                 !this.matchesNumistaSyncCountry(d.issuer?.name, syncScope.country)
               ) {
-                skipped++;
+                skip(`other country (${tx(d.issuer?.name)})`);
                 continue;
               }
 
@@ -2627,7 +2634,7 @@ module.exports = class TwoEuroCollectionPlugin extends Plugin {
                * Filtr typu stosujemy przed pobraniem listy emisji.
                */
               if (syncScope.coinType && coinType !== syncScope.coinType) {
-                skipped++;
+                skip(`other type (${coinType})`);
                 continue;
               }
 
@@ -2681,7 +2688,11 @@ module.exports = class TwoEuroCollectionPlugin extends Plugin {
                * przechodzimy do kolejnego typu.
                */
               if (!uniq.size) {
-                skipped++;
+                skip(
+                  `no matching issues (Numista issues: ${issues.length}, years: ${
+                    issues.map((item) => tx(item.gregorian_year || item.year)).join(', ') || '-'
+                  })`
+                );
                 continue;
               }
 
@@ -2793,7 +2804,14 @@ module.exports = class TwoEuroCollectionPlugin extends Plugin {
                 });
               }
             } catch (error) {
+              if (this.isNumistaAuthError(error)) throw error;
+
               errors++;
+              report.push({
+                id: tx(basic?.id),
+                title: tx(basic?.title),
+                reason: `error: ${error?.message || error}`,
+              });
 
               console.error('Synchronizacja typu Numista', basic?.id, error);
             }
@@ -2812,6 +2830,11 @@ module.exports = class TwoEuroCollectionPlugin extends Plugin {
        */
       await this.refreshDashboards();
       this.refreshFilterViews();
+
+      if (report.length) {
+        console.info('2 Euro Collection: Numista types skipped or failed');
+        console.table(report);
+      }
 
       progress.setMessage(
         this.t('notice.syncDone', {
@@ -2836,6 +2859,14 @@ module.exports = class TwoEuroCollectionPlugin extends Plugin {
       };
     } catch (error) {
       progress.setMessage(this.t('notice.syncAborted', { message: error?.message || error }));
+
+      if (report.length) {
+        console.info('2 Euro Collection: Numista types skipped or failed before abort');
+        console.table(report);
+      }
+
+      await this.refreshDashboards();
+      this.refreshFilterViews();
 
       console.error(error);
     }
