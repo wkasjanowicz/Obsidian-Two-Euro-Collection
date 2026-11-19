@@ -58,6 +58,7 @@ const DEFAULTS = {
   additionalYears: [],
   referenceYearFrom: 1999,
   futureYears: 1,
+  syncUpdateExisting: false,
 };
 
 const BASE_LANGUAGE = {
@@ -274,8 +275,19 @@ const BASE_LANGUAGE = {
   'notice.syncProgress': 'Synchronization {scope} · {type}: record {count}',
   'notice.syncProgressAll': 'Catalogue synchronization · {type}: record {count}',
   'notice.syncDone':
-    'Catalogue: new {created}, updated {updated}, unchanged {unchanged}, skipped {skipped}, errors {errors}. Scope: {scope}.',
+    'Catalogue: new {created}, updated {updated}, unchanged {unchanged}, already in collection {existing}, skipped {skipped}, errors {errors}. Scope: {scope}.',
   'notice.syncScopeAll': 'entire catalogue',
+  'settings.syncUpdateExisting': 'Update existing coins during synchronization',
+  'settings.syncUpdateExistingDesc':
+    'Off: synchronization only adds coins missing from the collection and sends no Numista requests for coins you already have. On: existing coins are checked and updated too (uses more API requests). Prices are never downloaded during synchronization.',
+  'action.updatePrices': 'Update prices',
+  'command.updatePrices': 'Update Numista prices of filtered coins',
+  'confirm.updatePrices':
+    'Update Numista prices of {count} coins visible on the dashboard? This uses {count} API requests.',
+  'notice.pricesNone': 'No coins with Numista identifiers in the filtered range.',
+  'notice.pricesProgress': 'Prices: {current} / {total} · updated {updated} · errors {errors}',
+  'notice.pricesDone':
+    'Prices: updated {updated}, unchanged or no data {unchanged}, errors {errors}.',
   'notice.syncAborted': 'Catalogue synchronization aborted: {message}',
   'notice.coversProgress':
     'Covers: {current} / {total} · downloaded {downloaded} · errors {errors}',
@@ -503,7 +515,7 @@ const BUILTIN_LANGUAGES = {
       'notice.syncProgress': 'Synchronizacja {scope} · {type}: rekord {count}',
       'notice.syncProgressAll': 'Synchronizacja katalogu · {type}: rekord {count}',
       'notice.syncDone':
-        'Katalog: nowe {created}, zaktualizowane {updated}, bez zmian {unchanged}, pominięte {skipped}, błędy {errors}. Zakres: {scope}.',
+        'Katalog: nowe {created}, zaktualizowane {updated}, bez zmian {unchanged}, już w kolekcji {existing}, pominięte {skipped}, błędy {errors}. Zakres: {scope}.',
       'notice.syncScopeAll': 'cały katalog',
       'notice.syncAborted': 'Synchronizacja katalogu przerwana: {message}',
       'notice.coversProgress':
@@ -515,6 +527,18 @@ const BUILTIN_LANGUAGES = {
       'error.noNumistaIssue': 'Nie znaleziono pasującej emisji Numista.',
       'error.numistaAuth':
         'Numista odrzuciła klucz API (HTTP {status}). Sprawdź klucz w ustawieniach wtyczki.',
+      'settings.syncUpdateExisting': 'Aktualizuj istniejące monety podczas synchronizacji',
+      'settings.syncUpdateExistingDesc':
+        'Wyłączone: synchronizacja dodaje tylko monety, których brakuje w kolekcji, i nie wysyła do Numista zapytań o monety, które już masz. Włączone: istniejące monety są też sprawdzane i aktualizowane (więcej zapytań API). Ceny nigdy nie są pobierane podczas synchronizacji.',
+      'action.updatePrices': 'Aktualizuj ceny',
+      'command.updatePrices': 'Aktualizuj ceny Numista przefiltrowanych monet',
+      'confirm.updatePrices':
+        'Zaktualizować ceny Numista dla {count} monet widocznych na dashboardzie? Zużyje to {count} zapytań API.',
+      'notice.pricesNone': 'W wybranym zakresie nie ma monet z identyfikatorami Numista.',
+      'notice.pricesProgress':
+        'Ceny: {current} / {total} · zaktualizowano {updated} · błędy {errors}',
+      'notice.pricesDone':
+        'Ceny: zaktualizowano {updated}, bez zmian lub brak danych {unchanged}, błędy {errors}.',
     },
   },
 };
@@ -778,6 +802,15 @@ class EuroSettings extends PluginSettingTab {
         await p.saveSettings();
       });
     });
+    new Setting(c)
+      .setName(t('settings.syncUpdateExisting'))
+      .setDesc(t('settings.syncUpdateExistingDesc'))
+      .addToggle((x) =>
+        x.setValue(isTrue(p.settings.syncUpdateExisting)).onChange(async (v) => {
+          p.settings.syncUpdateExisting = v;
+          await p.saveSettings();
+        })
+      );
     c.createEl('h3', {
       text: t('settings.initialSetup'),
     });
@@ -1276,6 +1309,8 @@ class EuroFiltersView extends ItemView {
     }).onclick = () => p.syncNumista(p.getNumistaSyncScope());
     actions.createEl('button', { text: t('action.downloadCovers') }).onclick = () =>
       p.backfillCovers();
+    actions.createEl('button', { text: t('action.updatePrices') }).onclick = () =>
+      p.updateNumistaPrices();
     const selectedCount = p.getSelectedCoinFiles().length;
     c.createDiv({
       cls: 'twoeuro-sidebar-selected',
@@ -1426,6 +1461,9 @@ class EuroFiltersView extends ItemView {
 }
 
 module.exports = class TwoEuroCollectionPlugin extends Plugin {
+  onunload() {
+    if (this._refreshTimer) window.clearTimeout(this._refreshTimer);
+  }
   async onload() {
     console.log(`2 Euro Collection ${this.manifest.version} starting`);
     await this.loadSettings();
@@ -1441,6 +1479,29 @@ module.exports = class TwoEuroCollectionPlugin extends Plugin {
     this.registerView(VIEW_TYPE_FILTERS, (leaf) => new EuroFiltersView(leaf, this));
     this.registerEvent(
       this.app.workspace.on('layout-change', () => this.closeFiltersViewIfDashboardClosed())
+    );
+    /*
+     * Refresh the dashboard whenever coin notes or covers change, including
+     * notes created during synchronization. 'changed' fires only after
+     * Obsidian has indexed the frontmatter, so new coins are visible at once.
+     */
+    this.registerEvent(
+      this.app.metadataCache.on('changed', (file) => {
+        if (this.isCollectionPath(file?.path)) this.scheduleDashboardRefresh();
+      })
+    );
+    for (const eventName of ['create', 'delete']) {
+      this.registerEvent(
+        this.app.vault.on(eventName, (file) => {
+          if (this.isCollectionPath(file?.path)) this.scheduleDashboardRefresh();
+        })
+      );
+    }
+    this.registerEvent(
+      this.app.vault.on('rename', (file, oldPath) => {
+        if (this.isCollectionPath(file?.path) || this.isCollectionPath(oldPath))
+          this.scheduleDashboardRefresh();
+      })
     );
     this.addCommand({
       id: 'two-euro-open-filters',
@@ -1483,6 +1544,11 @@ module.exports = class TwoEuroCollectionPlugin extends Plugin {
       id: 'two-euro-sync',
       name: this.t('command.sync'),
       callback: () => this.syncNumista(),
+    });
+    this.addCommand({
+      id: 'two-euro-update-prices',
+      name: this.t('command.updatePrices'),
+      callback: () => this.updateNumistaPrices(),
     });
     this.addCommand({
       id: 'two-euro-covers',
@@ -2303,9 +2369,96 @@ module.exports = class TwoEuroCollectionPlugin extends Plugin {
       const unc = values.find((item) => item.grade.toLowerCase() === 'unc')?.price ?? null;
       return { currency: tx(result?.currency) || 'EUR', values, unc };
     } catch (error) {
+      if (this.isNumistaAuthError(error)) throw error;
       console.warn('Numista prices unavailable', typeId, issueId, error);
-      return { currency: 'EUR', values: [], unc: null };
+      return null;
     }
+  }
+  async updateNumistaPrices() {
+    if (!tx(this.settings.numistaApiKey)) {
+      new Notice(this.t('notice.apiKeyMissing'));
+      return;
+    }
+    const rows = this.filterRowsByState(this.getRows(), this.getDashboardState()).filter(
+      (row) => row.numista_id && row.numista_issue_id
+    );
+    if (!rows.length) {
+      new Notice(this.t('notice.pricesNone'));
+      return;
+    }
+    if (!window.confirm(this.t('confirm.updatePrices', { count: rows.length }))) return;
+    let updated = 0,
+      unchanged = 0,
+      errors = 0;
+    const progress = new Notice(
+      this.t('notice.pricesProgress', { current: 0, total: rows.length, updated, errors }),
+      0
+    );
+    try {
+      for (let i = 0; i < rows.length; i++) {
+        const row = rows[i];
+        progress.setMessage(
+          this.t('notice.pricesProgress', { current: i + 1, total: rows.length, updated, errors })
+        );
+        const valuation = await this.issueNumismaticValues(row.numista_id, row.numista_issue_id);
+        if (!valuation) {
+          errors++;
+          continue;
+        }
+        const before = JSON.stringify([
+          row.numismatic_value_currency || 'EUR',
+          row.numismatic_values || [],
+          row.numismatic_value_unc ?? null,
+        ]);
+        const after = JSON.stringify([valuation.currency, valuation.values, valuation.unc]);
+        if (before === after || !valuation.values.length) {
+          unchanged++;
+          continue;
+        }
+        await this.app.fileManager.processFrontMatter(row.file, (fm) => {
+          fm.numismatic_value_currency = valuation.currency;
+          fm.numismatic_values = valuation.values;
+          if (valuation.unc == null) delete fm.numismatic_value_unc;
+          else fm.numismatic_value_unc = valuation.unc;
+        });
+        updated++;
+      }
+      progress.setMessage(this.t('notice.pricesDone', { updated, unchanged, errors }));
+    } catch (error) {
+      console.error('Numista prices', error);
+      progress.setMessage(error?.message || String(error));
+    }
+    setTimeout(() => progress.hide(), 8000);
+    return { updated, unchanged, errors };
+  }
+  filterRowsByState(rows, state) {
+    let list = rows.filter(
+      (r) =>
+        !state.mode ||
+        state.mode === 'all' ||
+        state.mode === r.coin_type ||
+        (state.mode === 'owned' && r.owned) ||
+        (state.mode === 'missing' && !r.owned)
+    );
+    if (state.country) list = list.filter((r) => r.country === state.country);
+    if (state.year) list = list.filter((r) => r.year === state.year);
+    const q = (state.searchText || '').toLowerCase();
+    if (q)
+      list = list.filter((r) =>
+        [r.country, r.title, r.year, r.mint_mark].join(' ').toLowerCase().includes(q)
+      );
+    return list;
+  }
+  isTypeAlreadyInCollection(basic, scope, localYears) {
+    const years = localYears.get(tx(basic?.id));
+    if (!years?.size) return false;
+    if (scope.year) return years.has(String(scope.year));
+    const min = Number(basic?.min_year),
+      max = Number(basic?.max_year);
+    if (Number.isInteger(min) && Number.isInteger(max) && max >= min && max - min < 100) {
+      for (let year = min; year <= max; year++) if (!years.has(String(year))) return false;
+    }
+    return true;
   }
   formatNumismaticValue(row) {
     const values = Array.isArray(row?.numismatic_values) ? row.numismatic_values : [],
@@ -2480,11 +2633,25 @@ module.exports = class TwoEuroCollectionPlugin extends Plugin {
 
     const detailsCache = new Map();
     const issuesCache = new Map();
+    const updateExisting = isTrue(this.settings.syncUpdateExisting);
+
+    /*
+     * numista_id -> years already in the collection. Used to skip types the
+     * collection already has without spending Numista API requests.
+     */
+    const localYears = new Map();
+
+    for (const row of current) {
+      if (!row.numista_id) continue;
+      if (!localYears.has(row.numista_id)) localYears.set(row.numista_id, new Set());
+      localYears.get(row.numista_id).add(String(row.year));
+    }
 
     let created = 0;
     let updated = 0;
     let unchanged = 0;
     let skipped = 0;
+    let existing = 0;
     let errors = 0;
     let processed = 0;
     const report = [];
@@ -2586,6 +2753,11 @@ module.exports = class TwoEuroCollectionPlugin extends Plugin {
 
               if (!id) {
                 skip('no id');
+                continue;
+              }
+
+              if (!updateExisting && this.isTypeAlreadyInCollection(basic, syncScope, localYears)) {
+                existing++;
                 continue;
               }
 
@@ -2708,9 +2880,10 @@ module.exports = class TwoEuroCollectionPlugin extends Plugin {
 
                 const old = by.get(rowKey);
 
-                const valuation = await this.issueNumismaticValues(id, issue);
-
-                // dalszy obecny kod
+                if (old && !updateExisting) {
+                  existing++;
+                  continue;
+                }
 
                 const data = {
                   ...(old || {}),
@@ -2734,11 +2907,15 @@ module.exports = class TwoEuroCollectionPlugin extends Plugin {
 
                   ...photoMeta,
 
-                  numismatic_value_currency: valuation.currency,
+                  /*
+                   * Prices are not downloaded during synchronization
+                   * (use "Update prices"), so existing values are kept.
+                   */
+                  numismatic_value_currency: old?.numismatic_value_currency,
 
-                  numismatic_values: valuation.values,
+                  numismatic_values: old?.numismatic_values,
 
-                  numismatic_value_unc: valuation.unc,
+                  numismatic_value_unc: old?.numismatic_value_unc,
 
                   cover: old?.cover,
 
@@ -2841,6 +3018,7 @@ module.exports = class TwoEuroCollectionPlugin extends Plugin {
           created,
           updated,
           unchanged,
+          existing,
           skipped,
           errors,
           scope: filteredSync ? scopeLabels.join(' / ') : this.t('notice.syncScopeAll'),
@@ -2853,6 +3031,7 @@ module.exports = class TwoEuroCollectionPlugin extends Plugin {
         created,
         updated,
         unchanged,
+        existing,
         skipped,
         errors,
         scope: syncScope,
@@ -3437,6 +3616,19 @@ module.exports = class TwoEuroCollectionPlugin extends Plugin {
       if (leaf.view instanceof EuroFiltersView) leaf.view.render();
     }
   }
+  isCollectionPath(path) {
+    const value = tx(path);
+    if (!value) return false;
+    return [this.coins(), this.covers()].some((folder) => value.startsWith(`${folder}/`));
+  }
+  scheduleDashboardRefresh(delayMs = 300) {
+    if (this._refreshTimer) window.clearTimeout(this._refreshTimer);
+    this._refreshTimer = window.setTimeout(async () => {
+      this._refreshTimer = null;
+      if (!document.querySelector('.twoeuro-view')) return;
+      await this.refreshDashboards();
+    }, delayMs);
+  }
   async refreshDashboards() {
     const dashboards = Array.from(document.querySelectorAll('.twoeuro-view'));
     for (const dashboard of dashboards) {
@@ -3953,9 +4145,9 @@ module.exports = class TwoEuroCollectionPlugin extends Plugin {
         mintage: issue.mintage ?? row.mintage,
         numista_url: tx(details.url),
         ...photo,
-        numismatic_value_currency: valuation.currency,
-        numismatic_values: valuation.values,
-        numismatic_value_unc: valuation.unc,
+        numismatic_value_currency: valuation ? valuation.currency : row.numismatic_value_currency,
+        numismatic_values: valuation ? valuation.values : row.numismatic_values,
+        numismatic_value_unc: valuation ? valuation.unc : row.numismatic_value_unc,
       },
       row.file
     );
@@ -4030,20 +4222,7 @@ module.exports = class TwoEuroCollectionPlugin extends Plugin {
     header.createEl('h2', { text: this.t('collection.title') });
     const summary = header.createDiv({ cls: 'twoeuro-summary' });
     const grid = el.createDiv({ cls: 'twoeuro-grid' });
-    let list = rows.filter(
-      (r) =>
-        state.mode === 'all' ||
-        state.mode === r.coin_type ||
-        (state.mode === 'owned' && r.owned) ||
-        (state.mode === 'missing' && !r.owned)
-    );
-    if (state.country) list = list.filter((r) => r.country === state.country);
-    if (state.year) list = list.filter((r) => r.year === state.year);
-    const q = (state.searchText || '').toLowerCase();
-    if (q)
-      list = list.filter((r) =>
-        [r.country, r.title, r.year, r.mint_mark].join(' ').toLowerCase().includes(q)
-      );
+    const list = this.filterRowsByState(rows, state);
     const locale = this.getLanguage() === 'pl' ? 'pl' : 'en';
     list.sort((a, b) => {
       const yearA = Number(a.year) || 0,

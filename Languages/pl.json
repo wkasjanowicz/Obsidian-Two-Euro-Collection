@@ -189,7 +189,7 @@
     "notice.syncScope": "Synchronizacja Numista: {scope}",
     "notice.syncProgress": "Synchronizacja {scope} · {type}: rekord {count}",
     "notice.syncProgressAll": "Synchronizacja katalogu · {type}: rekord {count}",
-    "notice.syncDone": "Katalog: nowe {created}, zaktualizowane {updated}, bez zmian {unchanged}, pominięte {skipped}, błędy {errors}. Zakres: {scope}.",
+    "notice.syncDone": "Katalog: nowe {created}, zaktualizowane {updated}, bez zmian {unchanged}, już w kolekcji {existing}, pominięte {skipped}, błędy {errors}. Zakres: {scope}.",
     "notice.syncScopeAll": "cały katalog",
     "notice.syncAborted": "Synchronizacja katalogu przerwana: {message}",
     "notice.coversProgress": "Okładki: {current} / {total} · pobrano {downloaded} · błędy {errors}",
@@ -197,6 +197,14 @@
     "error.noNumistaId": "Ta moneta nie ma numista_id.",
     "error.noNumistaCover": "Numista nie zwróciła okładki.",
     "error.noNumistaIssue": "Nie znaleziono pasującej emisji Numista.",
-    "error.numistaAuth": "Numista odrzuciła klucz API (HTTP {status}). Sprawdź klucz w ustawieniach wtyczki."
+    "error.numistaAuth": "Numista odrzuciła klucz API (HTTP {status}). Sprawdź klucz w ustawieniach wtyczki.",
+    "settings.syncUpdateExisting": "Aktualizuj istniejące monety podczas synchronizacji",
+    "settings.syncUpdateExistingDesc": "Wyłączone: synchronizacja dodaje tylko monety, których brakuje w kolekcji, i nie wysyła do Numista zapytań o monety, które już masz. Włączone: istniejące monety są też sprawdzane i aktualizowane (więcej zapytań API). Ceny nigdy nie są pobierane podczas synchronizacji.",
+    "action.updatePrices": "Aktualizuj ceny",
+    "command.updatePrices": "Aktualizuj ceny Numista przefiltrowanych monet",
+    "confirm.updatePrices": "Zaktualizować ceny Numista dla {count} monet widocznych na dashboardzie? Zużyje to {count} zapytań API.",
+    "notice.pricesNone": "W wybranym zakresie nie ma monet z identyfikatorami Numista.",
+    "notice.pricesProgress": "Ceny: {current} / {total} · zaktualizowano {updated} · błędy {errors}",
+    "notice.pricesDone": "Ceny: zaktualizowano {updated}, bez zmian lub brak danych {unchanged}, błędy {errors}."
   }
 }
