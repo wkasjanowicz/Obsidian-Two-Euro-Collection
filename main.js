@@ -8,6 +8,7 @@ const {
   Notice,
   ItemView,
   TFile,
+  TFolder,
   normalizePath,
   requestUrl,
   parseYaml,
@@ -15,6 +16,9 @@ const {
 } = obsidian;
 
 const VIEW_TYPE_FILTERS = 'two-euro-filters-view';
+// Processed covers (background removal, catalog preset) are saved as WebP up to this size.
+const COVER_MAX_SIZE = 1200;
+const COVER_WEBP_QUALITY = 0.85;
 const DEFAULT_REFERENCE_ISSUERS = [
   'Andorra',
   'Austria',
@@ -72,7 +76,7 @@ const BASE_LANGUAGE = {
   'command.migrateCovers': 'Migrate cover references',
   'command.removeCurrentBackground': 'Remove background from current coin cover',
   'command.catalogPresetCurrent': 'Apply Catalog coin preset to current coin',
-  'command.normalizeProtectedCovers': 'Normalize protected PNG cover names',
+  'command.normalizeProtectedCovers': 'Normalize protected cover names',
   'command.removeUnofficial': 'Remove unofficial Numista imports',
   'command.installStarter': 'Install starter collection',
   'confirm.installStarter':
@@ -98,7 +102,7 @@ const BASE_LANGUAGE = {
   'notice.batchBackground':
     'Background removal: completed {done}, skipped {skipped}, errors {errors}.',
   'notice.batchCatalog': 'Catalog coin: completed {done}, skipped {skipped}, errors {errors}.',
-  'notice.catalogDone': 'Catalog coin preset applied. PNG saved and cover locked.',
+  'notice.catalogDone': 'Catalog coin preset applied. Image saved and cover locked.',
   'notice.coverNamesNormalized':
     'Cover names normalized: {renamed}; skipped: {skipped}; errors: {errors}.',
   'confirm.removeUnofficial':
@@ -263,7 +267,7 @@ const BASE_LANGUAGE = {
 
   'notice.noCurrentCoin': 'Click a coin on the dashboard first to select the current coin.',
   'notice.noCover': 'The current coin has no local cover.',
-  'notice.backgroundRemoved': 'Background removed. PNG saved and cover locked.',
+  'notice.backgroundRemoved': 'Background removed. Image saved and cover locked.',
   'notice.backgroundError': 'Background removal failed: {message}',
   'notice.apiKeyMissing': 'Enter your Numista API key in the plugin settings.',
   'notice.dedupe': 'Duplicates removed: {count}.',
@@ -316,7 +320,7 @@ const BUILTIN_LANGUAGES = {
       'command.migrateCovers': 'Migruj odwołania do okładek',
       'command.removeCurrentBackground': 'Usuń tło z okładki aktualnej monety',
       'command.catalogPresetCurrent': 'Zastosuj preset Moneta katalogowa do aktualnej monety',
-      'command.normalizeProtectedCovers': 'Uporządkuj nazwy chronionych okładek PNG',
+      'command.normalizeProtectedCovers': 'Uporządkuj nazwy chronionych okładek',
       'command.removeUnofficial': 'Usuń nieoficjalne importy Numista',
       'command.installStarter': 'Zainstaluj kolekcję początkową',
       'confirm.installStarter':
@@ -344,7 +348,7 @@ const BUILTIN_LANGUAGES = {
       'notice.batchCatalog':
         'Moneta katalogowa: wykonano {done}, pominięto {skipped}, błędy {errors}.',
       'notice.catalogDone':
-        'Zastosowano preset Moneta katalogowa. Zapisano PNG i zablokowano okładkę.',
+        'Zastosowano preset Moneta katalogowa. Zapisano obraz i zablokowano okładkę.',
       'notice.coverNamesNormalized':
         'Uporządkowano nazwy okładek: {renamed}; pominięto: {skipped}; błędy: {errors}.',
       'confirm.removeUnofficial':
@@ -451,7 +455,7 @@ const BUILTIN_LANGUAGES = {
       'notice.noCurrentCoin':
         'Najpierw kliknij monetę na dashboardzie, aby wskazać aktualną monetę.',
       'notice.noCover': 'Aktualna moneta nie ma lokalnej okładki.',
-      'notice.backgroundRemoved': 'Usunięto tło. Zapisano PNG i zablokowano okładkę.',
+      'notice.backgroundRemoved': 'Usunięto tło. Zapisano obraz i zablokowano okładkę.',
       'notice.backgroundError': 'Nie udało się usunąć tła: {message}',
       'indicator.missing': 'Brak roku referencyjnego okładki',
       'indicator.exact': 'Zdjęcie zgodne z rocznikiem',
@@ -2147,8 +2151,7 @@ module.exports = class TwoEuroCollectionPlugin extends Plugin {
     let updated = 0,
       unchanged = 0,
       errors = 0;
-    const prefix = `${this.coins().replace(/\/$/, '')}/`,
-      files = this.app.vault.getMarkdownFiles().filter((file) => file.path.startsWith(prefix));
+    const files = this.filesInFolder(this.coins(), 'md');
     for (const file of files) {
       try {
         const content = await this.app.vault.read(file),
@@ -2201,11 +2204,26 @@ module.exports = class TwoEuroCollectionPlugin extends Plugin {
     }
     return [...years].sort((a, b) => (Number(a) || 0) - (Number(b) || 0));
   }
+  /*
+   * Lists files only inside the given collection folder (recursively), so the
+   * plugin never enumerates the rest of the vault.
+   */
+  filesInFolder(path, extension = '') {
+    const folder = path ? this.app.vault.getAbstractFileByPath(normalizePath(path)) : null;
+    if (!(folder instanceof TFolder)) return [];
+    const result = [],
+      stack = [folder];
+    while (stack.length) {
+      for (const child of stack.pop().children || []) {
+        if (child instanceof TFolder) stack.push(child);
+        else if (child instanceof TFile && (!extension || child.extension === extension))
+          result.push(child);
+      }
+    }
+    return result;
+  }
   getRows() {
-    const pre = `${this.coins().replace(/\/$/, '')}/`;
-    return this.app.vault
-      .getMarkdownFiles()
-      .filter((f) => f.path.startsWith(pre))
+    return this.filesInFolder(this.coins(), 'md')
       .map((file) => {
         const m = this.app.metadataCache.getFileCache(file)?.frontmatter || {};
         return {
@@ -2396,7 +2414,7 @@ module.exports = class TwoEuroCollectionPlugin extends Plugin {
     if (!src) return 0;
     await this.ensureFolder(target);
     let moved = 0;
-    const files = this.app.vault.getFiles().filter((f) => f.path.startsWith(`${source}/`));
+    const files = this.filesInFolder(source);
     for (const f of files) {
       const rel = f.path.slice(source.length + 1),
         dest = this.join(target, rel);
@@ -3505,7 +3523,8 @@ module.exports = class TwoEuroCollectionPlugin extends Plugin {
     for (const row of rows) {
       try {
         const oldPath = this.localPath(row);
-        if (!oldPath || !oldPath.toLowerCase().endsWith('.png')) {
+        const oldExt = (oldPath.split('.').pop() || '').toLowerCase();
+        if (!oldPath || !['png', 'webp'].includes(oldExt)) {
           skipped++;
           continue;
         }
@@ -3515,7 +3534,7 @@ module.exports = class TwoEuroCollectionPlugin extends Plugin {
           continue;
         }
         const desired = await this.uniqueCoverPath(
-          this.join(this.covers(), `${this.coverFileStem(row)}.png`),
+          this.join(this.covers(), `${this.coverFileStem(row)}.${oldExt}`),
           oldPath
         );
         if (desired !== oldPath) await this.app.fileManager.renameFile(file, desired);
@@ -3551,12 +3570,7 @@ module.exports = class TwoEuroCollectionPlugin extends Plugin {
     const binary = await this.app.vault.readBinary(sourceFile),
       image = await this.loadImageFromArrayBuffer(binary),
       canvas = this.makeTransparentBackground(image),
-      pngBlob = await this.canvasToPngBlob(canvas);
-    const pngPath = await this.uniqueCoverPath(
-      this.join(this.covers(), `${this.coverFileStem(row)}.png`),
-      this.localPath(row)
-    );
-    await this.app.vault.adapter.writeBinary(pngPath, new Uint8Array(await pngBlob.arrayBuffer()));
+      pngPath = await this.saveProcessedCover(row, canvas);
     await this.app.fileManager.processFrontMatter(coinFile, (fm) => {
       fm.cover = `[[${pngPath}]]`;
       fm.reference_year = tx(row.year);
@@ -3779,12 +3793,17 @@ module.exports = class TwoEuroCollectionPlugin extends Plugin {
     }
   }
   makeTransparentBackground(image) {
-    const canvas = document.createElement('canvas');
-    canvas.width = image.naturalWidth || image.width;
-    canvas.height = image.naturalHeight || image.height;
+    const canvas = document.createElement('canvas'),
+      naturalWidth = image.naturalWidth || image.width,
+      naturalHeight = image.naturalHeight || image.height,
+      scale = Math.min(1, COVER_MAX_SIZE / Math.max(naturalWidth, naturalHeight, 1));
+    canvas.width = Math.max(1, Math.round(naturalWidth * scale));
+    canvas.height = Math.max(1, Math.round(naturalHeight * scale));
     const context = canvas.getContext('2d', { willReadFrequently: true });
     if (!context) throw new Error('Canvas context unavailable');
-    context.drawImage(image, 0, 0);
+    context.imageSmoothingEnabled = true;
+    context.imageSmoothingQuality = 'high';
+    context.drawImage(image, 0, 0, canvas.width, canvas.height);
     const frame = context.getImageData(0, 0, canvas.width, canvas.height);
     removeBackgroundPixels(frame.data, canvas.width, canvas.height);
     context.putImageData(frame, 0, 0);
@@ -3819,7 +3838,7 @@ module.exports = class TwoEuroCollectionPlugin extends Plugin {
       cropY = Math.max(0, minY - bh * margin),
       cropW = Math.min(w - cropX, bw * (1 + 2 * margin)),
       cropH = Math.min(h - cropY, bh * (1 + 2 * margin));
-    const size = Math.min(1600, Math.max(768, Math.round(Math.max(cropW, cropH)))),
+    const size = Math.min(COVER_MAX_SIZE, Math.max(768, Math.round(Math.max(cropW, cropH)))),
       canvas = document.createElement('canvas');
     canvas.width = size;
     canvas.height = size;
@@ -3877,12 +3896,7 @@ module.exports = class TwoEuroCollectionPlugin extends Plugin {
     const binary = await this.app.vault.readBinary(sourceFile),
       image = await this.loadImageFromArrayBuffer(binary),
       canvas = this.makeCatalogCoinCanvas(image),
-      blob = await this.canvasToPngBlob(canvas),
-      pngPath = await this.uniqueCoverPath(
-        this.join(this.covers(), `${this.coverFileStem(row)}.png`),
-        this.localPath(row)
-      );
-    await this.app.vault.adapter.writeBinary(pngPath, new Uint8Array(await blob.arrayBuffer()));
+      pngPath = await this.saveProcessedCover(row, canvas);
     await this.app.fileManager.processFrontMatter(coinFile, (fm) => {
       fm.cover = `[[${pngPath}]]`;
       fm.reference_year = tx(row.year);
@@ -3968,6 +3982,51 @@ module.exports = class TwoEuroCollectionPlugin extends Plugin {
     }
   }
 
+  /*
+   * Encodes as WebP (much smaller than PNG, keeps transparency). Falls back to
+   * PNG where the platform cannot encode WebP (older iOS/Safari WebViews).
+   */
+  async canvasToCoverBlob(canvas) {
+    const webp = await new Promise((resolve) =>
+      canvas.toBlob((blob) => resolve(blob), 'image/webp', COVER_WEBP_QUALITY)
+    );
+    if (webp && webp.type === 'image/webp') return { blob: webp, ext: 'webp' };
+    return { blob: await this.canvasToPngBlob(canvas), ext: 'png' };
+  }
+  async saveProcessedCover(row, canvas) {
+    await this.ensureFolder(this.covers());
+    const { blob, ext } = await this.canvasToCoverBlob(canvas),
+      stem = this.coverFileStem(row),
+      oldPath = this.localPath(row),
+      path = await this.uniqueCoverPath(this.join(this.covers(), `${stem}.${ext}`), oldPath);
+    await this.app.vault.adapter.writeBinary(path, new Uint8Array(await blob.arrayBuffer()));
+    /*
+     * Remove the previous processed version of this coin's cover (same name,
+     * different extension, e.g. an old 5 MB PNG) when no other coin uses it.
+     * Original downloads and custom covers have other names and are kept.
+     */
+    if (oldPath && oldPath !== path) {
+      const oldName = oldPath.split('/').pop() || '',
+        oldStem = oldName.replace(/\.[^.]+$/, '').replace(/-\d+$/, ''),
+        oldFile = this.app.vault.getAbstractFileByPath(oldPath),
+        usedElsewhere = this.getRows().some(
+          (other) => other.file.path !== row.file.path && this.localPath(other) === oldPath
+        );
+      if (
+        oldStem === stem &&
+        oldPath.startsWith(`${this.covers()}/`) &&
+        oldFile instanceof TFile &&
+        !usedElsewhere
+      ) {
+        try {
+          await this.app.fileManager.trashFile(oldFile);
+        } catch (error) {
+          console.warn('Cannot remove previous cover', oldPath, error);
+        }
+      }
+    }
+    return path;
+  }
   canvasToPngBlob(canvas) {
     return new Promise((resolve, reject) =>
       canvas.toBlob(
