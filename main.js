@@ -1421,13 +1421,18 @@ class EuroFiltersView extends ItemView {
     imageAction.createDiv({ cls: 'twoeuro-sidebar-label', text: t('action.imagePreset') });
     const imagePreset = imageAction.createEl('select', { cls: 'twoeuro-sidebar-select' });
     imagePreset.createEl('option', {
-      text: t('action.catalogPresetSelected'),
-      attr: { value: 'catalog' },
-    });
-    imagePreset.createEl('option', {
       text: t('action.removeBackgroundSelected'),
       attr: { value: 'background' },
     });
+    imagePreset.createEl('option', {
+      text: t('action.catalogPresetSelected'),
+      attr: { value: 'catalog' },
+    });
+    // Default: background removal; the choice is remembered until Obsidian restarts.
+    imagePreset.value = p.imagePreset === 'catalog' ? 'catalog' : 'background';
+    imagePreset.onchange = () => {
+      p.imagePreset = imagePreset.value;
+    };
     const processBtn = imageAction.createEl('button', {
       text: t('action.processImage'),
       cls: 'twoeuro-sidebar-process',
@@ -3583,6 +3588,7 @@ module.exports = class TwoEuroCollectionPlugin extends Plugin {
       }
     }
     this._lastSavedOverride = null;
+    this.clearCoinSelection();
     await new Promise((resolve) => setTimeout(resolve, 50));
     await this.refreshDashboards();
     this.refreshFilterViews();
@@ -3898,8 +3904,8 @@ module.exports = class TwoEuroCollectionPlugin extends Plugin {
     };
   }
   async processSelectedImages(preset) {
-    if (preset === 'background') return this.removeBackgroundFromSelectedCoins();
-    return this.applyCatalogPresetToSelectedCoins();
+    if (preset === 'catalog') return this.applyCatalogPresetToSelectedCoins();
+    return this.removeBackgroundFromSelectedCoins();
   }
   async applyCatalogPresetToSelectedCoins() {
     const rows = this.getSelectedCoinFiles();
@@ -3924,6 +3930,7 @@ module.exports = class TwoEuroCollectionPlugin extends Plugin {
       }
     }
     this._lastSavedOverride = null;
+    this.clearCoinSelection();
     await this.refreshDashboards();
     this.refreshFilterViews();
     window.setTimeout(() => {
