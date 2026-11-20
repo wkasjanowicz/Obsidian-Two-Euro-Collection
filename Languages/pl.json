@@ -205,6 +205,12 @@
     "confirm.updatePrices": "Zaktualizować ceny Numista dla {count} monet widocznych na dashboardzie? Zużyje to {count} zapytań API.",
     "notice.pricesNone": "W wybranym zakresie nie ma monet z identyfikatorami Numista.",
     "notice.pricesProgress": "Ceny: {current} / {total} · zaktualizowano {updated} · błędy {errors}",
-    "notice.pricesDone": "Ceny: zaktualizowano {updated}, bez zmian lub brak danych {unchanged}, błędy {errors}."
+    "notice.pricesDone": "Ceny: zaktualizowano {updated}, bez zmian lub brak danych {unchanged}, błędy {errors}.",
+    "command.convertCoversWebp": "Konwertuj okładki PNG do WebP",
+    "confirm.convertCoversWebp": "Przekonwertować {count} okładek PNG ({size} MB) do WebP (maks. 1200 px)? Pliki PNG zostaną przeniesione do kosza.",
+    "notice.convertCoversNone": "Brak okładek PNG do konwersji.",
+    "notice.convertCoversProgress": "Konwersja okładek: {current} / {total}",
+    "notice.convertCoversDone": "Przekonwertowano okładek: {converted}; błędy: {errors}. Rozmiar: {before} MB → {after} MB.",
+    "error.webpUnsupported": "To urządzenie nie potrafi zapisać obrazów WebP. Uruchom polecenie na komputerze."
   }
 }

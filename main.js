@@ -299,6 +299,14 @@ const BASE_LANGUAGE = {
     'Covers: downloaded {downloaded}, skipped {skipped}, errors {errors}. Locked covers were not changed.',
   'error.numistaAuth':
     'Numista rejected the API key (HTTP {status}). Check the key in the plugin settings.',
+  'command.convertCoversWebp': 'Convert PNG covers to WebP',
+  'confirm.convertCoversWebp':
+    'Convert {count} PNG covers ({size} MB) to WebP (max 1200 px)? The PNG files will be moved to the trash.',
+  'notice.convertCoversNone': 'There are no PNG covers to convert.',
+  'notice.convertCoversProgress': 'Converting covers: {current} / {total}',
+  'notice.convertCoversDone':
+    'Covers converted: {converted}; errors: {errors}. Size: {before} MB → {after} MB.',
+  'error.webpUnsupported': 'This device cannot save WebP images. Run the command on a computer.',
   'error.noNumistaId': 'This coin has no numista_id.',
   'error.noNumistaCover': 'Numista did not return a cover image.',
   'error.noNumistaIssue': 'Matching Numista issue not found.',
@@ -543,6 +551,15 @@ const BUILTIN_LANGUAGES = {
         'Ceny: {current} / {total} · zaktualizowano {updated} · błędy {errors}',
       'notice.pricesDone':
         'Ceny: zaktualizowano {updated}, bez zmian lub brak danych {unchanged}, błędy {errors}.',
+      'command.convertCoversWebp': 'Konwertuj okładki PNG do WebP',
+      'confirm.convertCoversWebp':
+        'Przekonwertować {count} okładek PNG ({size} MB) do WebP (maks. 1200 px)? Pliki PNG zostaną przeniesione do kosza.',
+      'notice.convertCoversNone': 'Brak okładek PNG do konwersji.',
+      'notice.convertCoversProgress': 'Konwersja okładek: {current} / {total}',
+      'notice.convertCoversDone':
+        'Przekonwertowano okładek: {converted}; błędy: {errors}. Rozmiar: {before} MB → {after} MB.',
+      'error.webpUnsupported':
+        'To urządzenie nie potrafi zapisać obrazów WebP. Uruchom polecenie na komputerze.',
     },
   },
 };
@@ -1653,6 +1670,11 @@ module.exports = class TwoEuroCollectionPlugin extends Plugin {
       id: 'two-euro-sync',
       name: this.t('command.sync'),
       callback: () => this.syncNumista(),
+    });
+    this.addCommand({
+      id: 'two-euro-convert-covers-webp',
+      name: this.t('command.convertCoversWebp'),
+      callback: () => this.convertPngCoversToWebp(),
     });
     this.addCommand({
       id: 'two-euro-update-prices',
@@ -3992,6 +4014,106 @@ module.exports = class TwoEuroCollectionPlugin extends Plugin {
     );
     if (webp && webp.type === 'image/webp') return { blob: webp, ext: 'webp' };
     return { blob: await this.canvasToPngBlob(canvas), ext: 'png' };
+  }
+  /*
+   * Repair command: converts existing PNG covers in the covers folder to WebP
+   * (max COVER_MAX_SIZE px), updates every coin that uses them and moves the
+   * PNG files to the trash.
+   */
+  async convertPngCoversToWebp() {
+    const rows = this.getRows(),
+      prefix = `${this.covers()}/`,
+      groups = new Map();
+    for (const row of rows) {
+      const coverPath = this.localPath(row);
+      if (!coverPath.startsWith(prefix) || !coverPath.toLowerCase().endsWith('.png')) continue;
+      const file = this.app.vault.getAbstractFileByPath(coverPath);
+      if (!(file instanceof TFile)) continue;
+      if (!groups.has(coverPath)) groups.set(coverPath, { file, rows: [] });
+      groups.get(coverPath).rows.push(row);
+    }
+    if (!groups.size) {
+      new Notice(this.t('notice.convertCoversNone'));
+      return;
+    }
+    const mb = (bytes) => (bytes / 1e6).toFixed(1);
+    const totalBefore = [...groups.values()].reduce((sum, g) => sum + (g.file.stat?.size || 0), 0);
+    if (
+      !window.confirm(
+        this.t('confirm.convertCoversWebp', { count: groups.size, size: mb(totalBefore) })
+      )
+    )
+      return;
+    let converted = 0,
+      errors = 0,
+      before = 0,
+      after = 0,
+      index = 0;
+    const progress = new Notice(
+      this.t('notice.convertCoversProgress', { current: 0, total: groups.size }),
+      0
+    );
+    for (const [oldPath, group] of groups) {
+      index++;
+      progress.setMessage(
+        this.t('notice.convertCoversProgress', { current: index, total: groups.size })
+      );
+      try {
+        const binary = await this.app.vault.readBinary(group.file),
+          image = await this.loadImageFromArrayBuffer(binary),
+          canvas = this.resizeImageToCanvas(image),
+          { blob, ext } = await this.canvasToCoverBlob(canvas);
+        if (ext !== 'webp') {
+          progress.setMessage(this.t('error.webpUnsupported'));
+          setTimeout(() => progress.hide(), 8000);
+          return;
+        }
+        const newPath = await this.uniqueCoverPath(oldPath.replace(/\.png$/i, '.webp'));
+        const bytes = new Uint8Array(await blob.arrayBuffer());
+        await this.app.vault.adapter.writeBinary(newPath, bytes);
+        for (const row of group.rows) {
+          const oldLink = tx(row.cover);
+          await this.app.fileManager.processFrontMatter(row.file, (fm) => {
+            fm.cover = `[[${newPath}]]`;
+          });
+          await this.app.vault.process(row.file, (content) =>
+            oldLink ? content.split(`!${oldLink}`).join(`![[${newPath}]]`) : content
+          );
+        }
+        before += binary.byteLength;
+        after += bytes.length;
+        await this.app.fileManager.trashFile(group.file);
+        converted++;
+      } catch (error) {
+        errors++;
+        console.error('Convert cover to WebP', oldPath, error);
+      }
+    }
+    progress.setMessage(
+      this.t('notice.convertCoversDone', {
+        converted,
+        errors,
+        before: mb(before),
+        after: mb(after),
+      })
+    );
+    setTimeout(() => progress.hide(), 10000);
+    await this.refreshDashboards();
+    return { converted, errors, before, after };
+  }
+  resizeImageToCanvas(image) {
+    const naturalWidth = image.naturalWidth || image.width,
+      naturalHeight = image.naturalHeight || image.height,
+      scale = Math.min(1, COVER_MAX_SIZE / Math.max(naturalWidth, naturalHeight, 1)),
+      canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, Math.round(naturalWidth * scale));
+    canvas.height = Math.max(1, Math.round(naturalHeight * scale));
+    const context = canvas.getContext('2d');
+    if (!context) throw new Error('Canvas context unavailable');
+    context.imageSmoothingEnabled = true;
+    context.imageSmoothingQuality = 'high';
+    context.drawImage(image, 0, 0, canvas.width, canvas.height);
+    return canvas;
   }
   async saveProcessedCover(row, canvas) {
     await this.ensureFolder(this.covers());
