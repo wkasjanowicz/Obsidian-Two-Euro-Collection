@@ -1,5 +1,5 @@
 import { Setting, Modal, Notice, TFile } from 'obsidian';
-import { tx, clean, isTrue, normalizeCoinTitle, countryName } from '../utils.js';
+import { tx, clean, isTrue } from '../utils.js';
 
 export class CoinModal extends Modal {
   constructor(app, plugin, row) {
@@ -119,7 +119,7 @@ export class CoinModal extends Modal {
         new Notice(t('error.required'));
         return;
       }
-      const savedFile = await p.upsert(f, this.row && this.row.file, { rename: true });
+      await p.upsert(f, this.row && this.row.file, { rename: true });
       await p.refreshDashboards();
       new Notice(t('notice.saved'));
       this.close();

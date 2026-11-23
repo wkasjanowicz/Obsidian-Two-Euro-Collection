@@ -102,8 +102,7 @@ export class EuroFiltersView extends ItemView {
     };
     c.createEl('hr');
     c.createEl('h3', { cls: 'twoeuro-sidebar-section-title', text: t('sidebar.filtersSorting') });
-    const rows = p.getRows(),
-      state = p.getDashboardState();
+    const state = p.getDashboardState();
     c.createDiv({ cls: 'twoeuro-sidebar-label', text: t('filter.search') });
     const search = c.createEl('input', {
       cls: 'twoeuro-sidebar-search',

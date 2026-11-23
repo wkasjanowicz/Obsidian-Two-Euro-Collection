@@ -130,7 +130,6 @@
     "summary.owned": "Posiadane: {owned} / {total}",
     "error.required": "Kraj, rok i tytuł są wymagane.",
     "notice.saved": "Moneta zapisana.",
-    "notice.loaded": "2 Euro Collection {version} załadowana",
     "notice.noCurrentCoin": "Najpierw kliknij monetę na dashboardzie, aby wskazać aktualną monetę.",
     "notice.noCover": "Aktualna moneta nie ma lokalnej okładki.",
     "notice.backgroundRemoved": "Usunięto tło. Zapisano obraz i zablokowano okładkę.",
@@ -276,6 +275,13 @@
     "settings.cacheDays": "Pamięć podręczna Numista (dni)",
     "settings.cacheDaysDesc": "Dane katalogu pobrane z Numista są używane ponownie przez tyle dni, więc kolejne synchronizacje zużywają mniej zapytań API. 0 wyłącza pamięć podręczną.",
     "settings.cacheClear": "Wyczyść",
-    "settings.cacheCleared": "Wyczyszczono pamięć podręczną Numista."
+    "settings.cacheCleared": "Wyczyszczono pamięć podręczną Numista.",
+    "settings.headingFolders": "Foldery",
+    "settings.headingNumista": "Numista",
+    "command.syncReport": "Pokaż raport ostatniej synchronizacji",
+    "report.title": "Raport ostatniej synchronizacji",
+    "report.none": "Od uruchomienia Obsidiana nie było synchronizacji.",
+    "report.summary": "{date} · zakres: {scope} · pominięte typy Numista: {count}",
+    "report.empty": "Żaden typ Numista nie został pominięty."
   }
 }

@@ -1,5 +1,5 @@
 import { Setting, Modal, Notice } from 'obsidian';
-import { tx, clean, isTrue, normalizeCoinTitle, countryName } from '../utils.js';
+import { tx, clean, isTrue } from '../utils.js';
 
 export class CoinCoverManagerModal extends Modal {
   constructor(app, plugin, row, displaySrc = '') {
@@ -112,7 +112,7 @@ export class CoinCoverManagerModal extends Modal {
       if (!clean(this.form.country) || !tx(this.form.year) || !clean(this.form.title))
         throw new Error(t('error.required'));
       await p.snapshotCoinState(fresh);
-      const saved = await p.upsert(this.form, fresh.file, { rename: true });
+      await p.upsert(this.form, fresh.file, { rename: true });
       await p.refreshDashboards();
     };
     const run = async (fn) => {
@@ -120,7 +120,7 @@ export class CoinCoverManagerModal extends Modal {
         await fn();
         await p.refreshDashboards();
         p.refreshFilterViews();
-        await new Promise((resolve) => setTimeout(resolve, 120));
+        await new Promise((resolve) => window.setTimeout(resolve, 120));
         const freshAfter = await p.readCoinRowFresh(this.row.file);
         if (freshAfter) this.row = freshAfter;
         await this.render();

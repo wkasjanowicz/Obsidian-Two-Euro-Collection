@@ -103,7 +103,7 @@ export const exportMethods = {
     };
     const mdFile = await write(`${base}.md`, markdown);
     // BOM so that Excel opens the UTF-8 file with correct national characters.
-    await write(`${base}.csv`, `﻿${csv}`);
+    await write(`${base}.csv`, `\uFEFF${csv}`);
     const name = base.split('/').pop();
     new Notice(
       this.t('notice.exportDone', { count: items.length, md: `${name}.md`, csv: `${name}.csv` })

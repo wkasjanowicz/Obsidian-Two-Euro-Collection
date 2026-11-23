@@ -7,6 +7,7 @@ npm install        # once, and after pulling dependency changes
 npm run dev        # rebuild main.js on every change (copy it to a test vault to try it)
 npm run build      # one-off build
 npm test           # build + automated tests
+npm run lint       # official Obsidian plugin rules (same checks as the plugin review)
 npm run format     # format sources with Prettier
 ```
 
@@ -49,6 +50,10 @@ used in the code exists in English, and that every language has all keys with th
 ## Conventions
 
 - Ask for confirmation with `await this.confirm(message)` (Obsidian dialog), never `window.confirm`.
+- Use `window.setTimeout` and `activeDocument` (popout windows); no `console.log`/`console.info`.
+- Settings are defined in `EuroSettings.getSettingDefinitions()` (searchable in Obsidian 1.13+);
+  `display()` renders the same definitions on older versions.
+- Read the API key with `this.getNumistaApiKey()` (secret storage or settings).
 - Long operations go through `this.runOperation(() => ...)`; use `this.progressNotice()` for
   progress and keep API calls inside, so the Stop button and request counter work.
 - Read Numista types through `getTypeDetails` / `getTypeIssues` (cached); pass `{ fresh: true }`
@@ -61,6 +66,19 @@ used in the code exists in English, and that every language has all keys with th
 Tests use Node's built-in test runner (`node:test`) and run against the built `main.js`
 with an in-memory replacement of the Obsidian API (`test/helpers/obsidian-mock.js`).
 Numista is never called: tests replace `plugin.api` with fake responses.
+
+## Starter pack
+
+The starter pack is not part of the repository or of plugin releases (Obsidian accepts only
+`main.js`, `manifest.json` and `styles.css` in a release). Build and publish it with:
+
+```bash
+npm run starter-pack -- "/path/to/vault/2 Euro"
+npm run starter-pack:publish
+```
+
+`starter-pack:publish` force-pushes `starter-pack.json` to the separate `starter-pack` branch
+(always a single commit), from which the plugin downloads it.
 
 ## Releases
 

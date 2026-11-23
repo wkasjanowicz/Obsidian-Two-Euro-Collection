@@ -3,6 +3,7 @@ import { VIEW_TYPE_FILTERS } from './constants.js';
 import { CoinModal } from './ui/CoinModal.js';
 import { EuroSettings } from './ui/EuroSettings.js';
 import { EuroFiltersView } from './ui/EuroFiltersView.js';
+import { SyncReportModal } from './ui/SyncReportModal.js';
 
 import { settingsMethods } from './plugin/settings.js';
 import { i18nMethods } from './plugin/i18n.js';
@@ -31,9 +32,9 @@ export default class TwoEuroCollectionPlugin extends Plugin {
   }
 
   async onload() {
-    console.log(`2 Euro Collection ${this.manifest.version} starting`);
     await this.loadSettings();
     await this.loadExternalLanguages();
+    await this.migrateApiKeyToSecretStorage();
     this.dashboardState = {
       mode: 'all',
       country: '',
@@ -155,6 +156,11 @@ export default class TwoEuroCollectionPlugin extends Plugin {
       },
     });
     this.addCommand({
+      id: 'two-euro-sync-report',
+      name: this.t('command.syncReport'),
+      callback: () => new SyncReportModal(this.app, this).open(),
+    });
+    this.addCommand({
       id: 'two-euro-diagnostics',
       name: this.t('command.diagnostics'),
       callback: () => this.copyDiagnostics(),
@@ -233,9 +239,8 @@ export default class TwoEuroCollectionPlugin extends Plugin {
         el.createEl('pre', { text: `2 Euro Collection: ${e.message || e}` });
       }
     });
-    this.addSettingTab(new EuroSettings(this.app, this));
-    console.log(`2 Euro Collection ${this.manifest.version} loaded`);
-    new Notice(this.t('notice.loaded', { version: this.manifest.version }));
+    this.settingTab = new EuroSettings(this.app, this);
+    this.addSettingTab(this.settingTab);
   }
 }
 

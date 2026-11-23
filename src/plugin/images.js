@@ -87,7 +87,7 @@ export const imagesMethods = {
       }
     }
     this.clearCoinSelection();
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    await new Promise((resolve) => window.setTimeout(resolve, 50));
     await this.refreshDashboards();
     this.refreshFilterViews();
     new Notice(this.t('notice.batchBackground', { done, skipped, errors }));
@@ -109,7 +109,7 @@ export const imagesMethods = {
   },
 
   makeTransparentBackground(image) {
-    const canvas = document.createElement('canvas'),
+    const canvas = activeDocument.createElement('canvas'),
       naturalWidth = image.naturalWidth || image.width,
       naturalHeight = image.naturalHeight || image.height,
       scale = Math.min(1, COVER_MAX_SIZE / Math.max(naturalWidth, naturalHeight, 1));
@@ -156,7 +156,7 @@ export const imagesMethods = {
       cropW = Math.min(w - cropX, bw * (1 + 2 * margin)),
       cropH = Math.min(h - cropY, bh * (1 + 2 * margin));
     const size = Math.min(COVER_MAX_SIZE, Math.max(768, Math.round(Math.max(cropW, cropH)))),
-      canvas = document.createElement('canvas');
+      canvas = activeDocument.createElement('canvas');
     canvas.width = size;
     canvas.height = size;
     const ctx = canvas.getContext('2d', { willReadFrequently: true });
@@ -308,7 +308,7 @@ export const imagesMethods = {
     const naturalWidth = image.naturalWidth || image.width,
       naturalHeight = image.naturalHeight || image.height,
       scale = Math.min(1, COVER_MAX_SIZE / Math.max(naturalWidth, naturalHeight, 1)),
-      canvas = document.createElement('canvas');
+      canvas = activeDocument.createElement('canvas');
     canvas.width = Math.max(1, Math.round(naturalWidth * scale));
     canvas.height = Math.max(1, Math.round(naturalHeight * scale));
     const context = canvas.getContext('2d');

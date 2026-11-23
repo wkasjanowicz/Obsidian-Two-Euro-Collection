@@ -114,36 +114,6 @@ export const dashboardMethods = {
     this.refreshFilterViews();
   },
 
-  openCoinImagePreview(row, src) {
-    if (!src) {
-      new CoinModal(this.app, this, row).open();
-      return;
-    }
-    const overlay = document.body.createDiv({ cls: 'twoeuro-preview-overlay' }),
-      dialog = document.body.createDiv({ cls: 'twoeuro-preview-dialog' });
-    const image = dialog.createEl('img', { attr: { src, alt: row.title || '' } }),
-      close = dialog.createEl('button', {
-        cls: 'twoeuro-preview-close',
-        text: '×',
-        attr: { 'aria-label': this.t('preview.close') },
-      });
-    const finish = () => {
-      dialog.remove();
-      overlay.remove();
-      new CoinModal(this.app, this, row).open();
-    };
-    overlay.onclick = finish;
-    close.onclick = finish;
-    dialog.onclick = (event) => event.stopPropagation();
-    const esc = (event) => {
-      if (event.key === 'Escape') {
-        document.removeEventListener('keydown', esc);
-        finish();
-      }
-    };
-    document.addEventListener('keydown', esc);
-  },
-
   buildReferenceCoverIndex(rows) {
     const index = new Map();
     for (const row of rows) {

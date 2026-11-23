@@ -4,3 +4,6 @@
 
 # Node.js
 node_modules/
+
+# Starter pack is published to the "starter-pack" branch (npm run starter-pack:publish)
+StarterData/

@@ -18,6 +18,29 @@ export const settingsMethods = {
     };
   },
 
+  /*
+   * Numista API key: from Obsidian's secret storage (1.11.4+) when the user
+   * picked a secret, otherwise from the plugin settings (older Obsidian).
+   */
+  getNumistaApiKey() {
+    const id = tx(this.settings.numistaSecretId);
+    if (id && this.app.secretStorage?.getSecret) return tx(this.app.secretStorage.getSecret(id));
+    return tx(this.settings.numistaApiKey);
+  },
+
+  /* Moves a key stored in plain settings into Obsidian's secret storage. */
+  async migrateApiKeyToSecretStorage() {
+    const key = tx(this.settings.numistaApiKey);
+    const storage = this.app.secretStorage;
+    if (!key || !storage?.setSecret || tx(this.settings.numistaSecretId)) return false;
+    const id = 'numista-api-key';
+    storage.setSecret(id, key);
+    this.settings.numistaSecretId = id;
+    this.settings.numistaApiKey = '';
+    await this.saveSettings();
+    return true;
+  },
+
   /* Asks the user to confirm an action in an Obsidian dialog. */
   confirm(message, { warning = false, confirmText = '' } = {}) {
     return ConfirmModal.ask(this.app, {

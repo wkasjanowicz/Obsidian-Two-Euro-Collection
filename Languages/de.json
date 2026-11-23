@@ -130,7 +130,6 @@
     "summary.owned": "Vorhanden: {owned} / {total}",
     "error.required": "Land, Jahr und Titel sind erforderlich.",
     "notice.saved": "Münze gespeichert.",
-    "notice.loaded": "2 Euro Collection {version} geladen",
     "indicator.missing": "Referenzjahr des Bildes fehlt",
     "indicator.exact": "Bild entspricht dem Jahr der Münze",
     "indicator.reference": "Bild von Referenzmünze: {country}, {type}, {year}",
@@ -276,6 +275,13 @@
     "settings.cacheDays": "Numista-Zwischenspeicher (Tage)",
     "settings.cacheDaysDesc": "Von Numista geladene Katalogdaten werden so viele Tage wiederverwendet, damit wiederholte Synchronisierungen weniger API-Anfragen verbrauchen. 0 schaltet den Zwischenspeicher aus.",
     "settings.cacheClear": "Leeren",
-    "settings.cacheCleared": "Numista-Zwischenspeicher geleert."
+    "settings.cacheCleared": "Numista-Zwischenspeicher geleert.",
+    "settings.headingFolders": "Ordner",
+    "settings.headingNumista": "Numista",
+    "command.syncReport": "Bericht der letzten Synchronisierung anzeigen",
+    "report.title": "Bericht der letzten Synchronisierung",
+    "report.none": "Seit dem Start von Obsidian wurde keine Synchronisierung ausgeführt.",
+    "report.summary": "{date} · Bereich: {scope} · übersprungene Numista-Typen: {count}",
+    "report.empty": "Es wurden keine Numista-Typen übersprungen."
   }
 }

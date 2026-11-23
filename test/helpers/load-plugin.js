@@ -20,6 +20,10 @@ global.window = global.window || {
   localStorage: { getItem: () => null },
   navigator: { language: 'en' },
 };
+global.activeDocument = global.activeDocument || {
+  querySelector: () => null,
+  querySelectorAll: () => [],
+};
 global.document = global.document || {
   querySelector: () => null,
   querySelectorAll: () => [],

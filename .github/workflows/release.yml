@@ -51,7 +51,6 @@ jobs:
           test -f styles.css
           test -f README.md
           test -f README_PL.md
-          test -f StarterData/starter-pack.json
 
       - name: Validate JavaScript and manifest
         shell: bash
@@ -101,6 +100,9 @@ jobs:
           npm run build
           git diff --exit-code main.js || (echo "main.js is out of date. Run npm run build and commit it." && exit 1)
 
+      - name: Lint (Obsidian plugin rules)
+        run: npm run lint
+
       - name: Run tests
         run: npm test
 
@@ -138,7 +140,6 @@ jobs:
             main.js \
             manifest.json \
             styles.css \
-            StarterData/starter-pack.json \
             --title "$VERSION" \
             --target "${{ github.sha }}" \
             --generate-notes \

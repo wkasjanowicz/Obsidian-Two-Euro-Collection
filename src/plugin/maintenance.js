@@ -1,5 +1,4 @@
 import { Notice, TFile, parseYaml, stringifyYaml } from 'obsidian';
-import { COVER_MAX_SIZE } from '../constants.js';
 import { tx, normalizeCoinTitle, coinIdentityKey } from '../utils.js';
 
 export const maintenanceMethods = {
@@ -34,7 +33,7 @@ export const maintenanceMethods = {
         console.error('Normalize coin title', file.path, error);
       }
     }
-    await new Promise((resolve) => setTimeout(resolve, 120));
+    await new Promise((resolve) => window.setTimeout(resolve, 120));
     await this.refreshDashboards();
     this.refreshFilterViews();
     new Notice(this.t('notice.titlesNormalized', { updated, unchanged, errors }));
@@ -87,8 +86,7 @@ export const maintenanceMethods = {
 
   async removeUnofficialImportsRun() {
     if (!(await this.confirm(this.t('confirm.removeUnofficial'), { warning: true }))) return;
-    const rows = this.getRows().filter((row) => row.source === 'numista'),
-      cache = new Map();
+    const rows = this.getRows().filter((row) => row.source === 'numista');
     let removed = 0,
       protectedCount = 0,
       errors = 0;
@@ -123,7 +121,7 @@ export const maintenanceMethods = {
     notice.setMessage(
       this.t('notice.removeUnofficial', { removed, protected: protectedCount, errors })
     );
-    setTimeout(() => notice.hide(), 8000);
+    window.setTimeout(() => notice.hide(), 8000);
   },
 
   async dedupe() {
@@ -278,7 +276,7 @@ export const maintenanceMethods = {
           { blob, ext } = await this.canvasToCoverBlob(canvas);
         if (ext !== 'webp') {
           progress.setMessage(this.t('error.webpUnsupported'));
-          setTimeout(() => progress.hide(), 8000);
+          window.setTimeout(() => progress.hide(), 8000);
           return;
         }
         const newPath = await this.uniqueCoverPath(oldPath.replace(/\.png$/i, '.webp'));
@@ -310,7 +308,7 @@ export const maintenanceMethods = {
         after: mb(after),
       })
     );
-    setTimeout(() => progress.hide(), 10000);
+    window.setTimeout(() => progress.hide(), 10000);
     await this.refreshDashboards();
     return { converted, errors, before, after };
   },

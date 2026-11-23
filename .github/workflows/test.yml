@@ -33,6 +33,9 @@ jobs:
           npm run build
           git diff --exit-code main.js || (echo "main.js is out of date. Run npm run build and commit it." && exit 1)
 
+      - name: Lint (Obsidian plugin rules)
+        run: npm run lint
+
       - name: Run tests
         run: npm test
 

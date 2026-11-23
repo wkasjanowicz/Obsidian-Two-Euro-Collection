@@ -246,11 +246,11 @@ export const coinsMethods = {
     for (let i = 0; i < attempts; i++) {
       const row = this.getRows().find((r) => r.file.path === file.path);
       if (row) {
-        await new Promise((resolve) => setTimeout(resolve, 40));
+        await new Promise((resolve) => window.setTimeout(resolve, 40));
         const again = this.getRows().find((r) => r.file.path === file.path);
         if (again) return again;
       }
-      await new Promise((resolve) => setTimeout(resolve, 50));
+      await new Promise((resolve) => window.setTimeout(resolve, 50));
     }
     return this.getRows().find((r) => r.file.path === file.path) || null;
   },

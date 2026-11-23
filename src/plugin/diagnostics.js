@@ -21,7 +21,7 @@ export const diagnosticsMethods = {
       `- Collection folder: ${this.root()}`,
       `- Coins: ${rows.length} (owned ${rows.filter((r) => r.owned).length}, linked to Numista ${rows.filter((r) => r.numista_id).length})`,
       `- Covers: ${covers.length} ${JSON.stringify(byExtension)}`,
-      `- Numista API key set: ${numistaApiKey ? 'yes' : 'no'}`,
+      `- Numista API key set: ${this.getNumistaApiKey() ? 'yes' : 'no'} (${this.settings.numistaSecretId ? 'secret storage' : numistaApiKey ? 'plugin settings' : 'none'})`,
       `- Numista requests this month: ${this.settings.numistaRequestCount || 0} (${this.settings.numistaRequestMonth || '-'})`,
       `- Numista cache entries: ${this.numistaCacheSize()}`,
       `- Value history entries: ${(valueHistory || []).length}`,
@@ -40,8 +40,8 @@ export const diagnosticsMethods = {
     try {
       await navigator.clipboard.writeText(report);
       new Notice(this.t('notice.diagnosticsCopied'));
-    } catch (error) {
-      console.log(report);
+    } catch {
+      console.warn(report);
       new Notice(this.t('notice.diagnosticsConsole'));
     }
     return report;

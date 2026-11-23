@@ -5,13 +5,13 @@ import { tx, clean, normalizeCoinTitle, countryName } from '../utils.js';
 export const starterMethods = {
   async installStarterCollection() {
     /*
-     * The starter pack is attached to every GitHub release, so each plugin
-     * version installs the pack built for it. Older releases without the
-     * asset fall back to the latest release and then to the repository.
+     * The starter pack lives on the separate "starter-pack" branch of the
+     * repository (published with npm run starter-pack:publish), so it is not
+     * part of plugin releases and does not grow the main branch history.
+     * The old location on main is kept as a fallback.
      */
     const urls = [
-      `https://github.com/${GITHUB_REPO}/releases/download/${this.manifest.version}/starter-pack.json`,
-      `https://github.com/${GITHUB_REPO}/releases/latest/download/starter-pack.json`,
+      `https://raw.githubusercontent.com/${GITHUB_REPO}/starter-pack/starter-pack.json`,
       `https://raw.githubusercontent.com/${GITHUB_REPO}/main/StarterData/starter-pack.json`,
     ];
     let response = null,

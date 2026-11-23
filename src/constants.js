@@ -39,6 +39,7 @@ export const DEFAULTS = {
   coinsFolder: 'Coins',
   coversFolder: 'Covers',
   numistaApiKey: '',
+  numistaSecretId: '',
   columns: 6,
   language: 'auto',
 

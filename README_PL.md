@@ -154,7 +154,7 @@ Konfiguracja we wtyczce:
 3. Opuść stronę ustawień. Obsidian zapisuje ustawienia wtyczki automatycznie.
 4. Uruchom **Synchronizuj**.
 
-> Klucz API jest zapisany w danych ustawień wtyczki. Nie publikuj ani nie umieszczaj w repozytorium pliku `data.json` zawierającego rzeczywisty klucz.
+> W Obsidianie 1.11.4 i nowszym klucz API jest przechowywany w bezpiecznym magazynie sekretów Obsidiana (wybierz lub utwórz sekret w polu **Klucz API Numista**); klucz zapisany przez starsze wersje zostanie tam przeniesiony automatycznie. W starszych wersjach Obsidiana klucz jest zapisany w pliku `data.json` wtyczki — nie publikuj go ani nie umieszczaj w repozytorium.
 
 ### Synchronizacja, ceny i zapytania API
 
@@ -165,7 +165,7 @@ Konfiguracja we wtyczce:
 - **Pamięć podręczna.** Dane katalogu pobrane z Numista są używane ponownie przez 7 dni (do zmiany, 0 wyłącza), więc powtórna synchronizacja tego samego zakresu prawie nic nie kosztuje.
 - **Przerwanie.** W trakcie synchronizacji, aktualizacji cen, pobierania okładek lub konwersji panel boczny pokazuje przycisk **Przerwij** (dostępny też jako polecenie).
 - Jeśli Numista odrzuci klucz API (HTTP 401/403), synchronizacja od razu się zatrzymuje z czytelnym komunikatem.
-- Po każdej synchronizacji konsola deweloperska (Ctrl/Cmd+Shift+I) pokazuje tabelę pominiętych typów Numista z powodem — pomaga, gdy jakiejś monety brakuje.
+- Polecenie **Pokaż raport ostatniej synchronizacji** wyświetla typy Numista pominięte przy ostatniej synchronizacji wraz z powodem (inny kraj, nie jest oficjalną monetą 2 euro, dopasowano istniejącą monetę…) — pomaga, gdy jakiejś monety brakuje.
 
 ### Dane odczytywane z Numista
 

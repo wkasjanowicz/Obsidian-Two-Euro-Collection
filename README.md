@@ -154,7 +154,7 @@ To configure the plugin:
 3. Leave the settings page. Obsidian saves the plugin settings automatically.
 4. Run **Synchronize**.
 
-> The API key is stored in the plugin's Obsidian settings data. Do not publish or commit the generated `data.json` with a real API key.
+> On Obsidian 1.11.4 and later the API key is kept in Obsidian's secure secret storage (choose or create a secret in the **Numista API key** field); a key saved by older versions is moved there automatically. On older Obsidian versions the key is stored in the plugin's `data.json` — do not publish or commit that file.
 
 ### Synchronization, prices and API requests
 
@@ -165,7 +165,7 @@ To configure the plugin:
 - **Cache.** Catalogue data downloaded from Numista is reused for 7 days (configurable, 0 disables it), so repeating a synchronization of the same range is almost free.
 - **Stop.** While a synchronization, price update, cover download or conversion is running, the side panel shows a **Stop** button (also available as a command).
 - If Numista rejects the API key (HTTP 401/403), synchronization stops at once with a clear message.
-- After every synchronization the developer console (Ctrl/Cmd+Shift+I) lists the skipped Numista types with the reason, which helps when a coin is missing.
+- **Show the last synchronization report** (command) lists the Numista types skipped during the last synchronization with the reason (other country, not an official 2 euro coin, matched an existing coin…), which helps when a coin is missing.
 
 ### What synchronization reads from Numista
 

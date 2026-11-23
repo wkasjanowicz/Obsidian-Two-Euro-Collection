@@ -6,7 +6,7 @@ export const numistaMethods = {
   async waitForRequestSlot(minIntervalMs = 1250) {
     const now = Date.now(),
       wait = Math.max(0, (this._lastRequestAt || 0) + minIntervalMs - now);
-    if (wait > 0) await new Promise((r) => setTimeout(r, wait));
+    if (wait > 0) await new Promise((r) => window.setTimeout(r, wait));
     this._lastRequestAt = Date.now();
   },
 
@@ -30,7 +30,7 @@ export const numistaMethods = {
         const delayMs =
           Math.min(60000, 5000 * 2 ** (attempt - 1)) + Math.floor(Math.random() * 1000);
         console.warn(`${label}: HTTP 429; ponowienie po ${delayMs} ms`);
-        await new Promise((r) => setTimeout(r, delayMs));
+        await new Promise((r) => window.setTimeout(r, delayMs));
       }
     }
     throw lastError;
@@ -47,7 +47,7 @@ export const numistaMethods = {
         {
           url: `https://api.numista.com/v3${path}`,
           headers: {
-            'Numista-API-Key': tx(this.settings.numistaApiKey),
+            'Numista-API-Key': this.getNumistaApiKey(),
             accept: 'application/json',
           },
         },
@@ -115,7 +115,7 @@ export const numistaMethods = {
     try {
       const host = new URL(url).hostname.toLowerCase();
       if (host === 'numista.com' || host.endsWith('.numista.com'))
-        headers['Numista-API-Key'] = tx(this.settings.numistaApiKey);
+        headers['Numista-API-Key'] = this.getNumistaApiKey();
     } catch {
       return '';
     }
@@ -169,7 +169,7 @@ export const numistaMethods = {
   },
 
   async updateNumistaPricesRun() {
-    if (!tx(this.settings.numistaApiKey)) {
+    if (!this.getNumistaApiKey()) {
       new Notice(this.t('notice.apiKeyMissing'));
       return;
     }
@@ -222,7 +222,7 @@ export const numistaMethods = {
       console.error('Numista prices', error);
       progress.setMessage(error?.message || String(error));
     }
-    setTimeout(() => progress.hide(), 8000);
+    window.setTimeout(() => progress.hide(), 8000);
     return { updated, unchanged, errors };
   },
 
@@ -271,6 +271,12 @@ export const numistaMethods = {
     );
   },
 
+  /* Keeps the list of skipped Numista types for the "last synchronization report" command. */
+  storeSyncReport(items, scope) {
+    this.lastSyncReport = { date: new Date().toLocaleString(), scope, items: [...items] };
+    if (items.length) console.debug('2 Euro Collection: skipped Numista types', items);
+  },
+
   getNumistaSyncScope() {
     const state = this.getDashboardState();
     return {
@@ -315,7 +321,7 @@ export const numistaMethods = {
   },
 
   async syncNumistaRun(scope = null) {
-    if (!tx(this.settings.numistaApiKey)) {
+    if (!this.getNumistaApiKey()) {
       new Notice(this.t('notice.apiKeyMissing'));
       return;
     }
@@ -764,10 +770,10 @@ export const numistaMethods = {
       await this.refreshDashboards();
       this.refreshFilterViews();
 
-      if (report.length) {
-        console.info('2 Euro Collection: Numista types skipped or failed');
-        console.table(report);
-      }
+      this.storeSyncReport(
+        report,
+        filteredSync ? scopeLabels.join(' / ') : this.t('notice.syncScopeAll')
+      );
 
       progress.setMessage(
         this.t('notice.syncDone', {
@@ -781,7 +787,7 @@ export const numistaMethods = {
         })
       );
 
-      setTimeout(() => progress.hide(), 8000);
+      window.setTimeout(() => progress.hide(), 8000);
 
       return {
         created,
@@ -794,12 +800,12 @@ export const numistaMethods = {
       };
     } catch (error) {
       progress.setMessage(this.t('notice.syncAborted', { message: error?.message || error }));
-      setTimeout(() => progress.hide(), 10000);
+      window.setTimeout(() => progress.hide(), 10000);
 
-      if (report.length) {
-        console.info('2 Euro Collection: Numista types skipped or failed before abort');
-        console.table(report);
-      }
+      this.storeSyncReport(
+        report,
+        filteredSync ? scopeLabels.join(' / ') : this.t('notice.syncScopeAll')
+      );
 
       await this.refreshDashboards();
       this.refreshFilterViews();
@@ -813,7 +819,7 @@ export const numistaMethods = {
   },
 
   async backfillCoversRun() {
-    if (!tx(this.settings.numistaApiKey)) {
+    if (!this.getNumistaApiKey()) {
       new Notice(this.t('notice.apiKeyMissing'));
       return;
     }
@@ -827,8 +833,7 @@ export const numistaMethods = {
           downloaded: 0,
           errors: 0,
         })
-      ),
-      cache = new Map();
+      );
     let downloaded = 0,
       skipped = 0,
       errors = 0,
@@ -860,7 +865,7 @@ export const numistaMethods = {
       }
     }
     progress.setMessage(this.t('notice.coversDone', { downloaded, skipped, errors }));
-    setTimeout(() => progress.hide(), 8000);
+    window.setTimeout(() => progress.hide(), 8000);
     return { downloaded, skipped, errors };
   },
 
