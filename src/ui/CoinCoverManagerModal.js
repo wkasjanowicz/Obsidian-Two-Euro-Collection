@@ -113,23 +113,6 @@ export class CoinCoverManagerModal extends Modal {
         throw new Error(t('error.required'));
       await p.snapshotCoinState(fresh);
       const saved = await p.upsert(this.form, fresh.file, { rename: true });
-      p._lastSavedOverride = {
-        file: saved,
-        data: {
-          ...fresh,
-          ...this.form,
-          file: saved,
-          country: countryName(this.form.country),
-          year: tx(this.form.year),
-          title: normalizeCoinTitle(this.form.title),
-          coin_type: this.form.coin_type || 'commemorative',
-          mint_mark: tx(this.form.mint_mark),
-          owned: isTrue(this.form.owned),
-          reference_year: tx(this.form.reference_year),
-          cover_locked: isTrue(this.form.cover_locked),
-          own_cover: isTrue(this.form.own_cover),
-        },
-      };
       await p.refreshDashboards();
     };
     const run = async (fn) => {

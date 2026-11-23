@@ -1,7 +1,54 @@
-import { TFile, TFolder, normalizePath } from 'obsidian';
-import { tx } from '../utils.js';
+import { Notice, TFile, TFolder, normalizePath } from 'obsidian';
+import { tx, clean } from '../utils.js';
 
 export const vaultMethods = {
+  /*
+   * Applies new folder settings. Existing coins, covers and the dashboard are
+   * moved to the new locations (after confirmation), and cover links in coin
+   * notes are updated, so the collection is not "lost" after a rename.
+   */
+  async changeFolders(next) {
+    const keys = ['rootFolder', 'collectionFolder', 'coinsFolder', 'coversFolder', 'dashboardFile'];
+    const before = { coins: this.coins(), covers: this.covers(), dashboard: this.dashboard() };
+    const previous = Object.fromEntries(keys.map((key) => [key, this.settings[key]]));
+    for (const key of keys) if (key in next) this.settings[key] = tx(next[key]);
+    const after = { coins: this.coins(), covers: this.covers(), dashboard: this.dashboard() };
+    const moves = [];
+    for (const key of ['coins', 'covers', 'dashboard']) {
+      if (before[key] === after[key]) continue;
+      if (!this.app.vault.getAbstractFileByPath(before[key])) continue;
+      if (this.app.vault.getAbstractFileByPath(after[key])) {
+        new Notice(this.t('notice.folderExists', { path: after[key] }));
+        Object.assign(this.settings, previous);
+        return false;
+      }
+      moves.push([before[key], after[key]]);
+    }
+    if (moves.length) {
+      const list = moves.map(([from, to]) => `${from} → ${to}`).join('\n');
+      if (!(await this.confirm(`${this.t('confirm.moveFolders')}\n${list}`))) {
+        Object.assign(this.settings, previous);
+        return false;
+      }
+      for (const [from, to] of moves) {
+        const parent = to.includes('/') ? to.slice(0, to.lastIndexOf('/')) : '';
+        if (parent) await this.ensureFolder(parent);
+        await this.app.fileManager.renameFile(this.app.vault.getAbstractFileByPath(from), to);
+      }
+      if (before.covers !== after.covers) {
+        for (const file of this.filesInFolder(after.coins, 'md')) {
+          await this.app.vault.process(file, (content) =>
+            content.split(`[[${before.covers}/`).join(`[[${after.covers}/`)
+          );
+        }
+      }
+    }
+    await this.saveSettings();
+    this.invalidateRows();
+    await this.refreshDashboards();
+    new Notice(this.t('notice.foldersChanged', { count: moves.length }));
+    return true;
+  },
   join(...a) {
     return normalizePath(
       a
@@ -25,7 +72,8 @@ export const vaultMethods = {
   },
 
   dashboard() {
-    return this.join(this.root(), '🪙 Kolekcja 2 Euro.md');
+    const name = clean(this.settings.dashboardFile).replace(/\.md$/i, '') || '🪙 Kolekcja 2 Euro';
+    return this.join(this.root(), `${name}.md`);
   },
 
   isSupportedImage(path) {

@@ -34,10 +34,36 @@ export class EuroSettings extends PluginSettingTab {
             await p.saveSettings();
           })
         );
-    inp('settings.root', 'rootFolder');
-    inp('settings.collection', 'collectionFolder');
-    inp('settings.coins', 'coinsFolder');
-    inp('settings.covers', 'coversFolder');
+    /*
+     * Folder settings are applied together with a button, so that the
+     * collection can be moved to the new location instead of being lost.
+     */
+    const folderDraft = {};
+    const folderInput = (key, field) =>
+      new Setting(c).setName(t(key)).addText((x) =>
+        x.setValue(p.settings[field] || '').onChange((v) => {
+          folderDraft[field] = v;
+        })
+      );
+    folderInput('settings.root', 'rootFolder');
+    folderInput('settings.collection', 'collectionFolder');
+    folderInput('settings.coins', 'coinsFolder');
+    folderInput('settings.covers', 'coversFolder');
+    folderInput('settings.dashboardFile', 'dashboardFile');
+    new Setting(c)
+      .setName(t('settings.applyFolders'))
+      .setDesc(t('settings.applyFoldersDesc'))
+      .addButton((b) =>
+        b
+          .setButtonText(t('settings.applyFoldersButton'))
+          .setCta()
+          .onClick(async () => {
+            if (!Object.keys(folderDraft).length) return;
+            await p.changeFolders(folderDraft);
+            this.display();
+          })
+      );
+    inp('settings.defaultCurrency', 'defaultCurrency');
     new Setting(c)
       .setName(t('settings.columns'))
       .setDesc(t('settings.columnsDesc'))
@@ -51,13 +77,44 @@ export class EuroSettings extends PluginSettingTab {
             await p.saveSettings();
           })
       );
-    new Setting(c).setName(t('settings.apiKey')).addText((x) => {
-      x.inputEl.type = 'password';
-      x.setValue(p.settings.numistaApiKey || '').onChange(async (v) => {
-        p.settings.numistaApiKey = tx(v);
-        await p.saveSettings();
+    const month = new Date().toISOString().slice(0, 7);
+    new Setting(c)
+      .setName(t('settings.apiKey'))
+      .setDesc(
+        t('settings.apiKeyDesc', {
+          count: p.settings.numistaRequestMonth === month ? p.settings.numistaRequestCount || 0 : 0,
+        })
+      )
+      .addText((x) => {
+        x.inputEl.type = 'password';
+        x.setValue(p.settings.numistaApiKey || '').onChange(async (v) => {
+          p.settings.numistaApiKey = tx(v);
+          await p.saveSettings();
+        });
       });
-    });
+    new Setting(c)
+      .setName(t('settings.cacheDays'))
+      .setDesc(t('settings.cacheDaysDesc'))
+      .addSlider((slider) =>
+        slider
+          .setLimits(0, 30, 1)
+          .setValue(
+            Number.isFinite(Number(p.settings.numistaCacheDays))
+              ? Number(p.settings.numistaCacheDays)
+              : 7
+          )
+          .setDynamicTooltip()
+          .onChange(async (value) => {
+            p.settings.numistaCacheDays = value;
+            await p.saveSettings();
+          })
+      )
+      .addButton((b) =>
+        b.setButtonText(t('settings.cacheClear')).onClick(async () => {
+          await p.clearNumistaCache();
+          new Notice(t('settings.cacheCleared'));
+        })
+      );
     new Setting(c)
       .setName(t('settings.syncUpdateExisting'))
       .setDesc(t('settings.syncUpdateExistingDesc'))
@@ -119,7 +176,7 @@ export class EuroSettings extends PluginSettingTab {
       .setDesc(t('settings.initStarterPackDesc'))
       .addButton((b) =>
         b.setButtonText(t('settings.initStarterPackButton')).onClick(async () => {
-          const confirmed = window.confirm(t('confirm.installStarter'));
+          const confirmed = await p.confirm(t('confirm.installStarter'));
           if (!confirmed) return;
 
           try {

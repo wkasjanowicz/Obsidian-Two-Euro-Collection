@@ -49,4 +49,14 @@ export const DEFAULTS = {
   referenceYearFrom: 1999,
   futureYears: 1,
   syncUpdateExisting: false,
+  dashboardFile: '🪙 Kolekcja 2 Euro.md',
+  defaultCurrency: 'PLN',
+  dashboardState: null,
+  numistaRequestMonth: '',
+  numistaRequestCount: 0,
+  numistaCacheDays: 7,
+  valueHistory: [],
 };
+
+/* GitHub repository of the plugin: starter pack downloads and links. */
+export const GITHUB_REPO = 'wkasjanowicz/Obsidian-Two-Euro-Collection';

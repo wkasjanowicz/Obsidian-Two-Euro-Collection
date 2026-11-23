@@ -54,8 +54,9 @@ test('collection helpers', async (t) => {
     // 4 EUR x 3 pieces + 3.5 EUR; Andorra has no price
     assert.deepEqual(stats.value, [{ currency: 'EUR', amount: 15.5 }]);
     assert.equal(stats.valueMissing, 1);
+    // price per piece x quantity: 10 PLN x 3 pieces
     assert.deepEqual(stats.spent, [
-      { currency: 'PLN', amount: 10 },
+      { currency: 'PLN', amount: 30 },
       { currency: 'EUR', amount: 5 },
     ]);
     assert.equal(stats.spentMissing, 1);

@@ -1,23 +1,32 @@
 import { Notice, requestUrl } from 'obsidian';
+import { GITHUB_REPO } from '../constants.js';
 import { tx, clean, normalizeCoinTitle, countryName } from '../utils.js';
 
 export const starterMethods = {
   async installStarterCollection() {
-    const url =
-      'https://raw.githubusercontent.com/' +
-      'wkasjanowicz/Obsidian-Two-Euro-Collection/' +
-      'main/StarterData/starter-pack.json';
-
-    const response = await requestUrl({
-      url,
-      headers: {
-        accept: 'application/json',
-      },
-    });
-
-    if (response.status >= 400) {
-      throw new Error(`Starter collection HTTP ${response.status}`);
+    /*
+     * The starter pack is attached to every GitHub release, so each plugin
+     * version installs the pack built for it. Older releases without the
+     * asset fall back to the latest release and then to the repository.
+     */
+    const urls = [
+      `https://github.com/${GITHUB_REPO}/releases/download/${this.manifest.version}/starter-pack.json`,
+      `https://github.com/${GITHUB_REPO}/releases/latest/download/starter-pack.json`,
+      `https://raw.githubusercontent.com/${GITHUB_REPO}/main/StarterData/starter-pack.json`,
+    ];
+    let response = null,
+      lastError = null;
+    for (const url of urls) {
+      try {
+        response = await requestUrl({ url, headers: { accept: 'application/json' } });
+        if (response.status < 400) break;
+        lastError = new Error(`Starter collection HTTP ${response.status}`);
+      } catch (error) {
+        lastError = error;
+      }
+      response = null;
     }
+    if (!response) throw lastError || new Error('Starter collection unavailable');
 
     const starterPack = response.json || JSON.parse(response.text || '{}');
 

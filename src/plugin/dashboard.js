@@ -1,9 +1,10 @@
+import { MarkdownRenderChild } from 'obsidian';
 import { VIEW_TYPE_FILTERS } from '../constants.js';
 import { tx, countryName } from '../utils.js';
 import { CoinModal } from '../ui/CoinModal.js';
 import { CoinCoverManagerModal } from '../ui/CoinCoverManagerModal.js';
 import { EuroFiltersView } from '../ui/EuroFiltersView.js';
-import { sortRows, groupRows, computeStats, formatMoney } from '../collection.js';
+import { sortRows, groupRows, computeStats, formatMoney, addValueSnapshot } from '../collection.js';
 
 export const dashboardMethods = {
   getDashboardState() {
@@ -22,11 +23,36 @@ export const dashboardMethods = {
 
   setDashboardState(next) {
     this.dashboardState = { ...this.getDashboardState(), ...next };
+    // Remember filters, sorting, grouping and the statistics panel between sessions.
+    this.settings.dashboardState = this.dashboardState;
+    this.scheduleSettingsSave();
+  },
+
+  /*
+   * Dashboards currently rendered (one per open note with the code block,
+   * in any window). Filled by registerDashboard, emptied when the note
+   * is closed or re-rendered by Obsidian.
+   */
+  openDashboards() {
+    if (!this._dashboards) this._dashboards = new Set();
+    for (const el of [...this._dashboards]) if (!el.isConnected) this._dashboards.delete(el);
+    return [...this._dashboards];
+  },
+
+  registerDashboard(el, ctx) {
+    if (!this._dashboards) this._dashboards = new Set();
+    this._dashboards.add(el);
+    const child = new MarkdownRenderChild(el);
+    child.onunload = () => {
+      this._dashboards.delete(el);
+      this.closeFiltersViewIfDashboardClosed();
+    };
+    ctx?.addChild?.(child);
   },
 
   closeFiltersViewIfDashboardClosed() {
     window.setTimeout(() => {
-      const hasDashboard = document.querySelector('.twoeuro-view');
+      const hasDashboard = this.openDashboards().length > 0;
 
       if (hasDashboard) {
         this._dashboardWasOpen = true;
@@ -71,33 +97,21 @@ export const dashboardMethods = {
     if (this._refreshTimer) window.clearTimeout(this._refreshTimer);
     this._refreshTimer = window.setTimeout(async () => {
       this._refreshTimer = null;
-      if (!document.querySelector('.twoeuro-view')) return;
+      if (!this.openDashboards().length) return;
       await this.refreshDashboards();
     }, delayMs);
   },
 
   async refreshDashboards() {
-    const dashboards = Array.from(document.querySelectorAll('.twoeuro-view'));
-    for (const dashboard of dashboards) {
+    this.invalidateRows();
+    for (const dashboard of this.openDashboards()) {
       try {
-        const state = this.getDashboardState();
-        const replacement = document.createElement('div');
-        await this.renderDashboard(replacement, state);
-        replacement.className = dashboard.className;
-        replacement.style.setProperty(
-          '--twoeuro-columns',
-          String(Math.min(10, Math.max(4, Number(this.settings.columns) || 6)))
-        );
-        replacement._twoEuroState = replacement._twoEuroState || state;
-        dashboard.replaceWith(replacement);
-        window.setTimeout(() => {
-          this._lastSavedOverride = null;
-        }, 1500);
-        this.refreshFilterViews();
+        await this.renderDashboard(dashboard);
       } catch (error) {
         console.error('2 Euro dashboard refresh', error);
       }
     }
+    this.refreshFilterViews();
   },
 
   openCoinImagePreview(row, src) {
@@ -174,21 +188,7 @@ export const dashboardMethods = {
   },
 
   async renderDashboard(el, initialState = null) {
-    let rows = this.getRows();
-    if (this._pendingRowOverrides?.size) {
-      rows = rows.map((row) =>
-        this._pendingRowOverrides.has(row.file.path)
-          ? { ...row, ...this._pendingRowOverrides.get(row.file.path), file: row.file }
-          : row
-      );
-    }
-    if (this._lastSavedOverride?.file) {
-      rows = rows.map((row) =>
-        row.file.path === this._lastSavedOverride.file.path
-          ? { ...row, ...this._lastSavedOverride.data, file: row.file }
-          : row
-      );
-    }
+    const rows = this.getRows();
     const referenceCoverIndex = this.buildReferenceCoverIndex(rows);
     if (initialState) this.setDashboardState(initialState);
     const state = this.getDashboardState();
@@ -212,6 +212,7 @@ export const dashboardMethods = {
     this.renderStats(el, list, state, locale);
     const groups = groupRows(list, state.groupBy, state.sortMode, locale);
     const grid = el.createDiv({ cls: 'twoeuro-grid' });
+    grid.addEventListener('keydown', (event) => this.handleGridKeydown(grid, event));
     for (const group of groups) {
       if (group.label) {
         const heading = grid.createDiv({ cls: 'twoeuro-group-header' });
@@ -282,11 +283,76 @@ export const dashboardMethods = {
     };
     table(this.t('stats.byCountry'), stats.byCountry);
     table(this.t('stats.byYear'), stats.byYear);
+    this.renderValueHistory(details, money);
+  },
+
+  /* Snapshot of the whole collection, saved after price updates or on demand. */
+  async recordValueSnapshot() {
+    const stats = computeStats(this.getRows(), this.getLanguage());
+    const date = new Date().toISOString().slice(0, 10);
+    this.settings.valueHistory = addValueSnapshot(this.settings.valueHistory, stats, date);
+    await this.saveSettings();
+    return this.settings.valueHistory.at(-1);
+  },
+
+  renderValueHistory(container, money) {
+    const history = Array.isArray(this.settings.valueHistory) ? this.settings.valueHistory : [];
+    const section = container.createDiv({ cls: 'twoeuro-stats-history' });
+    section.createDiv({ cls: 'twoeuro-stats-label', text: this.t('stats.history') });
+    if (!history.length) {
+      section.createDiv({ cls: 'twoeuro-stats-note', text: this.t('stats.historyEmpty') });
+      return;
+    }
+    const mainAmount = (entry) => entry.value?.[0]?.amount ?? null;
+    const recent = history.slice(-8).reverse();
+    recent.forEach((entry, index) => {
+      const previous = recent[index + 1];
+      const line = section.createDiv({ cls: 'twoeuro-stats-history-row' });
+      line.createSpan({ text: entry.date });
+      line.createSpan({ text: money(entry.value || []) });
+      line.createSpan({ text: `${entry.owned} / ${entry.total}` });
+      const delta =
+        previous && mainAmount(entry) !== null && mainAmount(previous) !== null
+          ? mainAmount(entry) - mainAmount(previous)
+          : null;
+      line.createSpan({
+        cls: delta > 0 ? 'is-up' : delta < 0 ? 'is-down' : '',
+        text: delta ? `${delta > 0 ? '+' : ''}${delta.toFixed(2)}` : '',
+      });
+    });
+  },
+
+  /*
+   * Keyboard: arrows move between cards, Enter opens the coin, Space toggles
+   * its selection.
+   */
+  handleGridKeydown(grid, event) {
+    const card = event.target?.closest?.('.twoeuro-card');
+    if (!card) return;
+    const cards = Array.from(grid.querySelectorAll('.twoeuro-card'));
+    const index = cards.indexOf(card);
+    const columns = Math.max(
+      1,
+      window.getComputedStyle?.(grid)?.gridTemplateColumns?.split(' ').filter(Boolean).length || 1
+    );
+    const move = { ArrowRight: 1, ArrowLeft: -1, ArrowDown: columns, ArrowUp: -columns }[event.key];
+    if (move) {
+      const target = cards[Math.min(cards.length - 1, Math.max(0, index + move))];
+      target?.focus();
+      event.preventDefault();
+    } else if (event.key === 'Enter') {
+      card.querySelector('.twoeuro-info')?.click();
+      event.preventDefault();
+    } else if (event.key === ' ') {
+      card.querySelector('.twoeuro-card-select input')?.click();
+      event.preventDefault();
+    }
   },
 
   renderCoinCard(grid, r, referenceCoverIndex) {
     const card = grid.createDiv({
       cls: `twoeuro-card ${r.owned ? 'is-owned' : 'is-missing'} ${(this.selectedCoinPaths || new Set()).has(r.file.path) ? 'is-selected' : ''}`,
+      attr: { tabindex: '0', 'aria-label': `${r.country} ${r.year} ${r.title}` },
     });
     const selectWrap = card.createDiv({ cls: 'twoeuro-card-select' }),
       selectBox = selectWrap.createEl('input', {

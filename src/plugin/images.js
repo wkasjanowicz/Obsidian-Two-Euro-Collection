@@ -86,7 +86,6 @@ export const imagesMethods = {
         console.error('Batch background removal', row.file?.path, error);
       }
     }
-    this._lastSavedOverride = null;
     this.clearCoinSelection();
     await new Promise((resolve) => setTimeout(resolve, 50));
     await this.refreshDashboards();
@@ -251,26 +250,20 @@ export const imagesMethods = {
     let done = 0,
       skipped = 0,
       errors = 0;
-    this._pendingRowOverrides = new Map();
     for (const row of rows) {
       try {
         const result = await this.processCatalogPresetForRow(row);
         if (result.ok) {
           done++;
-          this._pendingRowOverrides.set(row.file.path, result.override);
         } else skipped++;
       } catch (error) {
         errors++;
         console.error('Catalog preset', row.file?.path, error);
       }
     }
-    this._lastSavedOverride = null;
     this.clearCoinSelection();
     await this.refreshDashboards();
     this.refreshFilterViews();
-    window.setTimeout(() => {
-      this._pendingRowOverrides = new Map();
-    }, 1500);
     new Notice(this.t('notice.batchCatalog', { done, skipped, errors }));
   },
 
@@ -291,11 +284,7 @@ export const imagesMethods = {
         new Notice(this.t('notice.noCover'));
         return;
       }
-      this._pendingRowOverrides = new Map([[row.file.path, result.override]]);
       await this.refreshDashboards();
-      window.setTimeout(() => {
-        this._pendingRowOverrides = new Map();
-      }, 1500);
       new Notice(this.t('notice.catalogDone'));
     } catch (error) {
       console.error('Catalog preset', error);
@@ -391,10 +380,6 @@ export const imagesMethods = {
         new Notice(this.t('notice.noCover'));
         return;
       }
-      this._lastSavedOverride = {
-        file: coinFile,
-        data: { ...row, file: coinFile, reference_year: tx(row.year), cover_locked: true },
-      };
       await this.refreshDashboards();
       new Notice(this.t('notice.backgroundRemoved', { year: tx(row.year) }));
     } catch (error) {

@@ -24,7 +24,7 @@ export class CoinModal extends Modal {
             quantity: 1,
             acquisition_date: '',
             acquisition_price: '',
-            acquisition_currency: 'PLN',
+            acquisition_currency: p.settings.defaultCurrency || 'PLN',
             condition: '',
             notes: '',
             cover_url: '',
@@ -120,23 +120,6 @@ export class CoinModal extends Modal {
         return;
       }
       const savedFile = await p.upsert(f, this.row && this.row.file, { rename: true });
-      p._lastSavedOverride = {
-        file: savedFile,
-        data: {
-          ...(this.row || {}),
-          ...f,
-          file: savedFile,
-          country: countryName(f.country),
-          year: tx(f.year),
-          title: normalizeCoinTitle(f.title),
-          coin_type: f.coin_type || 'commemorative',
-          mint_mark: tx(f.mint_mark),
-          owned: isTrue(f.owned),
-          reference_year: tx(f.reference_year),
-          cover_locked: isTrue(f.cover_locked),
-          own_cover: isTrue(f.own_cover),
-        },
-      };
       await p.refreshDashboards();
       new Notice(t('notice.saved'));
       this.close();

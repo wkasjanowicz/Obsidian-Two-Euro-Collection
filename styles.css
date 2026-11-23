@@ -140,3 +140,13 @@
 .twoeuro-group-header:first-child{margin-top:0}
 .twoeuro-group-title{font-weight:600;font-size:.9rem}
 .twoeuro-group-count{font-size:.72rem;color:var(--text-muted);font-variant-numeric:tabular-nums}
+
+/* Value history */
+.twoeuro-stats-history{margin-top:12px}
+.twoeuro-stats-history-row{display:grid;grid-template-columns:90px 1fr 70px 70px;gap:8px;font-size:.72rem;padding:2px 0;font-variant-numeric:tabular-nums}
+.twoeuro-stats-history-row .is-up{color:var(--color-green)}
+.twoeuro-stats-history-row .is-down{color:var(--color-red)}
+
+/* Side panel export row and keyboard focus */
+.twoeuro-sidebar-export{display:grid;grid-template-columns:1fr auto;gap:6px}
+.twoeuro-card:focus-visible{outline:2px solid var(--interactive-accent);outline-offset:2px}

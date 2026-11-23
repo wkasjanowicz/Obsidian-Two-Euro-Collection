@@ -5,9 +5,11 @@
  * To add a language: create Languages/<code>.json and import it below.
  */
 import pl from '../../Languages/pl.json';
+import de from '../../Languages/de.json';
+import fr from '../../Languages/fr.json';
 
 export const BUILTIN_LANGUAGES = Object.fromEntries(
-  [pl]
+  [pl, de, fr]
     .filter((lang) => lang && lang.code && lang.strings)
     .map((lang) => [
       String(lang.code).toLowerCase(),

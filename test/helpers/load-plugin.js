@@ -41,6 +41,8 @@ async function createPlugin({ files = {}, settings = {}, language = 'en' } = {})
   plugin.selectedCoinPaths = new Set();
   plugin.refreshDashboards = async () => {};
   plugin.refreshFilterViews = () => {};
+  // Confirmation dialogs are answered with "yes" in tests.
+  plugin.confirm = async () => true;
   return { plugin, app, vault: app.vault, notices: mock.notices };
 }
 

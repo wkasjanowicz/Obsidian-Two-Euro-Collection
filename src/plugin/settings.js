@@ -1,3 +1,4 @@
+import { ConfirmModal } from '../ui/ConfirmModal.js';
 import { DEFAULT_REFERENCE_ISSUERS, DEFAULTS } from '../constants.js';
 import { tx, countryName } from '../utils.js';
 
@@ -17,6 +18,23 @@ export const settingsMethods = {
     };
   },
 
+  /* Asks the user to confirm an action in an Obsidian dialog. */
+  confirm(message, { warning = false, confirmText = '' } = {}) {
+    return ConfirmModal.ask(this.app, {
+      message,
+      warning,
+      confirmText: confirmText || this.t('action.confirm'),
+      cancelText: this.t('action.cancel'),
+    });
+  },
+  /* Saves settings shortly after the last change (used for frequent UI state changes). */
+  scheduleSettingsSave(delayMs = 1000) {
+    if (this._settingsSaveTimer) window.clearTimeout(this._settingsSaveTimer);
+    this._settingsSaveTimer = window.setTimeout(() => {
+      this._settingsSaveTimer = null;
+      this.saveSettings();
+    }, delayMs);
+  },
   async saveSettings() {
     await this.saveData(this.settings);
   },

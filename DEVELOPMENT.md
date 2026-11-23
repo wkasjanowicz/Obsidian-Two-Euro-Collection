@@ -23,8 +23,13 @@ does not match a fresh build of `src/`.
 | `src/plugin/coins.js` | Reading and writing coin notes, filtering |
 | `src/plugin/images.js` | Background removal, catalog preset, WebP saving |
 | `src/plugin/maintenance.js` | Repair commands: dedupe, WebP conversion, normalization |
-| `src/plugin/dashboard.js` | Dashboard rendering and refresh, filter panel state |
-| `src/ui/*.js` | Modals, settings tab and the filters side panel |
+| `src/plugin/dashboard.js` | Dashboard rendering (statistics, groups, cards, keyboard) and refresh |
+| `src/plugin/export.js` | Missing / owned / swap lists to Markdown and CSV |
+| `src/plugin/operations.js` | Long operations: one at a time, Stop button, Numista request counter |
+| `src/plugin/cache.js` | Persistent Numista cache (`numista-cache.json` in the plugin folder) |
+| `src/plugin/diagnostics.js` | Diagnostics report for bug reports (never includes the API key) |
+| `src/collection.js` | Pure helpers: sorting, grouping, statistics, value history, CSV |
+| `src/ui/*.js` | Modals (including `ConfirmModal`), settings tab and the filters side panel |
 | `src/images/background.js` | Pure background-removal algorithm (tested without Obsidian) |
 | `src/utils.js`, `src/constants.js` | Shared helpers and defaults |
 | `src/i18n/en.js` | English strings (base language) |
@@ -35,10 +40,21 @@ Plugin methods live in plain objects (`export const numistaMethods = { ... }`) t
 
 ## Translations
 
-Edit `Languages/pl.json`. It is bundled into `main.js` at build time. To add a language,
-create `Languages/<code>.json` and import it in `src/i18n/builtin.js`. The tests check that
-every key used in the code exists in English and that Polish has all keys with the same
+English strings live in `src/i18n/en.js`; translations in `Languages/pl.json`, `de.json` and
+`fr.json` are bundled into `main.js` at build time. To add a language, create
+`Languages/<code>.json` and import it in `src/i18n/builtin.js`. The tests check that every key
+used in the code exists in English, and that every language has all keys with the same
 `{placeholders}`.
+
+## Conventions
+
+- Ask for confirmation with `await this.confirm(message)` (Obsidian dialog), never `window.confirm`.
+- Long operations go through `this.runOperation(() => ...)`; use `this.progressNotice()` for
+  progress and keep API calls inside, so the Stop button and request counter work.
+- Read Numista types through `getTypeDetails` / `getTypeIssues` (cached); pass `{ fresh: true }`
+  for explicit user refreshes.
+- `getRows()` is cached for the current task; call `invalidateRows()` after writing many notes
+  if you read them again in the same task.
 
 ## Tests
 

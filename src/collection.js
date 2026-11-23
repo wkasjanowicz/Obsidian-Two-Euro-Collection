@@ -84,7 +84,7 @@ const breakdown = (rows, keyOf, compare) => {
  * Statistics for a list of coins:
  * - progress overall, by country and by year,
  * - collection value from Numista UNC prices (owned coins x quantity),
- * - money spent on purchases (acquisition_price of owned coins),
+ * - money spent on purchases (acquisition_price per piece x quantity),
  * - coins available for swap (quantity above 1).
  */
 export function computeStats(rows, locale = 'en') {
@@ -100,9 +100,10 @@ export function computeStats(rows, locale = 'en') {
     const unc = finite(row.numismatic_value_unc);
     if (unc === null) valueMissing++;
     else addAmount(value, row.numismatic_value_currency || 'EUR', unc * quantity);
+    // acquisition_price is the price of one piece
     const price = finite(row.acquisition_price);
     if (price === null) spentMissing++;
-    else addAmount(spent, row.acquisition_currency || '', price);
+    else addAmount(spent, row.acquisition_currency || '', price * quantity);
     if (quantity > 1) {
       swapCoins++;
       swapPieces += quantity - 1;
@@ -154,4 +155,21 @@ export function toCsv(header, records) {
     return /[",\r\n;]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
   };
   return [header, ...records].map((record) => record.map(cell).join(',')).join('\r\n') + '\r\n';
+}
+
+/*
+ * Adds today's snapshot to the value history (one entry per day, newest last).
+ */
+export function addValueSnapshot(history, stats, date, limit = 120) {
+  const entry = {
+    date,
+    owned: stats.owned,
+    total: stats.total,
+    value: stats.value,
+    spent: stats.spent,
+  };
+  const next = (Array.isArray(history) ? history : []).filter((item) => item.date !== date);
+  next.push(entry);
+  next.sort((a, b) => String(a.date).localeCompare(String(b.date)));
+  return next.slice(-limit);
 }

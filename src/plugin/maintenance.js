@@ -34,8 +34,6 @@ export const maintenanceMethods = {
         console.error('Normalize coin title', file.path, error);
       }
     }
-    this._lastSavedOverride = null;
-    this._pendingRowOverrides = new Map();
     await new Promise((resolve) => setTimeout(resolve, 120));
     await this.refreshDashboards();
     this.refreshFilterViews();
@@ -83,16 +81,19 @@ export const maintenanceMethods = {
     return { updated, unchanged };
   },
 
-  async removeUnofficialImports() {
-    if (!window.confirm(this.t('confirm.removeUnofficial'))) return;
+  removeUnofficialImports() {
+    return this.runOperation(() => this.removeUnofficialImportsRun());
+  },
+
+  async removeUnofficialImportsRun() {
+    if (!(await this.confirm(this.t('confirm.removeUnofficial'), { warning: true }))) return;
     const rows = this.getRows().filter((row) => row.source === 'numista'),
       cache = new Map();
     let removed = 0,
       protectedCount = 0,
       errors = 0;
-    const notice = new Notice(
-      this.t('notice.verifyOfficial', { current: 0, total: rows.length }),
-      0
+    const notice = this.progressNotice(
+      this.t('notice.verifyOfficial', { current: 0, total: rows.length })
     );
     for (let i = 0; i < rows.length; i++) {
       const row = rows[i];
@@ -104,11 +105,7 @@ export const maintenanceMethods = {
         }
         let official = row.official_issue;
         if (!official && row.numista_id) {
-          let details = cache.get(row.numista_id);
-          if (!details) {
-            details = await this.api(`/types/${encodeURIComponent(row.numista_id)}?lang=en`);
-            cache.set(row.numista_id, details);
-          }
+          const details = await this.getTypeDetails(row.numista_id);
           official = this.isOfficialTwoEuroType(details);
         }
         if (!official) {
@@ -116,6 +113,7 @@ export const maintenanceMethods = {
           removed++;
         }
       } catch (error) {
+        if (this.isNumistaAuthError(error) || error?.aborted) throw error;
         errors++;
         console.error('Remove unofficial import', row.file?.path, error);
       }
@@ -231,7 +229,11 @@ export const maintenanceMethods = {
    * (max COVER_MAX_SIZE px), updates every coin that uses them and moves the
    * PNG files to the trash.
    */
-  async convertPngCoversToWebp() {
+  convertPngCoversToWebp() {
+    return this.runOperation(() => this.convertPngCoversToWebpRun());
+  },
+
+  async convertPngCoversToWebpRun() {
     const rows = this.getRows(),
       prefix = `${this.covers()}/`,
       groups = new Map();
@@ -250,9 +252,9 @@ export const maintenanceMethods = {
     const mb = (bytes) => (bytes / 1e6).toFixed(1);
     const totalBefore = [...groups.values()].reduce((sum, g) => sum + (g.file.stat?.size || 0), 0);
     if (
-      !window.confirm(
+      !(await this.confirm(
         this.t('confirm.convertCoversWebp', { count: groups.size, size: mb(totalBefore) })
-      )
+      ))
     )
       return;
     let converted = 0,
@@ -260,11 +262,11 @@ export const maintenanceMethods = {
       before = 0,
       after = 0,
       index = 0;
-    const progress = new Notice(
-      this.t('notice.convertCoversProgress', { current: 0, total: groups.size }),
-      0
+    const progress = this.progressNotice(
+      this.t('notice.convertCoversProgress', { current: 0, total: groups.size })
     );
     for (const [oldPath, group] of groups) {
+      this.throwIfAborted();
       index++;
       progress.setMessage(
         this.t('notice.convertCoversProgress', { current: index, total: groups.size })

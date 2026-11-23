@@ -27,7 +27,8 @@ export const coinsMethods = {
       quantity: Number(d.quantity) || 1,
       acquisition_date: tx(d.acquisition_date) || undefined,
       acquisition_price: toNum(d.acquisition_price),
-      acquisition_currency: tx(d.acquisition_currency) || 'PLN',
+      acquisition_currency:
+        tx(d.acquisition_currency) || tx(this.settings.defaultCurrency) || 'PLN',
       condition: tx(d.condition) || undefined,
       notes: tx(d.notes) || undefined,
       source: d.source || 'manual',
@@ -122,7 +123,22 @@ export const coinsMethods = {
     return [...years].sort((a, b) => (Number(a) || 0) - (Number(b) || 0));
   },
 
+  /*
+   * getRows() is called many times while rendering (dashboard, filters,
+   * suggestions). The result is reused until the current task finishes or
+   * the collection changes, so the folder is read only once per refresh.
+   */
   getRows() {
+    if (!this._rowsCache) {
+      this._rowsCache = this.readRows();
+      Promise.resolve().then(() => this.invalidateRows());
+    }
+    return [...this._rowsCache];
+  },
+  invalidateRows() {
+    this._rowsCache = null;
+  },
+  readRows() {
     return this.filesInFolder(this.coins(), 'md')
       .map((file) => {
         const m = this.app.metadataCache.getFileCache(file)?.frontmatter || {};

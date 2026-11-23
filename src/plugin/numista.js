@@ -16,8 +16,11 @@ export const numistaMethods = {
       label = config.label || 'Numista';
     let lastError;
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      this.throwIfAborted();
       await this.waitForRequestSlot(minIntervalMs);
+      this.throwIfAborted();
       try {
+        this.countNumistaRequest();
         return await requestUrl(options);
       } catch (error) {
         lastError = error;
@@ -155,13 +158,17 @@ export const numistaMethods = {
       const unc = values.find((item) => item.grade.toLowerCase() === 'unc')?.price ?? null;
       return { currency: tx(result?.currency) || 'EUR', values, unc };
     } catch (error) {
-      if (this.isNumistaAuthError(error)) throw error;
+      if (this.isNumistaAuthError(error) || error?.aborted) throw error;
       console.warn('Numista prices unavailable', typeId, issueId, error);
       return null;
     }
   },
 
-  async updateNumistaPrices() {
+  updateNumistaPrices() {
+    return this.runOperation(() => this.updateNumistaPricesRun());
+  },
+
+  async updateNumistaPricesRun() {
     if (!tx(this.settings.numistaApiKey)) {
       new Notice(this.t('notice.apiKeyMissing'));
       return;
@@ -173,13 +180,12 @@ export const numistaMethods = {
       new Notice(this.t('notice.pricesNone'));
       return;
     }
-    if (!window.confirm(this.t('confirm.updatePrices', { count: rows.length }))) return;
+    if (!(await this.confirm(this.t('confirm.updatePrices', { count: rows.length })))) return;
     let updated = 0,
       unchanged = 0,
       errors = 0;
-    const progress = new Notice(
-      this.t('notice.pricesProgress', { current: 0, total: rows.length, updated, errors }),
-      0
+    const progress = this.progressNotice(
+      this.t('notice.pricesProgress', { current: 0, total: rows.length, updated, errors })
     );
     try {
       for (let i = 0; i < rows.length; i++) {
@@ -211,6 +217,7 @@ export const numistaMethods = {
         updated++;
       }
       progress.setMessage(this.t('notice.pricesDone', { updated, unchanged, errors }));
+      await this.recordValueSnapshot();
     } catch (error) {
       console.error('Numista prices', error);
       progress.setMessage(error?.message || String(error));
@@ -303,7 +310,11 @@ export const numistaMethods = {
     }
   },
 
-  async syncNumista(scope = null) {
+  syncNumista(scope = null) {
+    return this.runOperation(() => this.syncNumistaRun(scope));
+  },
+
+  async syncNumistaRun(scope = null) {
     if (!tx(this.settings.numistaApiKey)) {
       new Notice(this.t('notice.apiKeyMissing'));
       return;
@@ -336,11 +347,10 @@ export const numistaMethods = {
     const filteredSync =
       Boolean(syncScope.country) || Boolean(syncScope.year) || Boolean(syncScope.coinType);
 
-    const progress = new Notice(
+    const progress = this.progressNotice(
       filteredSync
         ? this.t('notice.syncScope', { scope: scopeLabels.join(' / ') })
-        : this.t('notice.syncOfficial'),
-      0
+        : this.t('notice.syncOfficial')
     );
 
     const current = this.getRows();
@@ -349,8 +359,6 @@ export const numistaMethods = {
       current.map((row) => [[row.numista_id, row.year, row.mint_mark].join(':'), row])
     );
 
-    const detailsCache = new Map();
-    const issuesCache = new Map();
     const updateExisting = isTrue(this.settings.syncUpdateExisting);
 
     /*
@@ -486,13 +494,7 @@ export const numistaMethods = {
                 continue;
               }
 
-              let d = detailsCache.get(id);
-
-              if (!d) {
-                d = await this.api(`/types/${encodeURIComponent(id)}?lang=en`);
-
-                detailsCache.set(id, d);
-              }
+              let d = await this.getTypeDetails(id);
 
               /*
                * Najpierw odrzucamy elementy, które nie są oficjalnymi
@@ -538,13 +540,7 @@ export const numistaMethods = {
               /*
                * Dopiero po sprawdzeniu kraju i typu pobieramy emisje.
                */
-              let raw = issuesCache.get(id);
-
-              if (!raw) {
-                raw = await this.api(`/types/${encodeURIComponent(id)}/issues?lang=en`);
-
-                issuesCache.set(id, raw);
-              }
+              let raw = await this.getTypeIssues(id);
 
               const issues = Array.isArray(raw) ? raw : raw.issues || [];
 
@@ -741,7 +737,7 @@ export const numistaMethods = {
                 });
               }
             } catch (error) {
-              if (this.isNumistaAuthError(error)) throw error;
+              if (this.isNumistaAuthError(error) || error?.aborted) throw error;
 
               errors++;
               report.push({
@@ -798,6 +794,7 @@ export const numistaMethods = {
       };
     } catch (error) {
       progress.setMessage(this.t('notice.syncAborted', { message: error?.message || error }));
+      setTimeout(() => progress.hide(), 10000);
 
       if (report.length) {
         console.info('2 Euro Collection: Numista types skipped or failed before abort');
@@ -811,7 +808,11 @@ export const numistaMethods = {
     }
   },
 
-  async backfillCovers() {
+  backfillCovers() {
+    return this.runOperation(() => this.backfillCoversRun());
+  },
+
+  async backfillCoversRun() {
     if (!tx(this.settings.numistaApiKey)) {
       new Notice(this.t('notice.apiKeyMissing'));
       return;
@@ -819,14 +820,13 @@ export const numistaMethods = {
     const candidates = this.getRows().filter(
         (r) => r.source === 'numista' && !r.cover_locked && !this.coverSrc(r)
       ),
-      progress = new Notice(
+      progress = this.progressNotice(
         this.t('notice.coversProgress', {
           current: 0,
           total: candidates.length,
           downloaded: 0,
           errors: 0,
-        }),
-        0
+        })
       ),
       cache = new Map();
     let downloaded = 0,
@@ -844,11 +844,7 @@ export const numistaMethods = {
         })
       );
       try {
-        let d = cache.get(r.numista_id);
-        if (!d) {
-          d = await this.api(`/types/${encodeURIComponent(r.numista_id)}?lang=en`);
-          cache.set(r.numista_id, d);
-        }
+        const d = await this.getTypeDetails(r.numista_id);
         const url = this.pickImage(d) || r.cover_url;
         if (!url) {
           skipped++;
@@ -858,6 +854,7 @@ export const numistaMethods = {
         await this.upsert({ ...r, cover_path: path, cover_url: url, cover_locked: false }, r.file);
         downloaded++;
       } catch (error) {
+        if (this.isNumistaAuthError(error) || error?.aborted) throw error;
         errors++;
         console.error('Pobieranie okładki', r.file?.path, error);
       }
@@ -869,7 +866,7 @@ export const numistaMethods = {
 
   async downloadNumistaCoverForCoin(row) {
     if (!row.numista_id) throw new Error(this.t('error.noNumistaId'));
-    const details = await this.api(`/types/${encodeURIComponent(row.numista_id)}?lang=en`),
+    const details = await this.getTypeDetails(row.numista_id, { fresh: true }),
       url = this.pickImage(details);
     if (!url) throw new Error(this.t('error.noNumistaCover'));
     const path = await this.downloadCover(url, row.numista_id, row.numista_issue_id || row.year);
@@ -883,8 +880,8 @@ export const numistaMethods = {
 
   async updateSingleCoinFromNumista(row) {
     if (!row.numista_id) throw new Error(this.t('error.noNumistaId'));
-    const details = await this.api(`/types/${encodeURIComponent(row.numista_id)}?lang=en`),
-      issuesRaw = await this.api(`/types/${encodeURIComponent(row.numista_id)}/issues?lang=en`),
+    const details = await this.getTypeDetails(row.numista_id, { fresh: true }),
+      issuesRaw = await this.getTypeIssues(row.numista_id, { fresh: true }),
       issues = Array.isArray(issuesRaw) ? issuesRaw : issuesRaw.issues || [],
       issue =
         issues.find((i) => String(i.id) === String(row.numista_issue_id)) ||

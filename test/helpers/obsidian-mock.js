@@ -87,6 +87,11 @@ class Modal {
   open() {}
   close() {}
 }
+class MarkdownRenderChild {
+  constructor(containerEl) {
+    this.containerEl = containerEl;
+  }
+}
 class PluginSettingTab {}
 class Setting {}
 class ItemView {}
@@ -198,6 +203,21 @@ function createApp(initialFiles = {}) {
         );
       },
       async renameFile(file, newPath) {
+        newPath = normalizePath(newPath);
+        if (file instanceof TFolder) {
+          const prefix = `${file.path}/`;
+          for (const [path, data] of [...vault.files]) {
+            if (!path.startsWith(prefix)) continue;
+            vault.files.delete(path);
+            vault.write(newPath + path.slice(file.path.length), data);
+          }
+          for (const folder of [...vault.folders])
+            if (folder === file.path || folder.startsWith(prefix)) vault.folders.delete(folder);
+          vault.folders.add(newPath);
+          vault.addParents(newPath);
+          file.path = newPath;
+          return;
+        }
         const data = vault.files.get(file.path);
         vault.files.delete(file.path);
         file.path = normalizePath(newPath);
@@ -232,7 +252,10 @@ module.exports = {
   Setting,
   Modal,
   ItemView,
+  MarkdownRenderChild,
   Notice,
+  Platform: { isMobile: false, isDesktopApp: true, isMacOS: true },
+  apiVersion: '1.15.1',
   normalizePath,
   requestUrl: async () => {
     throw new Error('Network access is disabled in tests');

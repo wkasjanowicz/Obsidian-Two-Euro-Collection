@@ -56,7 +56,12 @@ export const selectionMethods = {
       new Notice(this.t('notice.noSelection'));
       return;
     }
-    if (!window.confirm(this.t('confirm.deleteSelected', { count: rows.length }))) return;
+    if (
+      !(await this.confirm(this.t('confirm.deleteSelected', { count: rows.length }), {
+        warning: true,
+      }))
+    )
+      return;
     let count = 0;
     const deletedPaths = new Set(),
       coverPaths = new Set();

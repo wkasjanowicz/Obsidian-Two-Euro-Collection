@@ -15,16 +15,18 @@ Mobilna wtyczka do Obsidian służąca do prowadzenia uporządkowanego katalogu 
 
 ## Najważniejsze funkcje
 
-- Generowanie i utrzymywanie katalogu monet 2 euro w plikach Markdown.
-- Synchronizacja oficjalnych standardowych monet obiegowych oraz obiegowych monet okolicznościowych z Numista.
-- Osobna notatka dla każdej emisji, rocznika i wariantu mennicy.
-- Pobieranie okładek do lokalnego katalogu w vault.
-- Własne okładki, blokada okładki, okładki referencyjne i dane o autorze zdjęcia.
-- Oznaczanie posiadania, liczby egzemplarzy, daty i ceny nabycia, waluty, stanu oraz uwag.
-- Filtrowanie po tekście, kraju, roku, posiadaniu i typie monety.
-- Sortowanie po roku lub kraju, rosnąco albo malejąco.
-- Zaznaczanie wielu monet, duplikowanie, usuwanie, usuwanie tła oraz preset **Moneta katalogowa**.
-- Interfejs angielski i polski.
+- Generowanie i utrzymywanie katalogu monet 2 euro w plikach Markdown: osobna notatka dla każdej emisji i wariantu mennicy.
+- Synchronizacja oficjalnych monet 2 euro z Numista. Domyślnie dodawane są tylko monety, których brakuje w kolekcji, więc posiadane monety nie zużywają zapytań API.
+- Rozpoznawanie monet dodanych ręcznie i łączenie ich z Numista zamiast tworzenia duplikatów.
+- Aktualizacja cen Numista na żądanie i historia wartości kolekcji.
+- Statystyki: postęp według krajów i lat, wartość kolekcji (UNC), wydatki i monety do wymiany.
+- Grupowanie siatki według kraju lub roku; filtry: tekst, kraj, rok, posiadanie, typ i monety do wymiany.
+- Eksport list brakujących, posiadanych lub wymiennych monet do listy Markdown i pliku CSV.
+- Pobieranie okładek do vaulta; własne okładki, blokada okładki, okładki referencyjne i dane o autorze zdjęcia.
+- Usuwanie tła ze zdjęć (białego, czarnego lub dowolnego jednolitego) i zapis okładek w lekkim formacie WebP.
+- Oznaczanie posiadania, liczby sztuk, daty i ceny zakupu za sztukę, waluty, stanu oraz uwag.
+- Zaznaczanie wielu monet, duplikowanie, usuwanie i przetwarzanie obrazów.
+- Interfejs po polsku, angielsku, niemiecku i francusku.
 - Obsługa desktopu i telefonu.
 
 ## Instalacja
@@ -154,6 +156,17 @@ Konfiguracja we wtyczce:
 
 > Klucz API jest zapisany w danych ustawień wtyczki. Nie publikuj ani nie umieszczaj w repozytorium pliku `data.json` zawierającego rzeczywisty klucz.
 
+### Synchronizacja, ceny i zapytania API
+
+- **Tylko nowe monety (domyślnie).** Synchronizacja pomija monety, które już są w kolekcji, i nie wysyła o nie żadnych zapytań. Moneta jest rozpoznawana po identyfikatorze Numista, a monety dodane ręcznie po kraju, roku, tytule i mennicy (bez względu na wielkość liter i interpunkcję). Monety dodane ręcznie są łączone z Numista zamiast duplikowane. Aby ponownie sprawdzać i aktualizować istniejące monety, włącz w ustawieniach **Aktualizuj istniejące monety podczas synchronizacji**.
+- **Monety narodowe** to w Numista jeden typ obejmujący wiele lat. Bez filtra roku plugin dodaje tylko brakujące roczniki. Najszybciej działa synchronizacja z wybranym rokiem.
+- **Ceny** nie są pobierane podczas synchronizacji. Użyj **Aktualizuj ceny** w panelu bocznym: aktualizuje monety widoczne na dashboardzie (bieżące filtry) i przed startem podaje liczbę zapytań. W oknie każdej monety jest też **Aktualizuj dane z Numista**.
+- **Licznik zapytań.** Po każdej operacji powiadomienie pokazuje liczbę zużytych zapytań Numista, a ustawienia wtyczki — sumę w bieżącym miesiącu.
+- **Pamięć podręczna.** Dane katalogu pobrane z Numista są używane ponownie przez 7 dni (do zmiany, 0 wyłącza), więc powtórna synchronizacja tego samego zakresu prawie nic nie kosztuje.
+- **Przerwanie.** W trakcie synchronizacji, aktualizacji cen, pobierania okładek lub konwersji panel boczny pokazuje przycisk **Przerwij** (dostępny też jako polecenie).
+- Jeśli Numista odrzuci klucz API (HTTP 401/403), synchronizacja od razu się zatrzymuje z czytelnym komunikatem.
+- Po każdej synchronizacji konsola deweloperska (Ctrl/Cmd+Shift+I) pokazuje tabelę pominiętych typów Numista z powodem — pomaga, gdy jakiejś monety brakuje.
+
 ### Dane odczytywane z Numista
 
 Dla obsługiwanych oficjalnych emisji wtyczka może pobrać i zapisać:
@@ -263,7 +276,8 @@ Otwórz prawy panel poleceniem **2 Euro Collection: Otwórz panel kolekcji**. Do
 - **Posiadane**;
 - **Brakujące**;
 - **Okolicznościowe**;
-- **Narodowe**.
+- **Narodowe**;
+- **Do wymiany (2+)**: posiadane monety, których masz co najmniej dwie sztuki.
 
 Dostępne sortowanie:
 
@@ -272,9 +286,34 @@ Dostępne sortowanie:
 - Kraj: rosnąco;
 - Kraj: malejąco.
 
-Licznik nad siatką jest obliczany dla aktualnie przefiltrowanej listy, na przykład `Posiadane: 6 / 48` po zastosowaniu filtrów.
+**Grupowanie** według kraju lub roku dodaje nagłówki z postępem każdej grupy (na przykład `France 34 / 41`). Kolejność grup idzie za kierunkiem sortowania.
+
+Licznik nad siatką jest obliczany dla aktualnie przefiltrowanej listy, na przykład `Posiadane: 6 / 48` po zastosowaniu filtrów. Filtry, sortowanie i grupowanie są zapamiętywane po ponownym uruchomieniu Obsidiana.
+
+Klawiatura: strzałki przechodzą między kartami, **Enter** otwiera monetę, **spacja** ją zaznacza.
 
 ![Widok pięciu kolumn i filtrów](Assets/desktop-five-columns.png)
+
+## Statystyki i historia wartości
+
+Rozwiń **Statystyki** nad siatką. Wszystkie liczby dotyczą monet pasujących do bieżących filtrów:
+
+- posiadane monety i postęp, na przykład `34 / 41 (83%)`;
+- **wartość kolekcji (UNC)**: cena UNC z Numista × liczba sztuk posiadanych monet;
+- **wydano na zakupy**: cena zakupu za sztukę × liczba sztuk, osobno dla każdej waluty;
+- **monety do wymiany** i liczba zapasowych sztuk;
+- postęp **według kraju** i **według roku** z paskami postępu.
+
+**Historia wartości** zapisuje jedną migawkę całej kolekcji dziennie. Migawka zapisuje się automatycznie po **Aktualizuj ceny** albo ręcznie poleceniem **Zapisz migawkę wartości kolekcji**.
+
+## Eksport list
+
+W panelu bocznym wybierz **Brakujące monety**, **Posiadane monety** albo **Monety do wymiany** i kliknij **Eksportuj listę** (dostępne też jako polecenia). Eksport uwzględnia bieżące filtry kraju, roku, typu i wyszukiwania i tworzy w folderze kolekcji dwa pliki:
+
+- notatkę Markdown z listą do odhaczania, pogrupowaną po krajach, z linkami do Numista — otwiera się automatycznie;
+- plik CSV do arkusza kalkulacyjnego (UTF-8, poprawnie otwiera się w Excelu).
+
+Lista do wymiany zawiera liczbę zapasowych sztuk, lista posiadanych — liczbę sztuk.
 
 ## Edycja monet i filtry edycyjne
 
@@ -292,7 +331,7 @@ Pola edytowalne:
 - Mam tę monetę;
 - Liczba egzemplarzy;
 - Data nabycia;
-- Cena i waluta nabycia;
+- Cena zakupu **za sztukę** i waluta;
 - Stan;
 - URL okładki;
 - Rok referencyjny okładki;
@@ -367,9 +406,15 @@ Na telefonie:
 
 W prawym panelu lub ustawieniach wtyczki można wybrać:
 
-- **Automatyczny**;
+- **Automatyczny** (według języka Obsidiana);
 - **English**;
-- **Polski**.
+- **Polski**;
+- **Deutsch**;
+- **Français**.
+
+### Foldery i domyślna waluta
+
+Nazwy folderów, nazwę notatki dashboardu i domyślną walutę zakupu ustawiasz w ustawieniach wtyczki. Zmiany folderów zatwierdzasz przyciskiem **Zastosuj ustawienia folderów**: istniejące monety, okładki i dashboard zostaną przeniesione w nowe miejsce, a odnośniki do okładek w notatkach monet — zaktualizowane.
 
 Suwak **Monet w wierszu** obsługuje wartości od 4 do 10 na desktopie. Na telefonie układ responsywny używa trzech kolumn.
 
@@ -381,15 +426,20 @@ Otwórz paletę poleceń i wyszukaj **2 Euro Collection**. Najważniejsze polece
 - Otwórz panel kolekcji;
 - Dodaj monetę;
 - Synchronizuj katalog z Numista;
+- Aktualizuj ceny Numista przefiltrowanych monet;
 - Pobierz brakujące okładki;
-- Usuń duplikaty;
+- Eksportuj brakujące / posiadane / wymienne monety do Markdown i CSV;
+- Zapisz migawkę wartości kolekcji;
+- Przerwij trwającą synchronizację lub operację wsadową;
 - Usuń tło z okładki aktualnej monety;
 - Zastosuj preset Moneta katalogowa do aktualnej monety;
-- Uporządkuj nazwy chronionych okładek PNG;
-- Napraw nazwy monet 2 Euro;
-- Uporządkuj nazwy katalogów krajów;
-- Migruj odwołania do okładek;
-- Usuń nieoficjalne importy Numista.
+- Skopiuj diagnostykę do zgłoszenia błędu.
+
+Polecenia naprawcze zaczynają się od **Konserwacja:**, na przykład *Konserwacja: usuń duplikaty*, *Konserwacja: konwertuj okładki PNG do WebP*, *Konserwacja: usuń nieoficjalne importy Numista* i *Konserwacja: ujednolić tytuły „2 Euros” → „2 Euro”*.
+
+### Okładki w formacie WebP
+
+Usuwanie tła i preset Moneta katalogowa zapisują okładki jako WebP (do 1200 px) — wielokrotnie mniejsze niż PNG, z zachowaniem przezroczystości. Polecenie **Konserwacja: konwertuj okładki PNG do WebP** przerabia istniejące okładki PNG i przenosi pliki PNG do kosza.
 
 ## Kopia zapasowa i bezpieczeństwo zmian
 
@@ -401,6 +451,10 @@ Przed dużą synchronizacją, czyszczeniem, normalizacją nazw, migracją okład
 4. przy aktualizacji ze starszej wersji przetestuj operację na kopii vault.
 
 ## Rozwiązywanie problemów
+
+### Zgłaszanie problemu
+
+Uruchom **Skopiuj diagnostykę do zgłoszenia błędu** i wklej wynik do zgłoszenia. Zawiera wersję wtyczki i Obsidiana, platformę, liczby monet oraz ustawienia, ale nigdy klucza API Numista.
 
 ### Wtyczka nie jest widoczna na liście wtyczek społecznościowych
 

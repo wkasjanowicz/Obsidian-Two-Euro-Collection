@@ -138,6 +138,7 @@ jobs:
             main.js \
             manifest.json \
             styles.css \
+            StarterData/starter-pack.json \
             --title "$VERSION" \
             --target "${{ github.sha }}" \
             --generate-notes \

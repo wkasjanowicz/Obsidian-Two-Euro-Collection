@@ -16,10 +16,18 @@ import { imagesMethods } from './plugin/images.js';
 import { dashboardMethods } from './plugin/dashboard.js';
 import { historyMethods } from './plugin/history.js';
 import { exportMethods } from './plugin/export.js';
+import { operationsMethods } from './plugin/operations.js';
+import { cacheMethods } from './plugin/cache.js';
+import { diagnosticsMethods } from './plugin/diagnostics.js';
 
 export default class TwoEuroCollectionPlugin extends Plugin {
   onunload() {
     if (this._refreshTimer) window.clearTimeout(this._refreshTimer);
+    if (this._cacheSaveTimer) this.saveNumistaCache();
+    if (this._settingsSaveTimer) {
+      window.clearTimeout(this._settingsSaveTimer);
+      this.saveSettings();
+    }
   }
 
   async onload() {
@@ -34,6 +42,9 @@ export default class TwoEuroCollectionPlugin extends Plugin {
       sortMode: 'yearAsc',
       groupBy: 'none',
       statsOpen: false,
+      ...(this.settings.dashboardState && typeof this.settings.dashboardState === 'object'
+        ? this.settings.dashboardState
+        : {}),
     };
     this.selectedCoinPaths = new Set();
     this.registerView(VIEW_TYPE_FILTERS, (leaf) => new EuroFiltersView(leaf, this));
@@ -84,7 +95,7 @@ export default class TwoEuroCollectionPlugin extends Plugin {
       id: 'two-euro-install-starter',
       name: this.t('command.installStarter'),
       callback: async () => {
-        const confirmed = window.confirm(this.t('confirm.installStarter'));
+        const confirmed = await this.confirm(this.t('confirm.installStarter'));
 
         if (!confirmed) {
           return;
@@ -111,9 +122,42 @@ export default class TwoEuroCollectionPlugin extends Plugin {
       callback: () => this.convertPngCoversToWebp(),
     });
     this.addCommand({
+      id: 'two-euro-abort',
+      name: this.t('command.abort'),
+      checkCallback: (checking) => {
+        if (!this.isOperationRunning()) return false;
+        if (!checking) this.abortOperation();
+        return true;
+      },
+    });
+    this.addCommand({
       id: 'two-euro-export-missing',
       name: this.t('command.exportMissing'),
-      callback: () => this.exportMissingCoins(),
+      callback: () => this.exportCoinList('missing'),
+    });
+    this.addCommand({
+      id: 'two-euro-export-owned',
+      name: this.t('command.exportOwned'),
+      callback: () => this.exportCoinList('owned'),
+    });
+    this.addCommand({
+      id: 'two-euro-export-swap',
+      name: this.t('command.exportSwap'),
+      callback: () => this.exportCoinList('swap'),
+    });
+    this.addCommand({
+      id: 'two-euro-value-snapshot',
+      name: this.t('command.valueSnapshot'),
+      callback: async () => {
+        await this.recordValueSnapshot();
+        new Notice(this.t('notice.valueSnapshot'));
+        await this.refreshDashboards();
+      },
+    });
+    this.addCommand({
+      id: 'two-euro-diagnostics',
+      name: this.t('command.diagnostics'),
+      callback: () => this.copyDiagnostics(),
     });
     this.addCommand({
       id: 'two-euro-update-prices',
@@ -179,8 +223,9 @@ export default class TwoEuroCollectionPlugin extends Plugin {
       name: this.t('command.removeUnofficial'),
       callback: () => this.removeUnofficialImports(),
     });
-    this.registerMarkdownCodeBlockProcessor('two-euro-collection', async (_src, el) => {
+    this.registerMarkdownCodeBlockProcessor('two-euro-collection', async (_src, el, ctx) => {
       try {
+        this.registerDashboard(el, ctx);
         await this.renderDashboard(el);
       } catch (e) {
         console.error('2 Euro dashboard', e);
@@ -207,5 +252,8 @@ Object.assign(
   imagesMethods,
   dashboardMethods,
   historyMethods,
-  exportMethods
+  exportMethods,
+  operationsMethods,
+  cacheMethods,
+  diagnosticsMethods
 );

@@ -27,6 +27,10 @@ export class EuroFiltersView extends ItemView {
     c.addClass('twoeuro-sidebar');
     c.createEl('h3', { cls: 'twoeuro-sidebar-section-title', text: t('sidebar.actions') });
     const actions = c.createDiv({ cls: 'twoeuro-sidebar-actions' });
+    if (p.isOperationRunning()) {
+      actions.createEl('button', { text: t('action.abort'), cls: 'mod-warning' }).onclick = () =>
+        p.abortOperation();
+    }
     actions.createEl('button', { text: `+ ${t('action.add')}`, cls: 'mod-cta' }).onclick = () =>
       new CoinModal(this.app, p).open();
     actions.createEl('button', {
@@ -39,8 +43,19 @@ export class EuroFiltersView extends ItemView {
       p.backfillCovers();
     actions.createEl('button', { text: t('action.updatePrices') }).onclick = () =>
       p.updateNumistaPrices();
-    actions.createEl('button', { text: t('action.exportMissing') }).onclick = () =>
-      p.exportMissingCoins();
+    const exportRow = actions.createDiv({ cls: 'twoeuro-sidebar-export' });
+    const exportKind = exportRow.createEl('select', { cls: 'twoeuro-sidebar-select' });
+    [
+      ['missing', 'export.kindMissing'],
+      ['owned', 'export.kindOwned'],
+      ['swap', 'export.kindSwap'],
+    ].forEach(([v, k]) => exportKind.createEl('option', { text: t(k), attr: { value: v } }));
+    exportKind.value = p.exportKind || 'missing';
+    exportKind.onchange = () => {
+      p.exportKind = exportKind.value;
+    };
+    exportRow.createEl('button', { text: t('action.exportList') }).onclick = () =>
+      p.exportCoinList(exportKind.value);
     const selectedCount = p.getSelectedCoinFiles().length;
     c.createDiv({
       cls: 'twoeuro-sidebar-selected',

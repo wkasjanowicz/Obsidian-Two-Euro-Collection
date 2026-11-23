@@ -15,16 +15,18 @@ A mobile-friendly Obsidian plugin for maintaining a structured catalogue of 2 eu
 
 ## Features
 
-- Generates and maintains a Markdown-based 2 euro coin catalogue.
-- Synchronizes official standard-circulation and circulating commemorative 2 euro issues from Numista.
-- Stores one note per coin issue and mint variant.
-- Downloads coin covers and keeps them inside the Obsidian vault.
-- Supports local/custom covers, cover locking, reference covers, and photo attribution fields.
-- Tracks ownership, quantity, acquisition date, acquisition price, currency, condition, and notes.
-- Filters by free text, country, year, ownership, and coin type.
-- Sorts by year or country, ascending or descending.
-- Supports batch selection, duplication, deletion, background removal, and the **Catalog coin** image preset.
-- Provides English and Polish user interfaces.
+- Generates and maintains a Markdown-based 2 euro coin catalogue: one note per coin issue and mint variant.
+- Synchronizes official 2 euro issues from Numista. By default only coins missing from the collection are added, so existing coins cost no API requests.
+- Recognizes coins you added manually and links them to Numista instead of creating duplicates.
+- Updates Numista prices on demand and keeps a history of the collection value.
+- Shows statistics: progress by country and year, collection value (UNC), money spent and coins for swap.
+- Groups the grid by country or year; filters by text, country, year, ownership, type and coins for swap.
+- Exports lists of missing, owned or swap coins to a Markdown checklist and a CSV file.
+- Downloads coin covers into the vault; supports custom covers, cover locking, reference covers and photo attribution.
+- Removes image backgrounds (white, black or any uniform colour) and saves covers as compact WebP images.
+- Tracks ownership, quantity, acquisition date, price per piece, currency, condition and notes.
+- Supports batch selection, duplication, deletion and image processing.
+- Interface in English, Polish, German and French.
 - Works on desktop and mobile.
 
 ## Installation
@@ -154,6 +156,17 @@ To configure the plugin:
 
 > The API key is stored in the plugin's Obsidian settings data. Do not publish or commit the generated `data.json` with a real API key.
 
+### Synchronization, prices and API requests
+
+- **Only new coins (default).** Synchronization skips coins already in the collection without sending any request for them. A coin is recognized by its Numista id or, for coins added manually, by country, year, title and mint (punctuation and case are ignored). Manually added coins are linked to Numista instead of being duplicated. To re-check and update existing coins, enable **Update existing coins during synchronization** in the settings.
+- **National coins** are one Numista type spanning many years. Without a year filter the plugin adds only the missing years. Use a year filter for the fastest synchronization.
+- **Prices** are not downloaded during synchronization. Use **Update prices** in the side panel: it updates the coins visible on the dashboard (current filters) and asks for confirmation with the number of requests it will use. Each coin in the coin editor also has **Update data from Numista**.
+- **Request counter.** After each operation a notice shows the number of Numista requests used; the plugin settings show the total for the current month.
+- **Cache.** Catalogue data downloaded from Numista is reused for 7 days (configurable, 0 disables it), so repeating a synchronization of the same range is almost free.
+- **Stop.** While a synchronization, price update, cover download or conversion is running, the side panel shows a **Stop** button (also available as a command).
+- If Numista rejects the API key (HTTP 401/403), synchronization stops at once with a clear message.
+- After every synchronization the developer console (Ctrl/Cmd+Shift+I) lists the skipped Numista types with the reason, which helps when a coin is missing.
+
 ### What synchronization reads from Numista
 
 For supported official issues, the plugin can read and store:
@@ -263,7 +276,8 @@ Open the right sidebar with **2 Euro Collection: Open collection panel**. The da
 - **Owned**;
 - **Missing**;
 - **Commemorative**;
-- **National**.
+- **National**;
+- **For swap (2+)**: owned coins you have at least two pieces of.
 
 Available sorting modes:
 
@@ -272,9 +286,34 @@ Available sorting modes:
 - Country: ascending;
 - Country: descending.
 
-The counter above the grid is calculated from the currently filtered list, for example `Owned: 6 / 48` after applying filters.
+**Group by** country or year adds headings with the progress of each group (for example `France 34 / 41`). The group order follows the sort direction.
+
+The counter above the grid is calculated from the currently filtered list, for example `Owned: 6 / 48` after applying filters. Filters, sorting and grouping are remembered after restarting Obsidian.
+
+Keyboard: use the arrow keys to move between cards, **Enter** to open a coin and **Space** to select it.
 
 ![Five-column filtered view](Assets/desktop-five-columns.png)
+
+## Statistics and value history
+
+Expand **Statistics** above the grid. All figures are calculated for the coins matching the current filters:
+
+- owned coins and progress, for example `34 / 41 (83%)`;
+- **collection value (UNC)**: Numista UNC price × quantity of owned coins;
+- **spent on purchases**: acquisition price per piece × quantity, per currency;
+- **coins for swap** and the number of spare pieces;
+- progress **by country** and **by year** with progress bars.
+
+The **value history** stores one snapshot of the whole collection per day. A snapshot is saved automatically after **Update prices**, or manually with the command **Save collection value snapshot**.
+
+## Exporting lists
+
+In the side panel choose **Missing coins**, **Owned coins** or **Coins for swap** and click **Export list** (also available as commands). The export uses the current country, year, type and search filters and creates two files in the collection folder:
+
+- a Markdown note with a checklist grouped by country and links to Numista, which opens automatically;
+- a CSV file for spreadsheets (UTF-8, opens correctly in Excel).
+
+The swap list includes the number of spare pieces, the owned list the quantity.
 
 ## Editing coins and using editing fields
 
@@ -292,7 +331,7 @@ Editable fields include:
 - I own this coin;
 - Quantity;
 - Acquisition date;
-- Acquisition price and currency;
+- Acquisition price **per piece** and currency;
 - Condition;
 - Cover URL;
 - Cover reference year;
@@ -367,9 +406,15 @@ On a phone:
 
 In the right sidebar or plugin settings you can choose:
 
-- **Automatic**;
+- **Automatic** (follows the Obsidian language);
 - **English**;
-- **Polski**.
+- **Polski**;
+- **Deutsch**;
+- **Français**.
+
+### Folders and default currency
+
+The folder names, the dashboard note name and the default purchase currency are set in the plugin settings. Folder changes are applied with **Apply folder settings**: existing coins, covers and the dashboard are moved to the new location and cover links in coin notes are updated.
 
 The **Coins per row** slider supports values from 4 to 10 on desktop. Mobile uses a responsive three-column layout.
 
@@ -381,15 +426,20 @@ Open the Command Palette and search for **2 Euro Collection**. Important command
 - Open collection panel;
 - Add coin;
 - Synchronize catalogue with Numista;
+- Update Numista prices of filtered coins;
 - Download missing covers;
-- Remove duplicates;
+- Export missing / owned / swap coins to Markdown and CSV;
+- Save collection value snapshot;
+- Stop the running synchronization or batch operation;
 - Remove background from current coin cover;
 - Apply Catalog coin preset to current coin;
-- Normalize protected PNG cover names;
-- Normalize 2 Euro coin titles;
-- Normalize country folder names;
-- Migrate cover references;
-- Remove unofficial Numista imports.
+- Copy diagnostics for a bug report.
+
+Repair commands start with **Maintenance:**, for example *Maintenance: remove duplicates*, *Maintenance: convert PNG covers to WebP*, *Maintenance: remove unofficial Numista imports* and *Maintenance: normalize 2 Euro coin titles*.
+
+### Covers in WebP
+
+Background removal and the Catalog coin preset save covers as WebP images (up to 1200 px), which are many times smaller than PNG and keep transparency. **Maintenance: convert PNG covers to WebP** converts existing PNG covers and moves the PNG files to the trash.
 
 ## Backup and safety recommendations
 
@@ -401,6 +451,10 @@ Before a large synchronization, cleanup, title normalization, cover migration, o
 4. test the operation on a small copy of the vault when upgrading from an older version.
 
 ## Troubleshooting
+
+### Reporting a problem
+
+Run **Copy diagnostics for a bug report** and paste the result into the issue. It contains the plugin and Obsidian versions, platform, collection counts and settings, but never the Numista API key.
 
 ### The plugin is not visible in Community plugins
 
