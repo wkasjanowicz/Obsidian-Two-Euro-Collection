@@ -1,7 +1,7 @@
 {
   "id": "two-euro-collection",
   "name": "2 Euro Collection",
-  "version": "0.6.11",
+  "version": "0.6.12",
   "minAppVersion": "1.8.0",
   "description": "Track your 2 euro coin collection: Numista catalogue sync, progress and value statistics, missing and swap lists, and cover image processing.",
   "author": "Wojciech Kasjanowicz",
