@@ -39,6 +39,8 @@ export class EuroFiltersView extends ItemView {
       p.backfillCovers();
     actions.createEl('button', { text: t('action.updatePrices') }).onclick = () =>
       p.updateNumistaPrices();
+    actions.createEl('button', { text: t('action.exportMissing') }).onclick = () =>
+      p.exportMissingCoins();
     const selectedCount = p.getSelectedCoinFiles().length;
     c.createDiv({
       cls: 'twoeuro-sidebar-selected',
@@ -125,6 +127,7 @@ export class EuroFiltersView extends ItemView {
       ['missing', 'filter.missing'],
       ['commemorative', 'filter.commemorative'],
       ['national', 'filter.national'],
+      ['swap', 'filter.swap'],
     ].forEach(([v, k]) => mode.createEl('option', { text: t(k), attr: { value: v } }));
     mode.value = state.mode || 'all';
     c.createDiv({ cls: 'twoeuro-sidebar-label', text: t('sort.label') });
@@ -136,6 +139,14 @@ export class EuroFiltersView extends ItemView {
       ['countryDesc', 'sort.countryDesc'],
     ].forEach(([v, k]) => sort.createEl('option', { text: t(k), attr: { value: v } }));
     sort.value = state.sortMode || 'yearAsc';
+    c.createDiv({ cls: 'twoeuro-sidebar-label', text: t('group.label') });
+    const groupBy = c.createEl('select', { cls: 'twoeuro-sidebar-select' });
+    [
+      ['none', 'group.none'],
+      ['country', 'group.country'],
+      ['year', 'group.year'],
+    ].forEach(([v, k]) => groupBy.createEl('option', { text: t(k), attr: { value: v } }));
+    groupBy.value = state.groupBy || 'none';
     c.createEl('hr');
     c.createEl('h3', { cls: 'twoeuro-sidebar-section-title', text: t('sidebar.configuration') });
     c.createDiv({ cls: 'twoeuro-sidebar-label', text: t('settings.columns') });
@@ -166,6 +177,7 @@ export class EuroFiltersView extends ItemView {
         year: year.value,
         searchText: search.value,
         sortMode: sort.value,
+        groupBy: groupBy.value,
       });
       p.refreshDashboards();
     };
@@ -174,6 +186,7 @@ export class EuroFiltersView extends ItemView {
     year.onchange = apply;
     mode.onchange = apply;
     sort.onchange = apply;
+    groupBy.onchange = apply;
     columns.oninput = () => {
       columnsValue.setText(String(Math.min(10, Math.max(4, Number(columns.value) || 6))));
     };

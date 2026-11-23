@@ -15,6 +15,7 @@ import { selectionMethods } from './plugin/selection.js';
 import { imagesMethods } from './plugin/images.js';
 import { dashboardMethods } from './plugin/dashboard.js';
 import { historyMethods } from './plugin/history.js';
+import { exportMethods } from './plugin/export.js';
 
 export default class TwoEuroCollectionPlugin extends Plugin {
   onunload() {
@@ -31,6 +32,8 @@ export default class TwoEuroCollectionPlugin extends Plugin {
       year: '',
       searchText: '',
       sortMode: 'yearAsc',
+      groupBy: 'none',
+      statsOpen: false,
     };
     this.selectedCoinPaths = new Set();
     this.registerView(VIEW_TYPE_FILTERS, (leaf) => new EuroFiltersView(leaf, this));
@@ -106,6 +109,11 @@ export default class TwoEuroCollectionPlugin extends Plugin {
       id: 'two-euro-convert-covers-webp',
       name: this.t('command.convertCoversWebp'),
       callback: () => this.convertPngCoversToWebp(),
+    });
+    this.addCommand({
+      id: 'two-euro-export-missing',
+      name: this.t('command.exportMissing'),
+      callback: () => this.exportMissingCoins(),
     });
     this.addCommand({
       id: 'two-euro-update-prices',
@@ -198,5 +206,6 @@ Object.assign(
   selectionMethods,
   imagesMethods,
   dashboardMethods,
-  historyMethods
+  historyMethods,
+  exportMethods
 );

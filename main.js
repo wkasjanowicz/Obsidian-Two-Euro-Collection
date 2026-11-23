@@ -23,7 +23,7 @@ __export(main_exports, {
   default: () => TwoEuroCollectionPlugin
 });
 module.exports = __toCommonJS(main_exports);
-var import_obsidian14 = require("obsidian");
+var import_obsidian15 = require("obsidian");
 
 // src/constants.js
 var VIEW_TYPE_FILTERS = "two-euro-filters-view";
@@ -487,6 +487,7 @@ var EuroFiltersView = class extends import_obsidian3.ItemView {
     }).onclick = () => p.syncNumista(p.getNumistaSyncScope());
     actions.createEl("button", { text: t("action.downloadCovers") }).onclick = () => p.backfillCovers();
     actions.createEl("button", { text: t("action.updatePrices") }).onclick = () => p.updateNumistaPrices();
+    actions.createEl("button", { text: t("action.exportMissing") }).onclick = () => p.exportMissingCoins();
     const selectedCount = p.getSelectedCoinFiles().length;
     c.createDiv({
       cls: "twoeuro-sidebar-selected",
@@ -570,7 +571,8 @@ var EuroFiltersView = class extends import_obsidian3.ItemView {
       ["owned", "filter.owned"],
       ["missing", "filter.missing"],
       ["commemorative", "filter.commemorative"],
-      ["national", "filter.national"]
+      ["national", "filter.national"],
+      ["swap", "filter.swap"]
     ].forEach(([v, k]) => mode.createEl("option", { text: t(k), attr: { value: v } }));
     mode.value = state.mode || "all";
     c.createDiv({ cls: "twoeuro-sidebar-label", text: t("sort.label") });
@@ -582,6 +584,14 @@ var EuroFiltersView = class extends import_obsidian3.ItemView {
       ["countryDesc", "sort.countryDesc"]
     ].forEach(([v, k]) => sort.createEl("option", { text: t(k), attr: { value: v } }));
     sort.value = state.sortMode || "yearAsc";
+    c.createDiv({ cls: "twoeuro-sidebar-label", text: t("group.label") });
+    const groupBy = c.createEl("select", { cls: "twoeuro-sidebar-select" });
+    [
+      ["none", "group.none"],
+      ["country", "group.country"],
+      ["year", "group.year"]
+    ].forEach(([v, k]) => groupBy.createEl("option", { text: t(k), attr: { value: v } }));
+    groupBy.value = state.groupBy || "none";
     c.createEl("hr");
     c.createEl("h3", { cls: "twoeuro-sidebar-section-title", text: t("sidebar.configuration") });
     c.createDiv({ cls: "twoeuro-sidebar-label", text: t("settings.columns") });
@@ -611,7 +621,8 @@ var EuroFiltersView = class extends import_obsidian3.ItemView {
         country: country.value,
         year: year.value,
         searchText: search.value,
-        sortMode: sort.value
+        sortMode: sort.value,
+        groupBy: groupBy.value
       });
       p.refreshDashboards();
     };
@@ -620,6 +631,7 @@ var EuroFiltersView = class extends import_obsidian3.ItemView {
     year.onchange = apply;
     mode.onchange = apply;
     sort.onchange = apply;
+    groupBy.onchange = apply;
     columns.oninput = () => {
       columnsValue.setText(String(Math.min(10, Math.max(4, Number(columns.value) || 6))));
     };
@@ -984,7 +996,33 @@ var BASE_LANGUAGE = {
   "error.webpUnsupported": "This device cannot save WebP images. Run the command on a computer.",
   "error.noNumistaId": "This coin has no numista_id.",
   "error.noNumistaCover": "Numista did not return a cover image.",
-  "error.noNumistaIssue": "Matching Numista issue not found."
+  "error.noNumistaIssue": "Matching Numista issue not found.",
+  "filter.swap": "For swap (2+)",
+  "group.label": "Group by",
+  "group.none": "No grouping",
+  "group.country": "Country",
+  "group.year": "Year",
+  "stats.title": "Statistics",
+  "stats.scope": "For the coins matching the current filters.",
+  "stats.owned": "Owned",
+  "stats.value": "Collection value (UNC)",
+  "stats.valueMissing": 'Without a Numista price: {count} – use "Update prices".',
+  "stats.spent": "Spent on purchases",
+  "stats.spentMissing": "Without a purchase price: {count}.",
+  "stats.swap": "Coins for swap",
+  "stats.swapPieces": "Spare pieces: {count}.",
+  "stats.byCountry": "By country",
+  "stats.byYear": "By year",
+  "action.exportMissing": "Export missing coins",
+  "command.exportMissing": "Export missing coins (filtered range) to Markdown and CSV",
+  "export.title": "Missing coins",
+  "export.fileName": "Missing coins {date}",
+  "export.scope": "Scope: {scope}",
+  "export.scopeAll": "whole collection",
+  "export.generated": "Generated {date} · coins: {count}",
+  "export.columns": "Country,Year,Type,Title,Mint,Numista ID,Numista URL",
+  "notice.exportNone": "No coins are missing in the filtered range.",
+  "notice.exportDone": "Missing coins exported ({count}): {md} and {csv}."
 };
 
 // Languages/pl.json
@@ -1201,7 +1239,33 @@ var pl_default = {
     "notice.convertCoversNone": "Brak okładek PNG do konwersji.",
     "notice.convertCoversProgress": "Konwersja okładek: {current} / {total}",
     "notice.convertCoversDone": "Przekonwertowano okładek: {converted}; błędy: {errors}. Rozmiar: {before} MB → {after} MB.",
-    "error.webpUnsupported": "To urządzenie nie potrafi zapisać obrazów WebP. Uruchom polecenie na komputerze."
+    "error.webpUnsupported": "To urządzenie nie potrafi zapisać obrazów WebP. Uruchom polecenie na komputerze.",
+    "filter.swap": "Do wymiany (2+)",
+    "group.label": "Grupowanie",
+    "group.none": "Bez grupowania",
+    "group.country": "Kraj",
+    "group.year": "Rok",
+    "stats.title": "Statystyki",
+    "stats.scope": "Dla monet pasujących do bieżących filtrów.",
+    "stats.owned": "Posiadane",
+    "stats.value": "Wartość kolekcji (UNC)",
+    "stats.valueMissing": "Bez ceny z Numista: {count} – użyj „Aktualizuj ceny”.",
+    "stats.spent": "Wydano na zakupy",
+    "stats.spentMissing": "Bez ceny zakupu: {count}.",
+    "stats.swap": "Monety do wymiany",
+    "stats.swapPieces": "Sztuk na wymianę: {count}.",
+    "stats.byCountry": "Według kraju",
+    "stats.byYear": "Według roku",
+    "action.exportMissing": "Eksportuj brakujące",
+    "command.exportMissing": "Eksportuj brakujące monety (wybrany zakres) do Markdown i CSV",
+    "export.title": "Brakujące monety",
+    "export.fileName": "Brakujące monety {date}",
+    "export.scope": "Zakres: {scope}",
+    "export.scopeAll": "cała kolekcja",
+    "export.generated": "Wygenerowano {date} · monet: {count}",
+    "export.columns": "Kraj,Rok,Typ,Tytuł,Mennica,Numista ID,Numista URL",
+    "notice.exportNone": "W wybranym zakresie nie brakuje żadnej monety.",
+    "notice.exportDone": "Wyeksportowano brakujące monety ({count}): {md} i {csv}."
   }
 };
 
@@ -1559,7 +1623,7 @@ ${embed}`);
   },
   filterRowsByState(rows, state) {
     let list = rows.filter(
-      (r) => !state.mode || state.mode === "all" || state.mode === r.coin_type || state.mode === "owned" && r.owned || state.mode === "missing" && !r.owned
+      (r) => !state.mode || state.mode === "all" || state.mode === r.coin_type || state.mode === "owned" && r.owned || state.mode === "missing" && !r.owned || state.mode === "swap" && r.owned && (Number(r.quantity) || 1) > 1
     );
     if (state.country) list = list.filter((r) => r.country === state.country);
     if (state.year) list = list.filter((r) => r.year === state.year);
@@ -1861,20 +1925,20 @@ ${(0, import_obsidian7.stringifyYaml)(fm).trimEnd()}
     ))
       return;
     let converted = 0, errors = 0, before = 0, after = 0, index = 0;
-    const progress = new import_obsidian7.Notice(
+    const progress2 = new import_obsidian7.Notice(
       this.t("notice.convertCoversProgress", { current: 0, total: groups.size }),
       0
     );
     for (const [oldPath, group] of groups) {
       index++;
-      progress.setMessage(
+      progress2.setMessage(
         this.t("notice.convertCoversProgress", { current: index, total: groups.size })
       );
       try {
         const binary = await this.app.vault.readBinary(group.file), image = await this.loadImageFromArrayBuffer(binary), canvas = this.resizeImageToCanvas(image), { blob, ext } = await this.canvasToCoverBlob(canvas);
         if (ext !== "webp") {
-          progress.setMessage(this.t("error.webpUnsupported"));
-          setTimeout(() => progress.hide(), 8e3);
+          progress2.setMessage(this.t("error.webpUnsupported"));
+          setTimeout(() => progress2.hide(), 8e3);
           return;
         }
         const newPath = await this.uniqueCoverPath(oldPath.replace(/\.png$/i, ".webp"));
@@ -1899,7 +1963,7 @@ ${(0, import_obsidian7.stringifyYaml)(fm).trimEnd()}
         console.error("Convert cover to WebP", oldPath, error);
       }
     }
-    progress.setMessage(
+    progress2.setMessage(
       this.t("notice.convertCoversDone", {
         converted,
         errors,
@@ -1907,7 +1971,7 @@ ${(0, import_obsidian7.stringifyYaml)(fm).trimEnd()}
         after: mb(after)
       })
     );
-    setTimeout(() => progress.hide(), 1e4);
+    setTimeout(() => progress2.hide(), 1e4);
     await this.refreshDashboards();
     return { converted, errors, before, after };
   }
@@ -2054,14 +2118,14 @@ var numistaMethods = {
     }
     if (!window.confirm(this.t("confirm.updatePrices", { count: rows.length }))) return;
     let updated = 0, unchanged = 0, errors = 0;
-    const progress = new import_obsidian8.Notice(
+    const progress2 = new import_obsidian8.Notice(
       this.t("notice.pricesProgress", { current: 0, total: rows.length, updated, errors }),
       0
     );
     try {
       for (let i = 0; i < rows.length; i++) {
         const row = rows[i];
-        progress.setMessage(
+        progress2.setMessage(
           this.t("notice.pricesProgress", { current: i + 1, total: rows.length, updated, errors })
         );
         const valuation = await this.issueNumismaticValues(row.numista_id, row.numista_issue_id);
@@ -2087,12 +2151,12 @@ var numistaMethods = {
         });
         updated++;
       }
-      progress.setMessage(this.t("notice.pricesDone", { updated, unchanged, errors }));
+      progress2.setMessage(this.t("notice.pricesDone", { updated, unchanged, errors }));
     } catch (error) {
       console.error("Numista prices", error);
-      progress.setMessage(error?.message || String(error));
+      progress2.setMessage(error?.message || String(error));
     }
-    setTimeout(() => progress.hide(), 8e3);
+    setTimeout(() => progress2.hide(), 8e3);
     return { updated, unchanged, errors };
   },
   isTypeAlreadyInCollection(basic, scope, localYears) {
@@ -2175,7 +2239,7 @@ var numistaMethods = {
       );
     }
     const filteredSync = Boolean(syncScope.country) || Boolean(syncScope.year) || Boolean(syncScope.coinType);
-    const progress = new import_obsidian8.Notice(
+    const progress2 = new import_obsidian8.Notice(
       filteredSync ? this.t("notice.syncScope", { scope: scopeLabels.join(" / ") }) : this.t("notice.syncOfficial"),
       0
     );
@@ -2247,7 +2311,7 @@ var numistaMethods = {
           for (const basic of types) {
             processed++;
             const objectTypeLabel = objectType === "1" ? this.t("filter.national") : this.t("filter.commemorative");
-            progress.setMessage(
+            progress2.setMessage(
               filteredSync ? this.t("notice.syncProgress", {
                 scope: scopeLabels.join(" / "),
                 type: objectTypeLabel,
@@ -2457,7 +2521,7 @@ var numistaMethods = {
         console.info("2 Euro Collection: Numista types skipped or failed");
         console.table(report);
       }
-      progress.setMessage(
+      progress2.setMessage(
         this.t("notice.syncDone", {
           created,
           updated,
@@ -2468,7 +2532,7 @@ var numistaMethods = {
           scope: filteredSync ? scopeLabels.join(" / ") : this.t("notice.syncScopeAll")
         })
       );
-      setTimeout(() => progress.hide(), 8e3);
+      setTimeout(() => progress2.hide(), 8e3);
       return {
         created,
         updated,
@@ -2479,7 +2543,7 @@ var numistaMethods = {
         scope: syncScope
       };
     } catch (error) {
-      progress.setMessage(this.t("notice.syncAborted", { message: error?.message || error }));
+      progress2.setMessage(this.t("notice.syncAborted", { message: error?.message || error }));
       if (report.length) {
         console.info("2 Euro Collection: Numista types skipped or failed before abort");
         console.table(report);
@@ -2496,7 +2560,7 @@ var numistaMethods = {
     }
     const candidates = this.getRows().filter(
       (r) => r.source === "numista" && !r.cover_locked && !this.coverSrc(r)
-    ), progress = new import_obsidian8.Notice(
+    ), progress2 = new import_obsidian8.Notice(
       this.t("notice.coversProgress", {
         current: 0,
         total: candidates.length,
@@ -2508,7 +2572,7 @@ var numistaMethods = {
     let downloaded = 0, skipped = 0, errors = 0, index = 0;
     for (const r of candidates) {
       index++;
-      progress.setMessage(
+      progress2.setMessage(
         this.t("notice.coversProgress", {
           current: index,
           total: candidates.length,
@@ -2535,8 +2599,8 @@ var numistaMethods = {
         console.error("Pobieranie okładki", r.file?.path, error);
       }
     }
-    progress.setMessage(this.t("notice.coversDone", { downloaded, skipped, errors }));
-    setTimeout(() => progress.hide(), 8e3);
+    progress2.setMessage(this.t("notice.coversDone", { downloaded, skipped, errors }));
+    setTimeout(() => progress2.hide(), 8e3);
     return { downloaded, skipped, errors };
   },
   async downloadNumistaCoverForCoin(row) {
@@ -3346,6 +3410,120 @@ var CoinCoverManagerModal = class extends import_obsidian12.Modal {
   }
 };
 
+// src/collection.js
+var compareText = (a, b, locale) => String(a || "").localeCompare(String(b || ""), locale, { numeric: true, sensitivity: "base" });
+function sortRows(list, sortMode = "yearAsc", locale = "en") {
+  return [...list].sort((a, b) => {
+    const yearA = Number(a.year) || 0, yearB = Number(b.year) || 0, countryCmp = compareText(a.country, b.country, locale), titleCmp = compareText(a.title, b.title, locale), mintCmp = compareText(a.mint_mark, b.mint_mark, locale);
+    if (sortMode === "yearDesc") return yearB - yearA || countryCmp || titleCmp || mintCmp;
+    if (sortMode === "countryAsc") return countryCmp || yearA - yearB || titleCmp || mintCmp;
+    if (sortMode === "countryDesc") return -countryCmp || yearA - yearB || titleCmp || mintCmp;
+    return yearA - yearB || countryCmp || titleCmp || mintCmp;
+  });
+}
+var progress = (rows) => ({
+  owned: rows.filter((row) => row.owned).length,
+  total: rows.length
+});
+function groupRows(sortedRows, groupBy = "none", sortMode = "yearAsc", locale = "en") {
+  if (groupBy !== "country" && groupBy !== "year")
+    return [{ key: "", label: "", rows: sortedRows, ...progress(sortedRows) }];
+  const groups = /* @__PURE__ */ new Map();
+  for (const row of sortedRows) {
+    const key = groupBy === "country" ? String(row.country || "") : String(row.year || "");
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(row);
+  }
+  const keys = [...groups.keys()];
+  if (groupBy === "year") {
+    keys.sort((a, b) => (Number(a) || 0) - (Number(b) || 0));
+    if (sortMode === "yearDesc") keys.reverse();
+  } else {
+    keys.sort((a, b) => compareText(a, b, locale));
+    if (sortMode === "countryDesc") keys.reverse();
+  }
+  return keys.map((key) => ({
+    key,
+    label: key,
+    rows: groups.get(key),
+    ...progress(groups.get(key))
+  }));
+}
+var finite = (value) => {
+  if (value === null || value === void 0 || value === "") return null;
+  const number = Number(String(value).replace(/\s+/g, "").replace(",", "."));
+  return Number.isFinite(number) ? number : null;
+};
+var addAmount = (map, currency, amount) => map.set(currency, (map.get(currency) || 0) + amount);
+var amounts = (map) => [...map.entries()].map(([currency, amount]) => ({ currency, amount: Math.round(amount * 100) / 100 })).sort((a, b) => b.amount - a.amount);
+var breakdown = (rows, keyOf, compare) => {
+  const groups = /* @__PURE__ */ new Map();
+  for (const row of rows) {
+    const key = keyOf(row);
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(row);
+  }
+  return [...groups.entries()].map(([key, items]) => ({ key, ...progress(items) })).sort((a, b) => compare(a.key, b.key));
+};
+function computeStats(rows, locale = "en") {
+  const owned = rows.filter((row) => row.owned);
+  const value = /* @__PURE__ */ new Map(), spent = /* @__PURE__ */ new Map();
+  let valueMissing = 0, spentMissing = 0, swapCoins = 0, swapPieces = 0;
+  for (const row of owned) {
+    const quantity = Math.max(1, Number(row.quantity) || 1);
+    const unc = finite(row.numismatic_value_unc);
+    if (unc === null) valueMissing++;
+    else addAmount(value, row.numismatic_value_currency || "EUR", unc * quantity);
+    const price = finite(row.acquisition_price);
+    if (price === null) spentMissing++;
+    else addAmount(spent, row.acquisition_currency || "", price);
+    if (quantity > 1) {
+      swapCoins++;
+      swapPieces += quantity - 1;
+    }
+  }
+  return {
+    ...progress(rows),
+    byCountry: breakdown(
+      rows,
+      (row) => String(row.country || ""),
+      (a, b) => compareText(a, b, locale)
+    ),
+    byYear: breakdown(
+      rows,
+      (row) => String(row.year || ""),
+      (a, b) => (Number(a) || 0) - (Number(b) || 0)
+    ),
+    value: amounts(value),
+    valueMissing,
+    spent: amounts(spent),
+    spentMissing,
+    swapCoins,
+    swapPieces
+  };
+}
+function formatMoney(amount, currency, locale = "en") {
+  const code = String(currency || "").trim().toUpperCase();
+  if (/^[A-Z]{3}$/.test(code)) {
+    try {
+      return new Intl.NumberFormat(locale, { style: "currency", currency: code }).format(amount);
+    } catch {
+    }
+  }
+  const number = new Intl.NumberFormat(locale, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  }).format(amount);
+  return code ? `${number} ${currency}` : number;
+}
+function toCsv(header, records) {
+  const cell = (value) => {
+    const text = value === null || value === void 0 ? "" : String(value);
+    return /[",\r\n;]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+  };
+  return [header, ...records].map((record) => record.map(cell).join(",")).join("\r\n") + "\r\n";
+}
+
 // src/plugin/dashboard.js
 var dashboardMethods = {
   getDashboardState() {
@@ -3355,7 +3533,9 @@ var dashboardMethods = {
         country: "",
         year: "",
         searchText: "",
-        sortMode: "yearAsc"
+        sortMode: "yearAsc",
+        groupBy: "none",
+        statsOpen: false
       }
     };
   },
@@ -3510,97 +3690,153 @@ var dashboardMethods = {
       "--twoeuro-columns",
       String(Math.min(10, Math.max(4, Number(this.settings.columns) || 6)))
     );
+    const locale = this.getLanguage() === "pl" ? "pl" : "en";
+    const list = sortRows(this.filterRowsByState(rows, state), state.sortMode, locale);
     const header = el.createDiv({ cls: "twoeuro-header" });
     header.createEl("h2", { text: this.t("collection.title") });
-    const summary = header.createDiv({ cls: "twoeuro-summary" });
-    const grid = el.createDiv({ cls: "twoeuro-grid" });
-    const list = this.filterRowsByState(rows, state);
-    const locale = this.getLanguage() === "pl" ? "pl" : "en";
-    list.sort((a, b) => {
-      const yearA = Number(a.year) || 0, yearB = Number(b.year) || 0, countryCmp = String(a.country || "").localeCompare(String(b.country || ""), locale, {
-        sensitivity: "base"
-      }), titleCmp = String(a.title || "").localeCompare(String(b.title || ""), locale, {
-        numeric: true,
-        sensitivity: "base"
-      }), mintCmp = String(a.mint_mark || "").localeCompare(String(b.mint_mark || ""), locale, {
-        numeric: true,
-        sensitivity: "base"
-      });
-      if (state.sortMode === "yearDesc") return yearB - yearA || countryCmp || titleCmp || mintCmp;
-      if (state.sortMode === "countryAsc")
-        return countryCmp || yearA - yearB || titleCmp || mintCmp;
-      if (state.sortMode === "countryDesc")
-        return -countryCmp || yearA - yearB || titleCmp || mintCmp;
-      return yearA - yearB || countryCmp || titleCmp || mintCmp;
+    header.createDiv({
+      cls: "twoeuro-summary",
+      text: this.t("summary.owned", {
+        owned: list.filter((r) => r.owned).length,
+        total: list.length
+      })
     });
-    summary.setText(
-      this.t("summary.owned", { owned: list.filter((r) => r.owned).length, total: list.length })
-    );
-    for (const r of list) {
-      const card = grid.createDiv({
-        cls: `twoeuro-card ${r.owned ? "is-owned" : "is-missing"} ${(this.selectedCoinPaths || /* @__PURE__ */ new Set()).has(r.file.path) ? "is-selected" : ""}`
-      });
-      const selectWrap = card.createDiv({ cls: "twoeuro-card-select" }), selectBox = selectWrap.createEl("input", {
-        attr: { type: "checkbox", "aria-label": this.t("sidebar.selected", { count: 1 }) }
-      });
-      selectBox.checked = (this.selectedCoinPaths || /* @__PURE__ */ new Set()).has(r.file.path);
-      selectWrap.onclick = (e) => e.stopPropagation();
-      selectBox.onclick = (e) => e.stopPropagation();
-      selectBox.onchange = () => {
-        this.toggleCoinSelection(r.file.path, selectBox.checked);
-        card.toggleClass("is-selected", selectBox.checked);
-      };
-      const cover = card.createDiv({ cls: "twoeuro-cover" }), coverResolution = this.resolveDisplayCover(r, referenceCoverIndex), src = coverResolution.src;
-      let indicatorClass = r.own_cover ? "is-own-cover" : "is-missing-reference", indicatorTitle = r.own_cover ? this.t("indicator.ownCover") : this.t("indicator.missing");
-      if (!r.own_cover && r.reference_year) {
-        if (String(r.reference_year) === String(r.year)) {
-          indicatorClass = "is-exact";
-          indicatorTitle = this.t("indicator.exact");
-        } else if (coverResolution.resolved && coverResolution.source) {
-          indicatorClass = "is-reference";
-          indicatorTitle = this.t("indicator.reference", {
-            country: coverResolution.source.country,
-            type: coverResolution.source.coin_type,
-            year: coverResolution.source.year
-          });
-        } else {
-          indicatorTitle = this.t("indicator.notFound", { year: r.reference_year });
-        }
-      }
-      const indicator = cover.createDiv({ cls: `twoeuro-image-indicator ${indicatorClass}` });
-      indicator.setAttribute("title", indicatorTitle);
-      if (src)
-        cover.createEl("img", {
-          attr: {
-            src,
-            alt: r.title,
-            title: coverResolution.usesReference && coverResolution.source ? this.t("image.reference", { year: coverResolution.source.year }) : r.title
-          }
+    this.renderStats(el, list, state, locale);
+    const groups = groupRows(list, state.groupBy, state.sortMode, locale);
+    const grid = el.createDiv({ cls: "twoeuro-grid" });
+    for (const group of groups) {
+      if (group.label) {
+        const heading = grid.createDiv({ cls: "twoeuro-group-header" });
+        heading.createSpan({ cls: "twoeuro-group-title", text: group.label });
+        heading.createSpan({
+          cls: "twoeuro-group-count",
+          text: `${group.owned} / ${group.total}`
         });
-      else cover.createDiv({ cls: "twoeuro-placeholder", text: "2 €" });
-      const info = card.createDiv({ cls: "twoeuro-info" });
-      info.createDiv({ cls: "twoeuro-country", text: r.country });
-      info.createDiv({ cls: "twoeuro-title", text: r.title });
-      info.createDiv({
-        cls: "twoeuro-meta",
-        text: `${r.year} · ${r.coin_type === "national" ? this.t("coin.national") : this.t("coin.commemorative")}${r.mint_mark ? ` · ${r.mint_mark}` : ""}`
-      });
-      info.createDiv({
-        cls: "twoeuro-status",
-        text: r.owned ? `✓ ${this.t("status.owned")}` : `○ ${this.t("status.missing")}`
-      });
-      cover.onclick = (event) => {
-        event.stopPropagation();
-        this.currentCoinFile = r.file;
-        new CoinCoverManagerModal(this.app, this, r, src).open();
-      };
-      info.onclick = (event) => {
-        event.stopPropagation();
-        this.currentCoinFile = r.file;
-        new CoinModal(this.app, this, r).open();
-      };
+      }
+      for (const r of group.rows) this.renderCoinCard(grid, r, referenceCoverIndex);
     }
     el._twoEuroState = this.getDashboardState();
+  },
+  /*
+   * Collapsible statistics for the coins matching the current filters.
+   */
+  renderStats(el, list, state, locale) {
+    const stats = computeStats(list, locale);
+    const details = el.createEl("details", { cls: "twoeuro-stats" });
+    details.open = Boolean(state.statsOpen);
+    details.addEventListener("toggle", () => this.setDashboardState({ statsOpen: details.open }));
+    details.createEl("summary", { text: this.t("stats.title") });
+    details.createDiv({ cls: "twoeuro-stats-scope", text: this.t("stats.scope") });
+    const money = (items) => items.length ? items.map((item) => formatMoney(item.amount, item.currency, locale)).join(" + ") : "–";
+    const percent = (owned, total) => total ? Math.round(owned / total * 100) : 0;
+    const tiles = details.createDiv({ cls: "twoeuro-stats-tiles" });
+    const tile = (label, value, note = "") => {
+      const box = tiles.createDiv({ cls: "twoeuro-stats-tile" });
+      box.createDiv({ cls: "twoeuro-stats-label", text: label });
+      box.createDiv({ cls: "twoeuro-stats-value", text: value });
+      if (note) box.createDiv({ cls: "twoeuro-stats-note", text: note });
+    };
+    tile(
+      this.t("stats.owned"),
+      `${stats.owned} / ${stats.total} (${percent(stats.owned, stats.total)}%)`
+    );
+    tile(
+      this.t("stats.value"),
+      money(stats.value),
+      stats.valueMissing ? this.t("stats.valueMissing", { count: stats.valueMissing }) : ""
+    );
+    tile(
+      this.t("stats.spent"),
+      money(stats.spent),
+      stats.spentMissing ? this.t("stats.spentMissing", { count: stats.spentMissing }) : ""
+    );
+    tile(
+      this.t("stats.swap"),
+      String(stats.swapCoins),
+      stats.swapCoins ? this.t("stats.swapPieces", { count: stats.swapPieces }) : ""
+    );
+    const tables = details.createDiv({ cls: "twoeuro-stats-tables" });
+    const table = (title, items) => {
+      const section = tables.createDiv({ cls: "twoeuro-stats-table" });
+      section.createDiv({ cls: "twoeuro-stats-label", text: title });
+      for (const item of items) {
+        const line = section.createDiv({ cls: "twoeuro-stats-row" });
+        line.createSpan({ cls: "twoeuro-stats-name", text: item.key || "–" });
+        const bar = line.createDiv({ cls: "twoeuro-stats-bar" });
+        bar.createDiv({ cls: "twoeuro-stats-fill" }).style.width = `${percent(item.owned, item.total)}%`;
+        line.createSpan({ cls: "twoeuro-stats-count", text: `${item.owned} / ${item.total}` });
+      }
+    };
+    table(this.t("stats.byCountry"), stats.byCountry);
+    table(this.t("stats.byYear"), stats.byYear);
+  },
+  renderCoinCard(grid, r, referenceCoverIndex) {
+    const card = grid.createDiv({
+      cls: `twoeuro-card ${r.owned ? "is-owned" : "is-missing"} ${(this.selectedCoinPaths || /* @__PURE__ */ new Set()).has(r.file.path) ? "is-selected" : ""}`
+    });
+    const selectWrap = card.createDiv({ cls: "twoeuro-card-select" }), selectBox = selectWrap.createEl("input", {
+      attr: { type: "checkbox", "aria-label": this.t("sidebar.selected", { count: 1 }) }
+    });
+    selectBox.checked = (this.selectedCoinPaths || /* @__PURE__ */ new Set()).has(r.file.path);
+    selectWrap.onclick = (e) => e.stopPropagation();
+    selectBox.onclick = (e) => e.stopPropagation();
+    selectBox.onchange = () => {
+      this.toggleCoinSelection(r.file.path, selectBox.checked);
+      card.toggleClass("is-selected", selectBox.checked);
+    };
+    const cover = card.createDiv({ cls: "twoeuro-cover" }), coverResolution = this.resolveDisplayCover(r, referenceCoverIndex), src = coverResolution.src;
+    let indicatorClass = r.own_cover ? "is-own-cover" : "is-missing-reference", indicatorTitle = r.own_cover ? this.t("indicator.ownCover") : this.t("indicator.missing");
+    if (!r.own_cover && r.reference_year) {
+      if (String(r.reference_year) === String(r.year)) {
+        indicatorClass = "is-exact";
+        indicatorTitle = this.t("indicator.exact");
+      } else if (coverResolution.resolved && coverResolution.source) {
+        indicatorClass = "is-reference";
+        indicatorTitle = this.t("indicator.reference", {
+          country: coverResolution.source.country,
+          type: coverResolution.source.coin_type,
+          year: coverResolution.source.year
+        });
+      } else {
+        indicatorTitle = this.t("indicator.notFound", { year: r.reference_year });
+      }
+    }
+    const indicator = cover.createDiv({ cls: `twoeuro-image-indicator ${indicatorClass}` });
+    indicator.setAttribute("title", indicatorTitle);
+    if (src)
+      cover.createEl("img", {
+        attr: {
+          src,
+          alt: r.title,
+          // Load covers only when the card scrolls into view (faster on large collections).
+          loading: "lazy",
+          decoding: "async",
+          title: coverResolution.usesReference && coverResolution.source ? this.t("image.reference", { year: coverResolution.source.year }) : r.title
+        }
+      });
+    else cover.createDiv({ cls: "twoeuro-placeholder", text: "2 €" });
+    const info = card.createDiv({ cls: "twoeuro-info" });
+    info.createDiv({ cls: "twoeuro-country", text: r.country });
+    info.createDiv({ cls: "twoeuro-title", text: r.title });
+    info.createDiv({
+      cls: "twoeuro-meta",
+      text: `${r.year} · ${r.coin_type === "national" ? this.t("coin.national") : this.t("coin.commemorative")}${r.mint_mark ? ` · ${r.mint_mark}` : ""}`
+    });
+    const quantity = Number(r.quantity) || 1;
+    info.createDiv({
+      cls: "twoeuro-status",
+      text: r.owned ? `✓ ${this.t("status.owned")}${quantity > 1 ? ` ×${quantity}` : ""}` : `○ ${this.t("status.missing")}`
+    });
+    cover.onclick = (event) => {
+      event.stopPropagation();
+      this.currentCoinFile = r.file;
+      new CoinCoverManagerModal(this.app, this, r, src).open();
+    };
+    info.onclick = (event) => {
+      event.stopPropagation();
+      this.currentCoinFile = r.file;
+      new CoinModal(this.app, this, r).open();
+    };
   }
 };
 
@@ -3672,8 +3908,93 @@ var historyMethods = {
   }
 };
 
+// src/plugin/export.js
+var import_obsidian14 = require("obsidian");
+var exportMethods = {
+  /*
+   * Writes the coins missing from the collection (within the current
+   * country / year / type / search filters) to a Markdown checklist and a CSV
+   * file in the collection folder, then opens the Markdown note.
+   */
+  async exportMissingCoins() {
+    const state = this.getDashboardState();
+    const scopeState = {
+      ...state,
+      mode: ["commemorative", "national"].includes(state.mode) ? state.mode : "all"
+    };
+    const locale = this.getLanguage() === "pl" ? "pl" : "en";
+    const missing = sortRows(
+      this.filterRowsByState(this.getRows(), scopeState).filter((row) => !row.owned),
+      "countryAsc",
+      locale
+    );
+    if (!missing.length) {
+      new import_obsidian14.Notice(this.t("notice.exportNone"));
+      return null;
+    }
+    const date = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
+    const typeLabel = (row) => row.coin_type === "national" ? this.t("coin.national") : this.t("coin.commemorative");
+    const scopeParts = [state.country, state.year, state.searchText ? `"${state.searchText}"` : ""].concat(scopeState.mode !== "all" ? [this.t(`filter.${scopeState.mode}`)] : []).filter(Boolean);
+    const scope = scopeParts.length ? scopeParts.join(" · ") : this.t("export.scopeAll");
+    const lines = [
+      `# ${this.t("export.title")}`,
+      "",
+      this.t("export.scope", { scope }),
+      this.t("export.generated", { date, count: missing.length }),
+      ""
+    ];
+    let currentCountry = null;
+    for (const row of missing) {
+      if (row.country !== currentCountry) {
+        currentCountry = row.country;
+        const count = missing.filter((item) => item.country === currentCountry).length;
+        lines.push(`## ${currentCountry} (${count})`, "");
+      }
+      const parts = [row.year, row.title, typeLabel(row)];
+      if (row.mint_mark) parts.push(row.mint_mark);
+      const link = row.numista_url ? ` · [Numista](${row.numista_url})` : "";
+      lines.push(`- [ ] ${parts.join(" · ")}${link}`);
+    }
+    const markdown = `${lines.join("\n")}
+`;
+    const header = this.t("export.columns").split(",");
+    const csv = toCsv(
+      header,
+      missing.map((row) => [
+        row.country,
+        row.year,
+        typeLabel(row),
+        row.title,
+        row.mint_mark,
+        row.numista_id,
+        row.numista_url
+      ])
+    );
+    await this.ensureStructure();
+    const base = this.join(this.root(), this.t("export.fileName", { date }));
+    const write = async (path, content) => {
+      const existing = this.app.vault.getAbstractFileByPath(path);
+      if (existing instanceof import_obsidian14.TFile) await this.app.vault.modify(existing, content);
+      else await this.app.vault.create(path, content);
+      return this.app.vault.getAbstractFileByPath(path);
+    };
+    const mdFile = await write(`${base}.md`, markdown);
+    await write(`${base}.csv`, `\uFEFF${csv}`);
+    new import_obsidian14.Notice(
+      this.t("notice.exportDone", {
+        count: missing.length,
+        md: `${base.split("/").pop()}.md`,
+        csv: `${base.split("/").pop()}.csv`
+      })
+    );
+    if (mdFile instanceof import_obsidian14.TFile && this.app.workspace.getLeaf)
+      await this.app.workspace.getLeaf(true).openFile(mdFile);
+    return { count: missing.length, markdownPath: `${base}.md`, csvPath: `${base}.csv` };
+  }
+};
+
 // src/main.js
-var TwoEuroCollectionPlugin = class extends import_obsidian14.Plugin {
+var TwoEuroCollectionPlugin = class extends import_obsidian15.Plugin {
   onunload() {
     if (this._refreshTimer) window.clearTimeout(this._refreshTimer);
   }
@@ -3686,7 +4007,9 @@ var TwoEuroCollectionPlugin = class extends import_obsidian14.Plugin {
       country: "",
       year: "",
       searchText: "",
-      sortMode: "yearAsc"
+      sortMode: "yearAsc",
+      groupBy: "none",
+      statsOpen: false
     };
     this.selectedCoinPaths = /* @__PURE__ */ new Set();
     this.registerView(VIEW_TYPE_FILTERS, (leaf) => new EuroFiltersView(leaf, this));
@@ -3739,7 +4062,7 @@ var TwoEuroCollectionPlugin = class extends import_obsidian14.Plugin {
           await this.installStarterCollection();
         } catch (error) {
           console.error("Starter collection installation", error);
-          new import_obsidian14.Notice(error?.message || String(error));
+          new import_obsidian15.Notice(error?.message || String(error));
         }
       }
     });
@@ -3752,6 +4075,11 @@ var TwoEuroCollectionPlugin = class extends import_obsidian14.Plugin {
       id: "two-euro-convert-covers-webp",
       name: this.t("command.convertCoversWebp"),
       callback: () => this.convertPngCoversToWebp()
+    });
+    this.addCommand({
+      id: "two-euro-export-missing",
+      name: this.t("command.exportMissing"),
+      callback: () => this.exportMissingCoins()
     });
     this.addCommand({
       id: "two-euro-update-prices",
@@ -3776,14 +4104,14 @@ var TwoEuroCollectionPlugin = class extends import_obsidian14.Plugin {
     this.addCommand({
       id: "two-euro-dedupe",
       name: this.t("command.dedupe"),
-      callback: async () => new import_obsidian14.Notice(this.t("notice.dedupe", { count: await this.dedupe() }))
+      callback: async () => new import_obsidian15.Notice(this.t("notice.dedupe", { count: await this.dedupe() }))
     });
     this.addCommand({
       id: "two-euro-init-reference-fields",
       name: this.t("command.initFields"),
       callback: async () => {
         const result = await this.initializeReferenceFields();
-        new import_obsidian14.Notice(this.t("notice.initFields", result));
+        new import_obsidian15.Notice(this.t("notice.initFields", result));
       }
     });
     this.addCommand({
@@ -3791,13 +4119,13 @@ var TwoEuroCollectionPlugin = class extends import_obsidian14.Plugin {
       name: this.t("command.migrateCovers"),
       callback: async () => {
         const fixed = await this.migrateCoverLinks();
-        new import_obsidian14.Notice(this.t("notice.coversMigrated", { count: fixed }));
+        new import_obsidian15.Notice(this.t("notice.coversMigrated", { count: fixed }));
       }
     });
     this.addCommand({
       id: "two-euro-normalize-folders",
       name: this.t("command.normalizeFolders"),
-      callback: async () => new import_obsidian14.Notice(
+      callback: async () => new import_obsidian15.Notice(
         this.t("notice.foldersNormalized", { count: await this.normalizeCountryFolders() })
       )
     });
@@ -3827,7 +4155,7 @@ var TwoEuroCollectionPlugin = class extends import_obsidian14.Plugin {
     });
     this.addSettingTab(new EuroSettings(this.app, this));
     console.log(`2 Euro Collection ${this.manifest.version} loaded`);
-    new import_obsidian14.Notice(this.t("notice.loaded", { version: this.manifest.version }));
+    new import_obsidian15.Notice(this.t("notice.loaded", { version: this.manifest.version }));
   }
 };
 Object.assign(
@@ -3842,5 +4170,6 @@ Object.assign(
   selectionMethods,
   imagesMethods,
   dashboardMethods,
-  historyMethods
+  historyMethods,
+  exportMethods
 );

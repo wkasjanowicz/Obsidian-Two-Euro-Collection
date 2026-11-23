@@ -117,3 +117,26 @@
 .twoeuro-card.is-owned{background:color-mix(in srgb,var(--color-red) 20%,var(--background-primary));border-color:color-mix(in srgb,var(--color-red) 58%,var(--background-modifier-border));}
 .twoeuro-card.is-owned .twoeuro-info{background:color-mix(in srgb,var(--color-red) 15%,transparent);border-radius:0 0 8px 8px;}
 .twoeuro-card.is-owned:hover{background:color-mix(in srgb,var(--color-red) 25%,var(--background-primary));}
+
+/* Statistics */
+.twoeuro-stats{margin:4px 0 12px;border:1px solid var(--background-modifier-border);border-radius:8px;background:var(--background-secondary);padding:6px 10px}
+.twoeuro-stats>summary{cursor:pointer;font-weight:600;font-size:.85rem;padding:2px 0}
+.twoeuro-stats-scope{font-size:.7rem;color:var(--text-muted);margin:4px 0 8px}
+.twoeuro-stats-tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-bottom:10px}
+.twoeuro-stats-tile{background:var(--background-primary);border:1px solid var(--background-modifier-border);border-radius:6px;padding:7px 9px}
+.twoeuro-stats-label{font-size:.7rem;color:var(--text-muted);margin-bottom:3px}
+.twoeuro-stats-value{font-size:1rem;font-weight:600}
+.twoeuro-stats-note{font-size:.65rem;color:var(--text-muted);margin-top:3px}
+.twoeuro-stats-tables{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}
+.twoeuro-stats-table{max-height:260px;overflow:auto}
+.twoeuro-stats-row{display:grid;grid-template-columns:minmax(70px,1fr) 2fr auto;align-items:center;gap:8px;font-size:.72rem;padding:2px 0}
+.twoeuro-stats-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.twoeuro-stats-bar{height:6px;border-radius:3px;background:var(--background-modifier-border);overflow:hidden}
+.twoeuro-stats-fill{height:100%;background:var(--color-green)}
+.twoeuro-stats-count{color:var(--text-muted);font-variant-numeric:tabular-nums}
+
+/* Group headers in the coin grid */
+.twoeuro-group-header{grid-column:1/-1;display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin:10px 0 0;padding:4px 2px;border-bottom:1px solid var(--background-modifier-border)}
+.twoeuro-group-header:first-child{margin-top:0}
+.twoeuro-group-title{font-weight:600;font-size:.9rem}
+.twoeuro-group-count{font-size:.72rem;color:var(--text-muted);font-variant-numeric:tabular-nums}

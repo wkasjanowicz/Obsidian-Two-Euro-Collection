@@ -197,7 +197,8 @@ export const coinsMethods = {
         state.mode === 'all' ||
         state.mode === r.coin_type ||
         (state.mode === 'owned' && r.owned) ||
-        (state.mode === 'missing' && !r.owned)
+        (state.mode === 'missing' && !r.owned) ||
+        (state.mode === 'swap' && r.owned && (Number(r.quantity) || 1) > 1)
     );
     if (state.country) list = list.filter((r) => r.country === state.country);
     if (state.year) list = list.filter((r) => r.year === state.year);
