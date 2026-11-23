@@ -586,6 +586,25 @@ function normalizeCoinTitle(value) {
   const title = tx(value).replace(/\s+/g, ' ').trim();
   return title.replace(/^2\s*Euros?\b\.?/i, '2 Euro');
 }
+/*
+ * Identity of a coin independent of Numista ids: country, year, title and mint.
+ * Punctuation and case are ignored ("Notre-Dame" = "Notre Dame").
+ */
+function coinIdentityKey(row) {
+  const simplify = (value) =>
+    tx(value)
+      .toLowerCase()
+      .normalize('NFKD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^\p{L}\p{N}]+/gu, ' ')
+      .trim();
+  return [
+    simplify(countryName(row?.country)),
+    simplify(row?.year),
+    simplify(normalizeCoinTitle(row?.title)),
+    simplify(row?.mint_mark),
+  ].join('|');
+}
 function countryName(v) {
   const x = tx(v),
     k = x.toLowerCase();
@@ -2786,6 +2805,13 @@ module.exports = class TwoEuroCollectionPlugin extends Plugin {
      */
     const localYears = new Map();
 
+    /*
+     * Coins identified by country, year, title and mint. Catches coins added
+     * manually (no numista_id) or under another Numista id, so synchronization
+     * does not create duplicates of them.
+     */
+    const byIdentity = new Map(current.map((row) => [coinIdentityKey(row), row]));
+
     for (const row of current) {
       if (!row.numista_id) continue;
       if (!localYears.has(row.numista_id)) localYears.set(row.numista_id, new Set());
@@ -3028,6 +3054,41 @@ module.exports = class TwoEuroCollectionPlugin extends Plugin {
                 if (old && !updateExisting) {
                   existing++;
                   continue;
+                }
+
+                if (!old) {
+                  const twin = byIdentity.get(
+                    coinIdentityKey({
+                      country: d.issuer?.name,
+                      year,
+                      title: d.title,
+                      mint_mark: mint,
+                    })
+                  );
+
+                  if (twin) {
+                    /*
+                     * The coin already exists without this Numista id. Link
+                     * it when it has no id yet; never create a duplicate.
+                     */
+                    if (!twin.numista_id && twin.file instanceof TFile) {
+                      await this.app.fileManager.processFrontMatter(twin.file, (fm) => {
+                        fm.numista_id = id;
+                        fm.numista_issue_id = issue;
+                        if (tx(d.url)) fm.numista_url = tx(d.url);
+                      });
+                      twin.numista_id = id;
+                      twin.numista_issue_id = issue;
+                    }
+                    report.push({
+                      id,
+                      title: tx(d.title),
+                      reason: `matched existing coin ${twin.file?.path || ''}`,
+                    });
+                    by.set(rowKey, twin);
+                    existing++;
+                    continue;
+                  }
                 }
 
                 const data = {
@@ -3455,20 +3516,38 @@ module.exports = class TwoEuroCollectionPlugin extends Plugin {
   async dedupe() {
     const g = new Map();
     for (const r of this.getRows()) {
-      const k = [r.country, r.year, r.title, r.mint_mark].map((x) => tx(x).toLowerCase()).join('|');
+      const k = coinIdentityKey(r);
       if (!g.has(k)) g.set(k, []);
       g.get(k).push(r);
     }
     let n = 0;
     for (const a of g.values()) {
       if (a.length < 2) continue;
-      const keep = a.find((x) => x.owned) || a[0];
+      /*
+       * Keep the owned coin, then one with a custom/locked cover, then one
+       * with a cover at all. Numista ids from removed copies are carried over
+       * so later synchronizations recognise the kept coin.
+       */
+      const keep =
+        a.find((x) => x.owned) ||
+        a.find((x) => x.own_cover || x.cover_locked) ||
+        a.find((x) => this.coverSrc(x)) ||
+        a[0];
+      const donor = a.find((x) => x !== keep && x.numista_id);
+      if (!keep.numista_id && donor && keep.file instanceof TFile) {
+        await this.app.fileManager.processFrontMatter(keep.file, (fm) => {
+          fm.numista_id = donor.numista_id;
+          if (donor.numista_issue_id) fm.numista_issue_id = donor.numista_issue_id;
+          if (donor.numista_url) fm.numista_url = donor.numista_url;
+        });
+      }
       for (const r of a)
         if (r !== keep && !r.owned && r.file instanceof TFile) {
           await this.app.fileManager.trashFile(r.file);
           n++;
         }
     }
+    await this.refreshDashboards();
     return n;
   }
   async migrateCoverLinks() {
