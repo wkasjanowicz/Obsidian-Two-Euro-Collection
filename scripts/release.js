@@ -158,18 +158,11 @@ updateReadme('README.md', `> Current plugin version: **${targetVersion}**`);
 updateReadme('README_PL.md', `> Aktualna wersja wtyczki: **${targetVersion}**`);
 
 try {
-  console.log('Embedding translations into main.js...');
-  run('node', ['scripts/embed-languages.js']);
-
   console.log('Formatting source files...');
-  run('npx', [
-    'prettier',
-    '--write',
-    'main.js',
-    'scripts/**/*.js',
-    '*.json',
-    '.github/workflows/*.yml',
-  ]);
+  run('npm', ['run', 'format']);
+
+  console.log('Building main.js and running tests...');
+  run('npm', ['test']);
 
   console.log('Validating main.js...');
   run('node', ['--check', 'main.js']);

@@ -44,7 +44,6 @@ A mobile-friendly Obsidian plugin for maintaining a structured catalogue of 2 eu
    main.js
    manifest.json
    styles.css
-   Languages/pl.json
    ```
 
 4. Start Obsidian.
@@ -58,9 +57,7 @@ The final plugin directory should look like this:
 .obsidian/plugins/two-euro-collection/
 ├── main.js
 ├── manifest.json
-├── styles.css
-└── Languages/
-    └── pl.json
+└── styles.css
 ```
 
 > When replacing an existing version, reload Obsidian after copying the files. On mobile, make sure the complete `.obsidian/plugins/two-euro-collection` folder is synchronized to the device.
@@ -414,13 +411,11 @@ Before a large synchronization, cleanup, title normalization, cover migration, o
 
 ### Polish language is not available
 
-Confirm that the file exists at:
+Polish is built into the plugin since version 0.6.4. Select it in the plugin settings
+(**Interface language**) or use **Automatic** with Obsidian set to Polish.
 
-```text
-.obsidian/plugins/two-euro-collection/Languages/pl.json
-```
-
-The folder name uses a capital `L`.
+Translations placed in `.obsidian/plugins/two-euro-collection/Languages/` still override
+the built-in strings. The folder name uses a capital `L`.
 
 ### Synchronization asks for an API key
 

@@ -102,6 +102,16 @@ console.log('');
 // Validation
 // ------------------------------------------------------------
 
+console.log('Building main.js and running tests...');
+
+run('npm', ['test']);
+
+if (capture('git', ['status', '--porcelain', 'main.js'])) {
+  fail(
+    'main.js is out of date with src/. Run "npm run build", commit main.js and push before creating a beta.'
+  );
+}
+
 console.log('Checking JavaScript...');
 
 run('node', ['--check', 'main.js']);

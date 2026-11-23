@@ -44,7 +44,6 @@ Mobilna wtyczka do Obsidian służąca do prowadzenia uporządkowanego katalogu 
    main.js
    manifest.json
    styles.css
-   Languages/pl.json
    ```
 
 4. Uruchom Obsidian.
@@ -58,9 +57,7 @@ Docelowa struktura katalogu wtyczki:
 .obsidian/plugins/two-euro-collection/
 ├── main.js
 ├── manifest.json
-├── styles.css
-└── Languages/
-    └── pl.json
+└── styles.css
 ```
 
 > Po podmianie istniejącej wersji przeładuj Obsidian. Na telefonie upewnij się, że cały katalog `.obsidian/plugins/two-euro-collection` został zsynchronizowany z urządzeniem.
@@ -414,13 +411,11 @@ Przed dużą synchronizacją, czyszczeniem, normalizacją nazw, migracją okład
 
 ### Brak języka polskiego
 
-Sprawdź, czy plik istnieje pod ścieżką:
+Od wersji 0.6.4 język polski jest wbudowany we wtyczkę. Wybierz go w ustawieniach wtyczki
+(**Język interfejsu**) albo zostaw **Automatycznie** przy polskim języku Obsidiana.
 
-```text
-.obsidian/plugins/two-euro-collection/Languages/pl.json
-```
-
-Nazwa katalogu zaczyna się wielką literą `L`.
+Tłumaczenia umieszczone w `.obsidian/plugins/two-euro-collection/Languages/` nadal mają
+pierwszeństwo przed wbudowanymi. Nazwa katalogu zaczyna się wielką literą `L`.
 
 ### Synchronizacja prosi o klucz API
 

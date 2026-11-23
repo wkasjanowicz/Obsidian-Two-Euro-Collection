@@ -3,9 +3,12 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "format": "prettier --write \"main.js\" \"scripts/**/*.js\" \"*.json\" \".github/workflows/*.yml\"",
-    "format:check": "prettier --check \"main.js\" \"scripts/**/*.js\" \"*.json\" \".github/workflows/*.yml\"",
-    "validate": "node --check main.js && npm run format:check",
+    "build": "node esbuild.config.mjs",
+    "dev": "node esbuild.config.mjs --watch",
+    "test": "npm run build && node --test --test-force-exit \"test/**/*.test.js\"",
+    "format": "prettier --write \"src/**/*.js\" \"test/**/*.js\" \"scripts/**/*.js\" esbuild.config.mjs \"*.json\" \"Languages/*.json\" \".github/workflows/*.yml\"",
+    "format:check": "prettier --check \"src/**/*.js\" \"test/**/*.js\" \"scripts/**/*.js\" esbuild.config.mjs \"*.json\" \"Languages/*.json\" \".github/workflows/*.yml\"",
+    "validate": "npm run test && npm run format:check",
     "release:patch": "node scripts/release.js patch",
     "release:minor": "node scripts/release.js minor",
     "release:major": "node scripts/release.js major",
@@ -15,10 +18,10 @@
     "audit:prod": "npm audit --omit=dev",
     "security": "npm audit && npm outdated",
     "beta": "node scripts/beta.js",
-    "starter-pack": "node scripts/build-starter-pack.js",
-    "languages": "node scripts/embed-languages.js"
+    "starter-pack": "node scripts/build-starter-pack.js"
   },
   "devDependencies": {
+    "esbuild": "^0.28.2",
     "prettier": "^3.9.10",
     "sharp": "^0.35.5",
     "yaml": "^2.9.1"
