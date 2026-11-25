@@ -102,16 +102,17 @@ export const dashboardMethods = {
     }, delayMs);
   },
 
-  async refreshDashboards() {
+  refreshDashboards() {
     this.invalidateRows();
     for (const dashboard of this.openDashboards()) {
       try {
-        await this.renderDashboard(dashboard);
+        this.renderDashboard(dashboard);
       } catch (error) {
         console.error('2 Euro dashboard refresh', error);
       }
     }
     this.refreshFilterViews();
+    return Promise.resolve();
   },
 
   buildReferenceCoverIndex(rows) {
@@ -157,7 +158,7 @@ export const dashboardMethods = {
     return { src: ownSrc, source: null, resolved: false, usesReference: true };
   },
 
-  async renderDashboard(el, initialState = null) {
+  renderDashboard(el, initialState = null) {
     const rows = this.getRows();
     const referenceCoverIndex = this.buildReferenceCoverIndex(rows);
     if (initialState) this.setDashboardState(initialState);

@@ -13,7 +13,7 @@ export class CoinCoverManagerModal extends Modal {
     this.modalEl.addClass('twoeuro-cover-manager-modal');
     await this.render();
   }
-  async buildEditableForm(container, fresh) {
+  buildEditableForm(container, fresh) {
     const p = this.plugin,
       t = (k, v) => p.t(k, v),
       f = { ...fresh };
@@ -86,7 +86,7 @@ export class CoinCoverManagerModal extends Modal {
         x.inputEl.readOnly = true;
       });
   }
-  async render() {
+  render() {
     const p = this.plugin,
       t = (k, v) => p.t(k, v),
       c = this.contentEl;
@@ -107,7 +107,7 @@ export class CoinCoverManagerModal extends Modal {
       cls: 'twoeuro-cover-manager-section',
       text: t('coverManager.dataSection'),
     });
-    await this.buildEditableForm(right, fresh);
+    this.buildEditableForm(right, fresh);
     const saveRow = async () => {
       if (!clean(this.form.country) || !tx(this.form.year) || !clean(this.form.title))
         throw new Error(t('error.required'));
@@ -198,10 +198,10 @@ export class CoinCoverManagerModal extends Modal {
         new Notice(ok ? t('coverManager.undoDone') : t('coverManager.noUndo'));
       });
     history.createEl('button', { text: t('coverManager.close') }).onclick = () => this.close();
+    return Promise.resolve();
   }
-  async onClose() {
-    await this.plugin.refreshDashboards();
-    this.plugin.refreshFilterViews();
+  onClose() {
     this.contentEl.empty();
+    void this.plugin.refreshDashboards();
   }
 }

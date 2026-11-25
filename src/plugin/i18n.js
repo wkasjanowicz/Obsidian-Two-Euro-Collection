@@ -1,4 +1,4 @@
-import { normalizePath } from 'obsidian';
+import { normalizePath, getLanguage as getObsidianLanguage } from 'obsidian';
 import { BASE_LANGUAGE } from '../i18n/en.js';
 import { formatText, tx } from '../utils.js';
 import { BUILTIN_LANGUAGES } from '../i18n/builtin.js';
@@ -60,12 +60,7 @@ export const i18nMethods = {
     const selected = tx(this.settings?.language || 'auto').toLowerCase();
     if (selected !== 'auto' && (selected === 'en' || this.externalLanguages?.[selected]))
       return selected;
-    const locale = String(
-      this.app?.locale ||
-        window?.localStorage?.getItem('language') ||
-        window?.navigator?.language ||
-        'en'
-    )
+    const locale = String(getObsidianLanguage() || 'en')
       .toLowerCase()
       .split('-')[0];
     return this.externalLanguages?.[locale] ? locale : 'en';

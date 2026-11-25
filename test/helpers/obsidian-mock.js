@@ -257,6 +257,7 @@ module.exports = {
   Platform: { isMobile: false, isDesktopApp: true, isMacOS: true },
   apiVersion: '1.15.1',
   normalizePath,
+  getLanguage: () => 'en',
   requestUrl: async () => {
     throw new Error('Network access is disabled in tests');
   },

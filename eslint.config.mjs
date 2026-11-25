@@ -11,6 +11,7 @@ export default defineConfig([
     'main.js',
     'esbuild.config.mjs',
     'eslint.config.mjs',
+    'eslint.config.strict.mjs',
     'scripts',
     'test',
     'StarterData',

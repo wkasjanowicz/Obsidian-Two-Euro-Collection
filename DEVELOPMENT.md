@@ -51,7 +51,7 @@ used in the code exists in English, and that every language has all keys with th
 
 - Ask for confirmation with `await this.confirm(message)` (Obsidian dialog), never `window.confirm`.
 - Use `window.setTimeout` and `activeDocument` (popout windows); no `console.log`/`console.info`.
-- Settings are defined in `EuroSettings.getSettingDefinitions()` (searchable in Obsidian 1.13+);
+- Settings are defined in `EuroSettings.getSettingDefinitions()` (rendered and searchable by Obsidian);
   `display()` renders the same definitions on older versions.
 - Read the API key with `this.getNumistaApiKey()` (secret storage or settings).
 - Long operations go through `this.runOperation(() => ...)`; use `this.progressNotice()` for

@@ -7,6 +7,7 @@
     "dev": "node esbuild.config.mjs --watch",
     "test": "npm run build && node --test --test-force-exit \"test/**/*.test.js\"",
     "lint": "eslint .",
+    "lint:strict": "eslint -c eslint.config.strict.mjs src",
     "format": "prettier --write \"src/**/*.js\" \"test/**/*.js\" \"scripts/**/*.js\" esbuild.config.mjs \"*.json\" \"Languages/*.json\" \".github/workflows/*.yml\"",
     "format:check": "prettier --check \"src/**/*.js\" \"test/**/*.js\" \"scripts/**/*.js\" esbuild.config.mjs \"*.json\" \"Languages/*.json\" \".github/workflows/*.yml\"",
     "validate": "npm run lint && npm run test && npm run format:check",

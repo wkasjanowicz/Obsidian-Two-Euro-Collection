@@ -16,8 +16,9 @@ export class EuroFiltersView extends ItemView {
   getIcon() {
     return 'sliders-horizontal';
   }
-  async onOpen() {
+  onOpen() {
     this.render();
+    return Promise.resolve();
   }
   render() {
     const p = this.plugin,

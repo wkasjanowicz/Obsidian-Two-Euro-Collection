@@ -8,7 +8,7 @@ Mobilna wtyczka do Obsidian służąca do prowadzenia uporządkowanego katalogu 
 > Aktualna wersja wtyczki: **0.6.13**
 <!-- VERSION-END -->
 
-> Minimalna wersja Obsidian: **1.8.0**  
+> Minimalna wersja Obsidian: **1.13.0**  
 > Tylko desktop: **Nie**. Wtyczka działa również w Obsidian Mobile.
 
 ![Dashboard kolekcji 2 euro](Assets/desktop-main.png)
@@ -154,7 +154,7 @@ Konfiguracja we wtyczce:
 3. Opuść stronę ustawień. Obsidian zapisuje ustawienia wtyczki automatycznie.
 4. Uruchom **Synchronizuj**.
 
-> W Obsidianie 1.11.4 i nowszym klucz API jest przechowywany w bezpiecznym magazynie sekretów Obsidiana (wybierz lub utwórz sekret w polu **Klucz API Numista**); klucz zapisany przez starsze wersje zostanie tam przeniesiony automatycznie. W starszych wersjach Obsidiana klucz jest zapisany w pliku `data.json` wtyczki — nie publikuj go ani nie umieszczaj w repozytorium.
+> Klucz API jest przechowywany w bezpiecznym magazynie sekretów Obsidiana (wybierz lub utwórz sekret w polu **Klucz API Numista**); klucz zapisany w `data.json` przez starsze wersje wtyczki zostanie tam przeniesiony automatycznie.
 
 ### Synchronizacja, ceny i zapytania API
 

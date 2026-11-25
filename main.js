@@ -261,8 +261,7 @@ var EuroSettings = class extends import_obsidian2.PluginSettingTab {
   }
   /* Re-renders after changes that add or remove settings. */
   refresh() {
-    if (typeof this.update === "function") this.update();
-    else this.display();
+    this.update();
   }
   getSettingDefinitions() {
     const p = this.plugin, t = (k, v) => p.t(k, v);
@@ -349,23 +348,13 @@ var EuroSettings = class extends import_obsidian2.PluginSettingTab {
       ]
     };
     const apiKeySetting = (setting) => {
-      if (import_obsidian2.SecretComponent && this.app.secretStorage) {
-        setting.addComponent(
-          (el) => new import_obsidian2.SecretComponent(this.app, el).setValue(p.settings.numistaSecretId || "").onChange(async (id) => {
-            p.settings.numistaSecretId = id || "";
-            if (id) p.settings.numistaApiKey = "";
-            await p.saveSettings();
-          })
-        );
-        return;
-      }
-      setting.addText((x) => {
-        x.inputEl.type = "password";
-        x.setValue(p.settings.numistaApiKey || "").onChange(async (v) => {
-          p.settings.numistaApiKey = v.trim();
+      setting.addComponent(
+        (el) => new import_obsidian2.SecretComponent(this.app, el).setValue(p.settings.numistaSecretId || "").onChange(async (id) => {
+          p.settings.numistaSecretId = id || "";
+          if (id) p.settings.numistaApiKey = "";
           await p.saveSettings();
-        });
-      });
+        })
+      );
     };
     const numista = {
       type: "group",
@@ -558,19 +547,6 @@ var EuroSettings = class extends import_obsidian2.PluginSettingTab {
     };
     return [general, folders, numista, setup, reference];
   }
-  /* Fallback for Obsidian older than 1.13: render the same definitions. */
-  display() {
-    const container = this.containerEl;
-    container.empty();
-    for (const group of this.getSettingDefinitions()) {
-      if (group.heading) new import_obsidian2.Setting(container).setName(group.heading).setHeading();
-      for (const item of group.items || []) {
-        const setting = new import_obsidian2.Setting(container).setName(item.name);
-        if (item.desc) setting.setDesc(item.desc);
-        item.render?.(setting);
-      }
-    }
-  }
 };
 
 // src/ui/EuroFiltersView.js
@@ -589,8 +565,9 @@ var EuroFiltersView = class extends import_obsidian3.ItemView {
   getIcon() {
     return "sliders-horizontal";
   }
-  async onOpen() {
+  onOpen() {
     this.render();
+    return Promise.resolve();
   }
   render() {
     const p = this.plugin, t = (k, v) => p.t(k, v), c = this.contentEl;
@@ -914,7 +891,7 @@ var settingsMethods = {
     if (this._settingsSaveTimer) window.clearTimeout(this._settingsSaveTimer);
     this._settingsSaveTimer = window.setTimeout(() => {
       this._settingsSaveTimer = null;
-      this.saveSettings();
+      void this.saveSettings();
     }, delayMs);
   },
   async saveSettings() {
@@ -2246,9 +2223,7 @@ var i18nMethods = {
     const selected = tx(this.settings?.language || "auto").toLowerCase();
     if (selected !== "auto" && (selected === "en" || this.externalLanguages?.[selected]))
       return selected;
-    const locale = String(
-      this.app?.locale || window?.localStorage?.getItem("language") || window?.navigator?.language || "en"
-    ).toLowerCase().split("-")[0];
+    const locale = String((0, import_obsidian6.getLanguage)() || "en").toLowerCase().split("-")[0];
     return this.externalLanguages?.[locale] ? locale : "en";
   },
   t(key, vars = {}) {
@@ -2541,7 +2516,7 @@ ${embed}`);
   getRows() {
     if (!this._rowsCache) {
       this._rowsCache = this.readRows();
-      Promise.resolve().then(() => this.invalidateRows());
+      queueMicrotask(() => this.invalidateRows());
     }
     return [...this._rowsCache];
   },
@@ -4228,7 +4203,7 @@ var CoinCoverManagerModal = class extends import_obsidian14.Modal {
     this.modalEl.addClass("twoeuro-cover-manager-modal");
     await this.render();
   }
-  async buildEditableForm(container, fresh) {
+  buildEditableForm(container, fresh) {
     const p = this.plugin, t = (k, v) => p.t(k, v), f = { ...fresh };
     this.form = f;
     const input = (key, field, ph = "", desc = "") => {
@@ -4275,7 +4250,7 @@ var CoinCoverManagerModal = class extends import_obsidian14.Modal {
       x.inputEl.readOnly = true;
     });
   }
-  async render() {
+  render() {
     const p = this.plugin, t = (k, v) => p.t(k, v), c = this.contentEl;
     c.empty();
     c.addClass("twoeuro-cover-manager");
@@ -4289,7 +4264,7 @@ var CoinCoverManagerModal = class extends import_obsidian14.Modal {
       cls: "twoeuro-cover-manager-section",
       text: t("coverManager.dataSection")
     });
-    await this.buildEditableForm(right, fresh);
+    this.buildEditableForm(right, fresh);
     const saveRow = async () => {
       if (!clean(this.form.country) || !tx(this.form.year) || !clean(this.form.title))
         throw new Error(t("error.required"));
@@ -4372,11 +4347,11 @@ var CoinCoverManagerModal = class extends import_obsidian14.Modal {
       new import_obsidian14.Notice(ok ? t("coverManager.undoDone") : t("coverManager.noUndo"));
     });
     history.createEl("button", { text: t("coverManager.close") }).onclick = () => this.close();
+    return Promise.resolve();
   }
-  async onClose() {
-    await this.plugin.refreshDashboards();
-    this.plugin.refreshFilterViews();
+  onClose() {
     this.contentEl.empty();
+    void this.plugin.refreshDashboards();
   }
 };
 
@@ -4586,16 +4561,17 @@ var dashboardMethods = {
       await this.refreshDashboards();
     }, delayMs);
   },
-  async refreshDashboards() {
+  refreshDashboards() {
     this.invalidateRows();
     for (const dashboard of this.openDashboards()) {
       try {
-        await this.renderDashboard(dashboard);
+        this.renderDashboard(dashboard);
       } catch (error) {
         console.error("2 Euro dashboard refresh", error);
       }
     }
     this.refreshFilterViews();
+    return Promise.resolve();
   },
   buildReferenceCoverIndex(rows) {
     const index = /* @__PURE__ */ new Map();
@@ -4635,7 +4611,7 @@ var dashboardMethods = {
     }
     return { src: ownSrc, source: null, resolved: false, usesReference: true };
   },
-  async renderDashboard(el, initialState = null) {
+  renderDashboard(el, initialState = null) {
     const rows = this.getRows();
     const referenceCoverIndex = this.buildReferenceCoverIndex(rows);
     if (initialState) this.setDashboardState(initialState);
@@ -5444,10 +5420,10 @@ var TwoEuroCollectionPlugin = class extends import_obsidian21.Plugin {
       name: this.t("command.removeUnofficial"),
       callback: () => this.removeUnofficialImports()
     });
-    this.registerMarkdownCodeBlockProcessor("two-euro-collection", async (_src, el, ctx) => {
+    this.registerMarkdownCodeBlockProcessor("two-euro-collection", (_src, el, ctx) => {
       try {
         this.registerDashboard(el, ctx);
-        await this.renderDashboard(el);
+        this.renderDashboard(el);
       } catch (e) {
         console.error("2 Euro dashboard", e);
         el.empty();

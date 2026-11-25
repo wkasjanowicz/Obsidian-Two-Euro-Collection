@@ -131,7 +131,7 @@ export const coinsMethods = {
   getRows() {
     if (!this._rowsCache) {
       this._rowsCache = this.readRows();
-      Promise.resolve().then(() => this.invalidateRows());
+      queueMicrotask(() => this.invalidateRows());
     }
     return [...this._rowsCache];
   },

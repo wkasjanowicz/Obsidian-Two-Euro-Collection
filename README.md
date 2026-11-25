@@ -8,7 +8,7 @@ A mobile-friendly Obsidian plugin for maintaining a structured catalogue of 2 eu
 > Current plugin version: **0.6.13**
 <!-- VERSION-END -->
 
-> Minimum Obsidian version: **1.8.0**  
+> Minimum Obsidian version: **1.13.0**  
 > Desktop-only: **No**. The plugin also works in Obsidian Mobile.
 
 ![2 Euro Collection dashboard](Assets/desktop-main.png)
@@ -154,7 +154,7 @@ To configure the plugin:
 3. Leave the settings page. Obsidian saves the plugin settings automatically.
 4. Run **Synchronize**.
 
-> On Obsidian 1.11.4 and later the API key is kept in Obsidian's secure secret storage (choose or create a secret in the **Numista API key** field); a key saved by older versions is moved there automatically. On older Obsidian versions the key is stored in the plugin's `data.json` — do not publish or commit that file.
+> The API key is kept in Obsidian's secure secret storage (choose or create a secret in the **Numista API key** field); a key saved by older plugin versions in `data.json` is moved there automatically.
 
 ### Synchronization, prices and API requests
 

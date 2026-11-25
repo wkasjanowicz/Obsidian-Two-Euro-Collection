@@ -55,7 +55,7 @@ export const settingsMethods = {
     if (this._settingsSaveTimer) window.clearTimeout(this._settingsSaveTimer);
     this._settingsSaveTimer = window.setTimeout(() => {
       this._settingsSaveTimer = null;
-      this.saveSettings();
+      void this.saveSettings();
     }, delayMs);
   },
   async saveSettings() {

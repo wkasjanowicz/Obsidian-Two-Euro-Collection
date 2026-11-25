@@ -229,10 +229,10 @@ export default class TwoEuroCollectionPlugin extends Plugin {
       name: this.t('command.removeUnofficial'),
       callback: () => this.removeUnofficialImports(),
     });
-    this.registerMarkdownCodeBlockProcessor('two-euro-collection', async (_src, el, ctx) => {
+    this.registerMarkdownCodeBlockProcessor('two-euro-collection', (_src, el, ctx) => {
       try {
         this.registerDashboard(el, ctx);
-        await this.renderDashboard(el);
+        this.renderDashboard(el);
       } catch (e) {
         console.error('2 Euro dashboard', e);
         el.empty();

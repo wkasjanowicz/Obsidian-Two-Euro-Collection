@@ -1,11 +1,9 @@
-import { PluginSettingTab, Setting, Notice, SecretComponent } from 'obsidian';
+import { PluginSettingTab, Notice, SecretComponent } from 'obsidian';
 import { isTrue, countryName } from '../utils.js';
 
 /*
  * Settings are described once as definitions (name, description, render).
- * Obsidian 1.13+ renders them itself and indexes them for settings search
- * (getSettingDefinitions); older versions use display(), which renders the
- * same definitions imperatively.
+ * Obsidian (1.13+) renders them itself and indexes them for settings search.
  */
 export class EuroSettings extends PluginSettingTab {
   constructor(app, plugin) {
@@ -16,8 +14,7 @@ export class EuroSettings extends PluginSettingTab {
 
   /* Re-renders after changes that add or remove settings. */
   refresh() {
-    if (typeof this.update === 'function') this.update();
-    else this.display();
+    this.update();
   }
 
   getSettingDefinitions() {
@@ -130,26 +127,16 @@ export class EuroSettings extends PluginSettingTab {
     };
 
     const apiKeySetting = (setting) => {
-      // Obsidian 1.11.4+ keeps the key in its secure secret storage.
-      if (SecretComponent && this.app.secretStorage) {
-        setting.addComponent((el) =>
-          new SecretComponent(this.app, el)
-            .setValue(p.settings.numistaSecretId || '')
-            .onChange(async (id) => {
-              p.settings.numistaSecretId = id || '';
-              if (id) p.settings.numistaApiKey = '';
-              await p.saveSettings();
-            })
-        );
-        return;
-      }
-      setting.addText((x) => {
-        x.inputEl.type = 'password';
-        x.setValue(p.settings.numistaApiKey || '').onChange(async (v) => {
-          p.settings.numistaApiKey = v.trim();
-          await p.saveSettings();
-        });
-      });
+      // The key is kept in Obsidian's secure secret storage.
+      setting.addComponent((el) =>
+        new SecretComponent(this.app, el)
+          .setValue(p.settings.numistaSecretId || '')
+          .onChange(async (id) => {
+            p.settings.numistaSecretId = id || '';
+            if (id) p.settings.numistaApiKey = '';
+            await p.saveSettings();
+          })
+      );
     };
     const numista = {
       type: 'group',
@@ -379,19 +366,5 @@ export class EuroSettings extends PluginSettingTab {
     };
 
     return [general, folders, numista, setup, reference];
-  }
-
-  /* Fallback for Obsidian older than 1.13: render the same definitions. */
-  display() {
-    const container = this.containerEl;
-    container.empty();
-    for (const group of this.getSettingDefinitions()) {
-      if (group.heading) new Setting(container).setName(group.heading).setHeading();
-      for (const item of group.items || []) {
-        const setting = new Setting(container).setName(item.name);
-        if (item.desc) setting.setDesc(item.desc);
-        item.render?.(setting);
-      }
-    }
   }
 }
