@@ -23,7 +23,57 @@ __export(main_exports, {
   default: () => TwoEuroCollectionPlugin
 });
 module.exports = __toCommonJS(main_exports);
-var import_obsidian21 = require("obsidian");
+var import_obsidian25 = require("obsidian");
+
+// src/ui/ConfirmModal.js
+var import_obsidian = require("obsidian");
+var ConfirmModal = class _ConfirmModal extends import_obsidian.Modal {
+  /**
+   * @param {import('obsidian').App} app
+   * @param {{ message: string, confirmText: string, cancelText: string, warning?: boolean }} options
+   */
+  constructor(app, { message, confirmText, cancelText, warning = false }) {
+    super(app);
+    this.message = message;
+    this.confirmText = confirmText;
+    this.cancelText = cancelText;
+    this.warning = warning;
+    this.result = false;
+    this.resolve = () => {
+    };
+    this.promise = new Promise((resolve) => this.resolve = resolve);
+  }
+  onOpen() {
+    const c = this.contentEl;
+    c.empty();
+    for (const paragraph of this.message.split("\n")) c.createEl("p", { text: paragraph });
+    const actions = c.createDiv({ cls: "twoeuro-actions" });
+    actions.createEl("button", { text: this.cancelText }).onclick = () => this.close();
+    const confirm = actions.createEl("button", {
+      text: this.confirmText,
+      cls: this.warning ? "mod-warning" : "mod-cta"
+    });
+    confirm.onclick = () => {
+      this.result = true;
+      this.close();
+    };
+    window.setTimeout(() => confirm.focus(), 0);
+  }
+  onClose() {
+    this.contentEl.empty();
+    this.resolve(this.result);
+  }
+  /**
+   * @param {import('obsidian').App} app
+   * @param {{ message: string, confirmText: string, cancelText: string, warning?: boolean }} options
+   * @returns {Promise<boolean>}
+   */
+  static ask(app, options) {
+    const modal = new _ConfirmModal(app, options);
+    modal.open();
+    return modal.promise;
+  }
+};
 
 // src/constants.js
 var VIEW_TYPE_FILTERS = "two-euro-filters-view";
@@ -82,19 +132,30 @@ var DEFAULTS = {
 };
 var GITHUB_REPO = "wkasjanowicz/Obsidian-Two-Euro-Collection";
 
-// src/ui/CoinModal.js
-var import_obsidian = require("obsidian");
-
 // src/utils.js
 function formatText(template, vars = {}) {
-  return String(template).replace(
+  return asText(template).replace(
     /\{(\w+)\}/g,
-    (_, k) => Object.prototype.hasOwnProperty.call(vars, k) ? String(vars[k]) : `{${k}}`
+    (_, k) => Object.prototype.hasOwnProperty.call(vars, k) ? asText(vars[k]) : `{${k}}`
   );
 }
-var tx = (v) => v == null ? "" : String(v).trim();
+function asText(v) {
+  if (v == null) return "";
+  if (typeof v === "string") return v;
+  if (typeof v === "number" || typeof v === "boolean" || typeof v === "bigint") return String(v);
+  if (Array.isArray(v)) return v.map(asText).join(",");
+  if (v instanceof Error || v instanceof Date) return String(v);
+  return typeof v === "function" ? "[object Function]" : "[object Object]";
+}
+var parseJson = (text) => JSON.parse(text);
+var asError = (error) => (
+  /** @type {import('./types').PluginError} */
+  error && typeof error === "object" ? error : new Error(asText(error))
+);
+var errorText = (error) => asError(error).message || asText(error);
+var tx = (v) => asText(v).trim();
 var clean = (v) => tx(v).replace(/[\\/:*?"<>|]/g, "").trim();
-var isTrue = (v) => v === true || String(v).toLowerCase() === "true";
+var isTrue = (v) => v === true || tx(v).toLowerCase() === "true";
 var toNum = (v) => {
   const s = tx(v).replace(/\s+/g, "").replace(",", ".");
   if (!s) return null;
@@ -151,704 +212,15 @@ function countryName(v) {
   return m[k] || x.replace(/^(Republic of|Kingdom of|Principality of|Grand Duchy of)\s+/i, "");
 }
 
-// src/ui/CoinModal.js
-var CoinModal = class extends import_obsidian.Modal {
-  constructor(app, plugin, row) {
-    super(app);
-    this.plugin = plugin;
-    this.row = row || null;
-    if (this.row?.file instanceof import_obsidian.TFile) this.plugin.currentCoinFile = this.row.file;
-  }
-  onOpen() {
-    const p = this.plugin, t = (k, v) => p.t(k, v), c = this.contentEl, f = this.row ? { ...this.row } : {
-      country: "",
-      year: "",
-      title: "",
-      coin_type: "commemorative",
-      mint_mark: "",
-      owned: false,
-      quantity: 1,
-      acquisition_date: "",
-      acquisition_price: "",
-      acquisition_currency: p.settings.defaultCurrency || "PLN",
-      condition: "",
-      notes: "",
-      cover_url: "",
-      reference_year: "",
-      cover_locked: false,
-      own_cover: false
-    };
-    c.empty();
-    c.createEl("h2", { text: t(this.row ? "coin.edit" : "coin.add") });
-    const input = (key, field, ph = "", desc = "") => {
-      const setting = new import_obsidian.Setting(c).setName(t(key));
-      if (desc) setting.setDesc(t(desc));
-      setting.addText(
-        (x) => x.setValue(tx(f[field])).setPlaceholder(ph ? t(ph) : "").onChange((v) => f[field] = v)
-      );
-      return setting;
-    };
-    input("coin.country", "country");
-    input("coin.year", "year");
-    input("coin.title", "title");
-    new import_obsidian.Setting(c).setName(t("coin.type")).addDropdown(
-      (d) => d.addOption("commemorative", t("coin.commemorative")).addOption("national", t("coin.national")).setValue(f.coin_type || "commemorative").onChange((v) => {
-        f.coin_type = v;
-      })
-    );
-    input("coin.mint", "mint_mark");
-    new import_obsidian.Setting(c).setName(t("coin.owned")).addToggle((x) => x.setValue(isTrue(f.owned)).onChange((v) => f.owned = v));
-    input("coin.quantity", "quantity");
-    input("coin.date", "acquisition_date");
-    input("coin.price", "acquisition_price");
-    input("coin.currency", "acquisition_currency");
-    input("coin.condition", "condition");
-    input("coin.coverUrl", "cover_url");
-    const referenceSetting = new import_obsidian.Setting(c).setName(t("coin.referenceYear")).setDesc(t("coin.referenceYearDesc"));
-    const datalistId = `twoeuro-reference-years-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    const datalist = c.createEl("datalist", { attr: { id: datalistId } });
-    const updateReferenceSuggestions = () => {
-      datalist.empty();
-      const years = p.getReferenceYearSuggestions(f, this.row?.file);
-      for (const year of years) datalist.createEl("option", { attr: { value: String(year) } });
-    };
-    referenceSetting.addText((text) => {
-      text.setValue(tx(f.reference_year)).setPlaceholder(t("coin.referenceYearPh"));
-      text.inputEl.setAttribute("list", datalistId);
-      text.inputEl.setAttribute("inputmode", "numeric");
-      text.inputEl.addEventListener("focus", updateReferenceSuggestions);
-      text.onChange((value) => {
-        f.reference_year = value;
-      });
-    });
-    updateReferenceSuggestions();
-    new import_obsidian.Setting(c).setName(t("coin.coverLocked")).setDesc(t("coin.coverLockedDesc")).addToggle((x) => x.setValue(isTrue(f.cover_locked)).onChange((v) => f.cover_locked = v));
-    new import_obsidian.Setting(c).setName(t("coin.ownCover")).setDesc(t("coin.ownCoverDesc")).addToggle(
-      (x) => x.setValue(isTrue(f.own_cover)).onChange((v) => {
-        f.own_cover = v;
-        if (v) f.cover_locked = true;
-      })
-    );
-    input("coin.photoAuthor", "photo_author");
-    input("coin.photoLicense", "photo_license");
-    new import_obsidian.Setting(c).setName(t("coin.numismaticValue")).setDesc(t("coin.numismaticValueDesc")).addTextArea((x) => {
-      x.setValue(p.formatNumismaticValue(f));
-      x.inputEl.readOnly = true;
-    });
-    new import_obsidian.Setting(c).setName(t("coin.notes")).addTextArea((x) => x.setValue(tx(f.notes)).onChange((v) => f.notes = v));
-    const actions = c.createDiv({ cls: "twoeuro-actions" });
-    actions.createEl("button", { text: t("action.cancel") }).onclick = () => this.close();
-    actions.createEl("button", { text: t("action.save"), cls: "mod-cta" }).onclick = async () => {
-      if (!clean(f.country) || !tx(f.year) || !clean(f.title)) {
-        new import_obsidian.Notice(t("error.required"));
-        return;
-      }
-      await p.upsert(f, this.row && this.row.file, { rename: true });
-      await p.refreshDashboards();
-      new import_obsidian.Notice(t("notice.saved"));
-      this.close();
-    };
-  }
-};
-
-// src/ui/EuroSettings.js
-var import_obsidian2 = require("obsidian");
-var EuroSettings = class extends import_obsidian2.PluginSettingTab {
-  constructor(app, plugin) {
-    super(app, plugin);
-    this.plugin = plugin;
-    this.folderDraft = {};
-  }
-  /* Re-renders after changes that add or remove settings. */
-  refresh() {
-    this.update();
-  }
-  getSettingDefinitions() {
-    const p = this.plugin, t = (k, v) => p.t(k, v);
-    const def = (name, render, desc = "") => ({ name, desc, render });
-    const text = (field, { placeholder = "", onChange } = {}) => (setting) => setting.addText(
-      (x) => x.setPlaceholder(placeholder).setValue(p.settings[field] == null ? "" : String(p.settings[field])).onChange(onChange)
-    );
-    const button = (label, onClick, { cta = false, warning = false } = {}) => (setting) => setting.addButton((b) => {
-      b.setButtonText(label).onClick(onClick);
-      if (cta) b.setCta();
-      if (warning) b.setWarning();
-    });
-    const month = (/* @__PURE__ */ new Date()).toISOString().slice(0, 7);
-    const requests = p.settings.numistaRequestMonth === month ? p.settings.numistaRequestCount || 0 : 0;
-    const general = {
-      type: "group",
-      items: [
-        def(
-          t("settings.language"),
-          (setting) => setting.addDropdown((d) => {
-            d.addOption("auto", t("settings.auto"));
-            for (const lang of p.getAvailableLanguages()) d.addOption(lang.code, lang.name);
-            d.setValue(p.settings.language || "auto").onChange(async (v) => {
-              p.settings.language = v;
-              await p.saveSettings();
-              this.refresh();
-            });
-          }),
-          t("settings.languageDesc")
-        ),
-        def(
-          t("settings.columns"),
-          (setting) => setting.addSlider(
-            (sl) => sl.setLimits(4, 10, 1).setValue(Number(p.settings.columns) || 6).setDynamicTooltip().onChange(async (v) => {
-              p.settings.columns = v;
-              await p.saveSettings();
-            })
-          ),
-          t("settings.columnsDesc")
-        ),
-        def(
-          t("settings.defaultCurrency"),
-          text("defaultCurrency", {
-            placeholder: "PLN",
-            onChange: async (v) => {
-              p.settings.defaultCurrency = v.trim();
-              await p.saveSettings();
-            }
-          })
-        )
-      ]
-    };
-    const folderField = (key, field) => def(
-      t(key),
-      text(field, {
-        onChange: (v) => {
-          this.folderDraft[field] = v;
-        }
-      })
-    );
-    const folders = {
-      type: "group",
-      heading: t("settings.headingFolders"),
-      items: [
-        folderField("settings.root", "rootFolder"),
-        folderField("settings.collection", "collectionFolder"),
-        folderField("settings.coins", "coinsFolder"),
-        folderField("settings.covers", "coversFolder"),
-        folderField("settings.dashboardFile", "dashboardFile"),
-        def(
-          t("settings.applyFolders"),
-          button(
-            t("settings.applyFoldersButton"),
-            async () => {
-              if (!Object.keys(this.folderDraft).length) return;
-              await p.changeFolders(this.folderDraft);
-              this.folderDraft = {};
-              this.refresh();
-            },
-            { cta: true }
-          ),
-          t("settings.applyFoldersDesc")
-        )
-      ]
-    };
-    const apiKeySetting = (setting) => {
-      setting.addComponent(
-        (el) => new import_obsidian2.SecretComponent(this.app, el).setValue(p.settings.numistaSecretId || "").onChange(async (id) => {
-          p.settings.numistaSecretId = id || "";
-          if (id) p.settings.numistaApiKey = "";
-          await p.saveSettings();
-        })
-      );
-    };
-    const numista = {
-      type: "group",
-      heading: t("settings.headingNumista"),
-      items: [
-        def(t("settings.apiKey"), apiKeySetting, t("settings.apiKeyDesc", { count: requests })),
-        def(
-          t("settings.syncUpdateExisting"),
-          (setting) => setting.addToggle(
-            (x) => x.setValue(isTrue(p.settings.syncUpdateExisting)).onChange(async (v) => {
-              p.settings.syncUpdateExisting = v;
-              await p.saveSettings();
-            })
-          ),
-          t("settings.syncUpdateExistingDesc")
-        ),
-        def(
-          t("settings.cacheDays"),
-          (setting) => setting.addSlider(
-            (slider) => slider.setLimits(0, 30, 1).setValue(
-              Number.isFinite(Number(p.settings.numistaCacheDays)) ? Number(p.settings.numistaCacheDays) : 7
-            ).setDynamicTooltip().onChange(async (value) => {
-              p.settings.numistaCacheDays = value;
-              await p.saveSettings();
-            })
-          ).addButton(
-            (b) => b.setButtonText(t("settings.cacheClear")).onClick(async () => {
-              await p.clearNumistaCache();
-              new import_obsidian2.Notice(t("settings.cacheCleared"));
-            })
-          ),
-          t("settings.cacheDaysDesc")
-        )
-      ]
-    };
-    const setup = {
-      type: "group",
-      heading: t("settings.initialSetup"),
-      items: [
-        def(
-          t("settings.initStructure"),
-          button(
-            t("settings.initStructureButton"),
-            async () => {
-              await p.ensureDashboard();
-              new import_obsidian2.Notice(t("settings.initStructureDone"));
-            },
-            { cta: true }
-          ),
-          t("settings.initStructureDesc")
-        ),
-        def(
-          t("settings.initReferenceData"),
-          button(
-            t("settings.initReferenceDataButton"),
-            async () => {
-              const result = await p.initializeReferenceData();
-              new import_obsidian2.Notice(
-                t("settings.initReferenceDataDone", {
-                  issuers: result.issuers,
-                  years: result.years
-                })
-              );
-              this.refresh();
-            },
-            { cta: true }
-          ),
-          t("settings.initReferenceDataDesc")
-        ),
-        def(
-          t("settings.initStarterPack"),
-          button(t("settings.initStarterPackButton"), async () => {
-            if (!await p.confirm(t("confirm.installStarter"))) return;
-            try {
-              await p.installStarterCollection();
-            } catch (error) {
-              console.error("Starter collection installation", error);
-              new import_obsidian2.Notice(error?.message || String(error));
-            }
-          }),
-          t("settings.initStarterPackDesc")
-        )
-      ]
-    };
-    let issuerToAdd = "", yearToAdd = "";
-    const additionalIssuers = Array.isArray(p.settings.additionalIssuers) ? p.settings.additionalIssuers : [];
-    const additionalYears = Array.isArray(p.settings.additionalYears) ? p.settings.additionalYears : [];
-    const reference = {
-      type: "group",
-      heading: t("settings.referenceData"),
-      items: [
-        def(
-          t("settings.referenceYearFrom"),
-          (setting) => setting.addText((x) => {
-            x.inputEl.type = "number";
-            x.inputEl.min = "1999";
-            x.inputEl.max = "2200";
-            x.setValue(String(p.settings.referenceYearFrom || 1999)).onChange(async (value) => {
-              const year = Number(value);
-              if (!Number.isInteger(year) || year < 1999 || year > 2200) return;
-              p.settings.referenceYearFrom = year;
-              await p.saveSettings();
-              p.refreshFilterViews();
-            });
-          }),
-          t("settings.referenceYearFromDesc")
-        ),
-        def(
-          t("settings.futureYears"),
-          (setting) => setting.addSlider(
-            (slider) => slider.setLimits(0, 10, 1).setValue(
-              Number.isFinite(Number(p.settings.futureYears)) ? Number(p.settings.futureYears) : 1
-            ).setDynamicTooltip().onChange(async (value) => {
-              p.settings.futureYears = value;
-              await p.saveSettings();
-              p.refreshFilterViews();
-            })
-          ),
-          t("settings.futureYearsDesc")
-        ),
-        def(
-          t("settings.additionalIssuer"),
-          (setting) => setting.addText(
-            (x) => x.setPlaceholder(t("settings.issuerPlaceholder")).onChange((value) => {
-              issuerToAdd = value;
-            })
-          ).addButton(
-            (b) => b.setButtonText(t("settings.addIssuerButton")).setCta().onClick(async () => {
-              const issuer = countryName(issuerToAdd);
-              if (!issuer) return;
-              if (await p.addReferenceIssuer(issuer)) {
-                new import_obsidian2.Notice(t("settings.issuerAdded", { issuer }));
-                this.refresh();
-              } else new import_obsidian2.Notice(t("settings.issuerExists"));
-            })
-          ),
-          `${t("settings.additionalIssuerDesc")} ${t("settings.referenceDataDesc")}`
-        ),
-        ...additionalIssuers.map(
-          (issuer) => def(
-            issuer,
-            button(
-              t("settings.removeIssuer"),
-              async () => {
-                await p.removeReferenceIssuer(issuer);
-                this.refresh();
-              },
-              { warning: true }
-            )
-          )
-        ),
-        def(
-          t("settings.additionalYear"),
-          (setting) => setting.addText((x) => {
-            x.inputEl.type = "number";
-            x.inputEl.min = "1999";
-            x.inputEl.max = "2200";
-            x.setPlaceholder(t("settings.yearPlaceholder")).onChange((value) => {
-              yearToAdd = value;
-            });
-          }).addButton(
-            (b) => b.setButtonText(t("settings.addYearButton")).setCta().onClick(async () => {
-              const year = Number(yearToAdd);
-              if (!Number.isInteger(year) || year < 1999 || year > 2200) {
-                new import_obsidian2.Notice(t("settings.invalidYear"));
-                return;
-              }
-              if (await p.addReferenceYear(year)) {
-                new import_obsidian2.Notice(t("settings.yearAdded", { year }));
-                this.refresh();
-              } else new import_obsidian2.Notice(t("settings.yearExists"));
-            })
-          ),
-          t("settings.additionalYearDesc")
-        ),
-        ...additionalYears.map(
-          (year) => def(
-            String(year),
-            button(
-              t("settings.removeYear"),
-              async () => {
-                await p.removeReferenceYear(year);
-                this.refresh();
-              },
-              { warning: true }
-            )
-          )
-        )
-      ]
-    };
-    return [general, folders, numista, setup, reference];
-  }
-};
-
-// src/ui/EuroFiltersView.js
-var import_obsidian3 = require("obsidian");
-var EuroFiltersView = class extends import_obsidian3.ItemView {
-  constructor(leaf, plugin) {
-    super(leaf);
-    this.plugin = plugin;
-  }
-  getViewType() {
-    return VIEW_TYPE_FILTERS;
-  }
-  getDisplayText() {
-    return this.plugin.t("sidebar.title");
-  }
-  getIcon() {
-    return "sliders-horizontal";
-  }
-  onOpen() {
-    this.render();
-    return Promise.resolve();
-  }
-  render() {
-    const p = this.plugin, t = (k, v) => p.t(k, v), c = this.contentEl;
-    c.empty();
-    c.addClass("twoeuro-sidebar");
-    c.createEl("h3", { cls: "twoeuro-sidebar-section-title", text: t("sidebar.actions") });
-    const actions = c.createDiv({ cls: "twoeuro-sidebar-actions" });
-    if (p.isOperationRunning()) {
-      actions.createEl("button", { text: t("action.abort"), cls: "mod-warning" }).onclick = () => p.abortOperation();
-    }
-    actions.createEl("button", { text: `+ ${t("action.add")}`, cls: "mod-cta" }).onclick = () => new CoinModal(this.app, p).open();
-    actions.createEl("button", {
-      text: t("action.sync")
-    }).onclick = () => p.syncNumista();
-    actions.createEl("button", {
-      text: t("action.syncFiltered")
-    }).onclick = () => p.syncNumista(p.getNumistaSyncScope());
-    actions.createEl("button", { text: t("action.downloadCovers") }).onclick = () => p.backfillCovers();
-    actions.createEl("button", { text: t("action.updatePrices") }).onclick = () => p.updateNumistaPrices();
-    const exportRow = actions.createDiv({ cls: "twoeuro-sidebar-export" });
-    const exportKind = exportRow.createEl("select", { cls: "twoeuro-sidebar-select" });
-    [
-      ["missing", "export.kindMissing"],
-      ["owned", "export.kindOwned"],
-      ["swap", "export.kindSwap"]
-    ].forEach(([v, k]) => exportKind.createEl("option", { text: t(k), attr: { value: v } }));
-    exportKind.value = p.exportKind || "missing";
-    exportKind.onchange = () => {
-      p.exportKind = exportKind.value;
-    };
-    exportRow.createEl("button", { text: t("action.exportList") }).onclick = () => p.exportCoinList(exportKind.value);
-    const selectedCount = p.getSelectedCoinFiles().length;
-    c.createDiv({
-      cls: "twoeuro-sidebar-selected",
-      text: t("sidebar.selected", { count: selectedCount })
-    });
-    const batch = c.createDiv({ cls: "twoeuro-sidebar-batch-actions" });
-    const imageAction = c.createDiv({ cls: "twoeuro-sidebar-image-action" });
-    imageAction.createDiv({ cls: "twoeuro-sidebar-label", text: t("action.imagePreset") });
-    const imagePreset = imageAction.createEl("select", { cls: "twoeuro-sidebar-select" });
-    imagePreset.createEl("option", {
-      text: t("action.removeBackgroundSelected"),
-      attr: { value: "background" }
-    });
-    imagePreset.createEl("option", {
-      text: t("action.catalogPresetSelected"),
-      attr: { value: "catalog" }
-    });
-    imagePreset.value = p.imagePreset === "catalog" ? "catalog" : "background";
-    imagePreset.onchange = () => {
-      p.imagePreset = imagePreset.value;
-    };
-    const processBtn = imageAction.createEl("button", {
-      text: t("action.processImage"),
-      cls: "twoeuro-sidebar-process"
-    });
-    processBtn.disabled = selectedCount === 0;
-    processBtn.onclick = () => p.processSelectedImages(imagePreset.value);
-    const duplicateBtn = batch.createEl("button", { text: t("action.duplicateSelected") });
-    duplicateBtn.disabled = selectedCount === 0;
-    duplicateBtn.onclick = () => p.duplicateSelectedCoins();
-    const deleteBtn = batch.createEl("button", { text: t("action.deleteSelected") });
-    deleteBtn.disabled = selectedCount === 0;
-    deleteBtn.onclick = () => p.deleteSelectedCoins();
-    const clearBtn = c.createEl("button", {
-      text: t("sidebar.clearSelection"),
-      cls: "twoeuro-sidebar-clear"
-    });
-    clearBtn.disabled = selectedCount === 0;
-    clearBtn.onclick = () => {
-      p.clearCoinSelection();
-      p.refreshDashboards();
-      p.refreshFilterViews();
-    };
-    c.createEl("hr");
-    c.createEl("h3", { cls: "twoeuro-sidebar-section-title", text: t("sidebar.filtersSorting") });
-    const state = p.getDashboardState();
-    c.createDiv({ cls: "twoeuro-sidebar-label", text: t("filter.search") });
-    const search = c.createEl("input", {
-      cls: "twoeuro-sidebar-search",
-      attr: { type: "search", placeholder: t("filter.search") }
-    });
-    search.value = state.searchText || "";
-    c.createDiv({ cls: "twoeuro-sidebar-label", text: t("coin.country") });
-    const country = c.createEl("select", { cls: "twoeuro-sidebar-select" });
-    country.createEl("option", { text: t("filter.countries"), attr: { value: "" } });
-    p.getReferenceIssuers().forEach((value) => {
-      country.createEl("option", {
-        text: value,
-        attr: {
-          value
-        }
-      });
-    });
-    country.value = state.country || "";
-    c.createDiv({ cls: "twoeuro-sidebar-label", text: t("coin.year") });
-    const year = c.createEl("select", { cls: "twoeuro-sidebar-select" });
-    year.createEl("option", { text: t("filter.years"), attr: { value: "" } });
-    p.getReferenceYears().forEach((value) => {
-      year.createEl("option", {
-        text: value,
-        attr: {
-          value
-        }
-      });
-    });
-    year.value = state.year || "";
-    c.createDiv({ cls: "twoeuro-sidebar-label", text: t("coin.type") });
-    const mode = c.createEl("select", { cls: "twoeuro-sidebar-select" });
-    [
-      ["all", "filter.all"],
-      ["owned", "filter.owned"],
-      ["missing", "filter.missing"],
-      ["commemorative", "filter.commemorative"],
-      ["national", "filter.national"],
-      ["swap", "filter.swap"]
-    ].forEach(([v, k]) => mode.createEl("option", { text: t(k), attr: { value: v } }));
-    mode.value = state.mode || "all";
-    c.createDiv({ cls: "twoeuro-sidebar-label", text: t("sort.label") });
-    const sort = c.createEl("select", { cls: "twoeuro-sidebar-select" });
-    [
-      ["yearAsc", "sort.yearAsc"],
-      ["yearDesc", "sort.yearDesc"],
-      ["countryAsc", "sort.countryAsc"],
-      ["countryDesc", "sort.countryDesc"]
-    ].forEach(([v, k]) => sort.createEl("option", { text: t(k), attr: { value: v } }));
-    sort.value = state.sortMode || "yearAsc";
-    c.createDiv({ cls: "twoeuro-sidebar-label", text: t("group.label") });
-    const groupBy = c.createEl("select", { cls: "twoeuro-sidebar-select" });
-    [
-      ["none", "group.none"],
-      ["country", "group.country"],
-      ["year", "group.year"]
-    ].forEach(([v, k]) => groupBy.createEl("option", { text: t(k), attr: { value: v } }));
-    groupBy.value = state.groupBy || "none";
-    c.createEl("hr");
-    c.createEl("h3", { cls: "twoeuro-sidebar-section-title", text: t("sidebar.configuration") });
-    c.createDiv({ cls: "twoeuro-sidebar-label", text: t("settings.columns") });
-    const columnsWrap = c.createDiv({ cls: "twoeuro-sidebar-slider-row" });
-    const columns = columnsWrap.createEl("input", {
-      attr: {
-        type: "range",
-        min: "4",
-        max: "10",
-        step: "1",
-        value: String(Number(p.settings.columns) || 6)
-      }
-    });
-    const columnsValue = columnsWrap.createSpan({
-      cls: "twoeuro-sidebar-slider-value",
-      text: String(Number(p.settings.columns) || 6)
-    });
-    c.createDiv({ cls: "twoeuro-sidebar-label", text: t("settings.language") });
-    const language = c.createEl("select", { cls: "twoeuro-sidebar-select" });
-    language.createEl("option", { text: t("settings.auto"), attr: { value: "auto" } });
-    for (const lang of p.getAvailableLanguages())
-      language.createEl("option", { text: lang.name, attr: { value: lang.code } });
-    language.value = p.settings.language || "auto";
-    const apply = () => {
-      p.setDashboardState({
-        mode: mode.value,
-        country: country.value,
-        year: year.value,
-        searchText: search.value,
-        sortMode: sort.value,
-        groupBy: groupBy.value
-      });
-      p.refreshDashboards();
-    };
-    search.oninput = apply;
-    country.onchange = apply;
-    year.onchange = apply;
-    mode.onchange = apply;
-    sort.onchange = apply;
-    groupBy.onchange = apply;
-    columns.oninput = () => {
-      columnsValue.setText(String(Math.min(10, Math.max(4, Number(columns.value) || 6))));
-    };
-    columns.onchange = async () => {
-      const value = Math.min(10, Math.max(4, Number(columns.value) || 6));
-      columnsValue.setText(String(value));
-      p.settings.columns = value;
-      await p.saveSettings();
-      await p.refreshDashboards();
-    };
-    language.onchange = async () => {
-      p.settings.language = language.value;
-      await p.saveSettings();
-      await p.refreshDashboards();
-      p.refreshFilterViews();
-    };
-  }
-};
-
-// src/ui/SyncReportModal.js
-var import_obsidian4 = require("obsidian");
-var SyncReportModal = class extends import_obsidian4.Modal {
-  constructor(app, plugin) {
-    super(app);
-    this.plugin = plugin;
-  }
-  onOpen() {
-    const p = this.plugin, t = (k, v) => p.t(k, v), c = this.contentEl, report = p.lastSyncReport;
-    c.empty();
-    c.addClass("twoeuro-sync-report");
-    c.createEl("h2", { text: t("report.title") });
-    if (!report) {
-      c.createEl("p", { text: t("report.none") });
-      return;
-    }
-    c.createEl("p", {
-      text: t("report.summary", {
-        date: report.date,
-        scope: report.scope,
-        count: report.items.length
-      })
-    });
-    if (!report.items.length) {
-      c.createEl("p", { text: t("report.empty") });
-      return;
-    }
-    const list = c.createEl("ul");
-    for (const item of report.items) {
-      const li = list.createEl("li");
-      if (item.id)
-        li.createEl("a", {
-          text: `N#${item.id}`,
-          attr: { href: `https://en.numista.com/${item.id}` }
-        });
-      li.appendText(` ${item.title || ""} — ${item.reason}`);
-    }
-  }
-  onClose() {
-    this.contentEl.empty();
-  }
-};
-
-// src/ui/ConfirmModal.js
-var import_obsidian5 = require("obsidian");
-var ConfirmModal = class _ConfirmModal extends import_obsidian5.Modal {
-  constructor(app, { message, confirmText, cancelText, warning = false }) {
-    super(app);
-    this.message = message;
-    this.confirmText = confirmText;
-    this.cancelText = cancelText;
-    this.warning = warning;
-    this.result = false;
-    this.promise = new Promise((resolve) => this.resolve = resolve);
-  }
-  onOpen() {
-    const c = this.contentEl;
-    c.empty();
-    for (const paragraph of String(this.message).split("\n")) c.createEl("p", { text: paragraph });
-    const actions = c.createDiv({ cls: "twoeuro-actions" });
-    actions.createEl("button", { text: this.cancelText }).onclick = () => this.close();
-    const confirm = actions.createEl("button", {
-      text: this.confirmText,
-      cls: this.warning ? "mod-warning" : "mod-cta"
-    });
-    confirm.onclick = () => {
-      this.result = true;
-      this.close();
-    };
-    window.setTimeout(() => confirm.focus(), 0);
-  }
-  onClose() {
-    this.contentEl.empty();
-    this.resolve(this.result);
-  }
-  static ask(app, options) {
-    const modal = new _ConfirmModal(app, options);
-    modal.open();
-    return modal.promise;
-  }
-};
-
 // src/plugin/settings.js
 var settingsMethods = {
   async loadSettings() {
-    const saved = await this.loadData() || {};
-    this.settings = {
+    const saved = (
+      /** @type {Partial<import('../types').Settings> | null} */
+      await this.loadData() || {}
+    );
+    this.settings = /** @type {import('../types').Settings} */
+    {
       ...DEFAULTS,
       ...saved,
       referenceIssuers: Array.isArray(saved.referenceIssuers) ? saved.referenceIssuers : [],
@@ -878,6 +250,10 @@ var settingsMethods = {
     return true;
   },
   /* Asks the user to confirm an action in an Obsidian dialog. */
+  /**
+   * @param {string} message
+   * @param {{ warning?: boolean, confirmText?: string }} [options]
+   */
   confirm(message, { warning = false, confirmText = "" } = {}) {
     return ConfirmModal.ask(this.app, {
       message,
@@ -887,6 +263,9 @@ var settingsMethods = {
     });
   },
   /* Saves settings shortly after the last change (used for frequent UI state changes). */
+  /**
+   * @param {number} [delayMs]
+   */
   scheduleSettingsSave(delayMs = 1e3) {
     if (this._settingsSaveTimer) window.clearTimeout(this._settingsSaveTimer);
     this._settingsSaveTimer = window.setTimeout(() => {
@@ -957,6 +336,9 @@ var settingsMethods = {
     }
     return [...years].sort((a, b) => Number(b) - Number(a));
   },
+  /**
+   * @param {unknown} value
+   */
   async addReferenceIssuer(value) {
     const issuer = countryName(value);
     if (!issuer) {
@@ -978,6 +360,9 @@ var settingsMethods = {
     this.refreshFilterViews();
     return true;
   },
+  /**
+   * @param {unknown} value
+   */
   async removeReferenceIssuer(value) {
     const issuer = countryName(value);
     this.settings.additionalIssuers = (this.settings.additionalIssuers || []).filter(
@@ -988,6 +373,9 @@ var settingsMethods = {
     await this.saveSettings();
     this.refreshFilterViews();
   },
+  /**
+   * @param {unknown} value
+   */
   async addReferenceYear(value) {
     const year = Number(value);
     if (!Number.isInteger(year) || year < 1999 || year > 2200) {
@@ -1005,6 +393,9 @@ var settingsMethods = {
     this.refreshFilterViews();
     return true;
   },
+  /**
+   * @param {unknown} value
+   */
   async removeReferenceYear(value) {
     const year = String(Number(value));
     this.settings.additionalYears = (this.settings.additionalYears || []).map(String).filter((item) => item !== year);
@@ -1014,7 +405,7 @@ var settingsMethods = {
 };
 
 // src/plugin/i18n.js
-var import_obsidian6 = require("obsidian");
+var import_obsidian2 = require("obsidian");
 
 // src/i18n/en.js
 var BASE_LANGUAGE = {
@@ -2179,7 +1570,7 @@ var BUILTIN_LANGUAGES = Object.fromEntries(
 // src/plugin/i18n.js
 var i18nMethods = {
   languagesFolder() {
-    return (0, import_obsidian6.normalizePath)(`${this.manifest.dir}/Languages`);
+    return (0, import_obsidian2.normalizePath)(`${this.manifest.dir}/Languages`);
   },
   async loadExternalLanguages() {
     this.externalLanguages = {};
@@ -2199,9 +1590,15 @@ var i18nMethods = {
       const listing = await this.app.vault.adapter.list(folder);
       for (const path of listing.files.filter((file) => file.toLowerCase().endsWith(".json"))) {
         try {
-          const parsed = JSON.parse(await this.app.vault.adapter.read(path)), code = tx(
+          const parsed = (
+            /** @type {{ code?: unknown, name?: unknown, strings?: unknown }} */
+            parseJson(await this.app.vault.adapter.read(path))
+          ), code = tx(
             parsed.code || path.split("/").pop().replace(/\.json$/i, "")
-          ).toLowerCase(), name = tx(parsed.name) || code, strings = parsed.strings && typeof parsed.strings === "object" ? parsed.strings : {};
+          ).toLowerCase(), name = tx(parsed.name) || code, strings = (
+            /** @type {Record<string, string>} */
+            parsed.strings && typeof parsed.strings === "object" ? parsed.strings : {}
+          );
           if (!code || code === "en") continue;
           this.externalLanguages[code] = { ...this.externalLanguages[code] || {}, ...strings };
           const known = this.availableLanguages.find((lang) => lang.code === code);
@@ -2223,9 +1620,13 @@ var i18nMethods = {
     const selected = tx(this.settings?.language || "auto").toLowerCase();
     if (selected !== "auto" && (selected === "en" || this.externalLanguages?.[selected]))
       return selected;
-    const locale = String((0, import_obsidian6.getLanguage)() || "en").toLowerCase().split("-")[0];
+    const locale = String((0, import_obsidian2.getLanguage)() || "en").toLowerCase().split("-")[0];
     return this.externalLanguages?.[locale] ? locale : "en";
   },
+  /**
+   * @param {string} key
+   * @param {Record<string, unknown>} [vars]
+   */
   t(key, vars = {}) {
     const lang = this.getLanguage(), strings = lang === "en" ? BASE_LANGUAGE : this.externalLanguages?.[lang] || {};
     return formatText(strings[key] ?? BASE_LANGUAGE[key] ?? key, vars);
@@ -2233,12 +1634,15 @@ var i18nMethods = {
 };
 
 // src/plugin/vault.js
-var import_obsidian7 = require("obsidian");
+var import_obsidian3 = require("obsidian");
 var vaultMethods = {
   /*
    * Applies new folder settings. Existing coins, covers and the dashboard are
    * moved to the new locations (after confirmation), and cover links in coin
    * notes are updated, so the collection is not "lost" after a rename.
+   */
+  /**
+   * @param {Partial<Settings>} next
    */
   async changeFolders(next) {
     const keys = ["rootFolder", "collectionFolder", "coinsFolder", "coversFolder", "dashboardFile"];
@@ -2251,7 +1655,7 @@ var vaultMethods = {
       if (before[key] === after[key]) continue;
       if (!this.app.vault.getAbstractFileByPath(before[key])) continue;
       if (this.app.vault.getAbstractFileByPath(after[key])) {
-        new import_obsidian7.Notice(this.t("notice.folderExists", { path: after[key] }));
+        new import_obsidian3.Notice(this.t("notice.folderExists", { path: after[key] }));
         Object.assign(this.settings, previous);
         return false;
       }
@@ -2267,7 +1671,8 @@ ${list}`)) {
       for (const [from, to] of moves) {
         const parent = to.includes("/") ? to.slice(0, to.lastIndexOf("/")) : "";
         if (parent) await this.ensureFolder(parent);
-        await this.app.fileManager.renameFile(this.app.vault.getAbstractFileByPath(from), to);
+        const source = this.app.vault.getAbstractFileByPath(from);
+        if (source) await this.app.fileManager.renameFile(source, to);
       }
       if (before.covers !== after.covers) {
         for (const file of this.filesInFolder(after.coins, "md")) {
@@ -2281,11 +1686,14 @@ ${list}`)) {
     await this.saveSettings();
     this.invalidateRows();
     await this.refreshDashboards();
-    new import_obsidian7.Notice(this.t("notice.foldersChanged", { count: moves.length }));
+    new import_obsidian3.Notice(this.t("notice.foldersChanged", { count: moves.length }));
     return true;
   },
+  /**
+   * @param {...string} a
+   */
   join(...a) {
-    return (0, import_obsidian7.normalizePath)(
+    return (0, import_obsidian3.normalizePath)(
       a.map(tx).map((x) => x.replace(/^\/+|\/+$/g, "")).filter(Boolean).join("/")
     );
   },
@@ -2302,10 +1710,16 @@ ${list}`)) {
     const name = clean(this.settings.dashboardFile).replace(/\.md$/i, "") || "🪙 Kolekcja 2 Euro";
     return this.join(this.root(), `${name}.md`);
   },
+  /**
+   * @param {string} path
+   */
   isSupportedImage(path) {
     const ext = (path || "").split(".").pop().toLowerCase();
     return ["png", "jpg", "jpeg", "webp", "gif", "svg"].includes(ext);
   },
+  /**
+   * @param {string} path
+   */
   async ensureFolder(path) {
     if (!path || await this.app.vault.adapter.exists(path)) return;
     let c = "";
@@ -2328,9 +1742,12 @@ ${list}`)) {
   },
   async openDashboard() {
     const p = await this.ensureDashboard(), f = this.app.vault.getAbstractFileByPath(p);
-    if (f instanceof import_obsidian7.TFile) await this.app.workspace.getLeaf(true).openFile(f);
+    if (f instanceof import_obsidian3.TFile) await this.app.workspace.getLeaf(true).openFile(f);
     await this.activateFiltersView();
   },
+  /**
+   * @param {string} p
+   */
   async uniquePath(p) {
     if (!await this.app.vault.adapter.exists(p)) return p;
     const i = p.lastIndexOf(".");
@@ -2342,19 +1759,27 @@ ${list}`)) {
    * Lists files only inside the given collection folder (recursively), so the
    * plugin never enumerates the rest of the vault.
    */
+  /**
+   * @param {string} path
+   * @param {string} [extension]
+   */
   filesInFolder(path, extension = "") {
-    const folder = path ? this.app.vault.getAbstractFileByPath((0, import_obsidian7.normalizePath)(path)) : null;
-    if (!(folder instanceof import_obsidian7.TFolder)) return [];
+    const folder = path ? this.app.vault.getAbstractFileByPath((0, import_obsidian3.normalizePath)(path)) : null;
+    if (!(folder instanceof import_obsidian3.TFolder)) return [];
     const result = [], stack = [folder];
     while (stack.length) {
       for (const child of stack.pop().children || []) {
-        if (child instanceof import_obsidian7.TFolder) stack.push(child);
-        else if (child instanceof import_obsidian7.TFile && (!extension || child.extension === extension))
+        if (child instanceof import_obsidian3.TFolder) stack.push(child);
+        else if (child instanceof import_obsidian3.TFile && (!extension || child.extension === extension))
           result.push(child);
       }
     }
     return result;
   },
+  /**
+   * @param {string} source
+   * @param {string} target
+   */
   async moveFolderContents(source, target) {
     if (source === target) return 0;
     const src = this.app.vault.getAbstractFileByPath(source);
@@ -2373,10 +1798,13 @@ ${list}`)) {
       moved++;
     }
     const left = this.app.vault.getAbstractFileByPath(source);
-    if (left && left.children && left.children.length === 0)
-      await this.app.vault.delete(left, true);
+    if (left instanceof import_obsidian3.TFolder && left.children.length === 0)
+      await this.app.fileManager.trashFile(left);
     return moved;
   },
+  /**
+   * @param {string | undefined} path
+   */
   isCollectionPath(path) {
     const value = tx(path);
     if (!value) return false;
@@ -2385,8 +1813,12 @@ ${list}`)) {
 };
 
 // src/plugin/coins.js
-var import_obsidian8 = require("obsidian");
+var import_obsidian4 = require("obsidian");
+var parseYamlText = (text) => (0, import_obsidian4.parseYaml)(text);
 var coinsMethods = {
+  /**
+   * @param {CoinData} d
+   */
   notePath(d) {
     return this.join(
       this.coins(),
@@ -2394,6 +1826,11 @@ var coinsMethods = {
       `${clean(d.year)} - ${clean(d.title)}${d.mint_mark ? ` - ${clean(d.mint_mark)}` : ""}.md`
     );
   },
+  /**
+   * @param {CoinData} d
+   * @param {import('obsidian').TFile | null} [file]
+   * @param {{ rename?: boolean }} [options]
+   */
   async upsert(d, file, options = {}) {
     await this.ensureStructure();
     const country = countryName(d.country);
@@ -2419,7 +1856,7 @@ var coinsMethods = {
       numista_issue_id: d.numista_issue_id || void 0,
       numista_url: tx(d.numista_url) || void 0,
       mintage: d.mintage ?? void 0,
-      cover: d.cover_path ? `[[${d.cover_path}]]` : tx(d.cover) || void 0,
+      cover: d.cover_path ? `[[${tx(d.cover_path)}]]` : tx(d.cover) || void 0,
       cover_url: tx(d.cover_url) || void 0,
       reference_year: tx(d.reference_year) || void 0,
       cover_locked: isTrue(d.cover_locked) || isTrue(d.own_cover),
@@ -2439,32 +1876,41 @@ var coinsMethods = {
     Object.keys(fm).forEach(
       (k) => (fm[k] === void 0 || fm[k] === null || fm[k] === "") && delete fm[k]
     );
-    if (file instanceof import_obsidian8.TFile) {
+    if (file instanceof import_obsidian4.TFile) {
       let previousCover = "";
-      await this.app.fileManager.processFrontMatter(file, (current) => {
-        previousCover = tx(current.cover);
-        for (const key of managedKeys) {
-          if (Object.prototype.hasOwnProperty.call(fm, key)) current[key] = fm[key];
-          else delete current[key];
+      await this.app.fileManager.processFrontMatter(
+        file,
+        (current) => {
+          previousCover = tx(current.cover);
+          for (const key of managedKeys) {
+            if (Object.prototype.hasOwnProperty.call(fm, key)) current[key] = fm[key];
+            else delete current[key];
+          }
         }
-      });
+      );
       await this.app.vault.process(
         file,
-        (content) => this.updateCoinBody(content, fm.title, previousCover, tx(fm.cover))
+        (content) => this.updateCoinBody(content, tx(fm.title), previousCover, tx(fm.cover))
       );
       if (options.rename) await this.renameCoinFile(file, fm);
       return file;
     }
     const body = `---
-${(0, import_obsidian8.stringifyYaml)(fm).trimEnd()}
+${(0, import_obsidian4.stringifyYaml)(fm).trimEnd()}
 ---
 
-# ${fm.title}
+# ${tx(fm.title)}
 
-${fm.cover ? `!${fm.cover}
+${fm.cover ? `!${tx(fm.cover)}
 ` : ""}`;
     return this.app.vault.create(await this.uniquePath(this.notePath(fm)), body);
   },
+  /**
+   * @param {string} content
+   * @param {string} title
+   * @param {string} oldCover
+   * @param {string} newCover
+   */
   updateCoinBody(content, title, oldCover, newCover) {
     const head = content.match(/^---\r?\n[\s\S]*?\r?\n---[^\S\r\n]*(\r?\n|$)/)?.[0] || "";
     let body = content.slice(head.length);
@@ -2483,6 +1929,10 @@ ${embed}`);
     }
     return head + body;
   },
+  /**
+   * @param {import('obsidian').TFile} file
+   * @param {CoinData} fm
+   */
   async renameCoinFile(file, fm) {
     const desired = this.notePath(fm), oldPath = file.path, withoutCounter = oldPath.replace(/ \d+\.md$/, ".md");
     if (oldPath === desired || withoutCounter === desired) return file;
@@ -2491,6 +1941,10 @@ ${embed}`);
     if (this.selectedCoinPaths?.delete(oldPath)) this.selectedCoinPaths.add(file.path);
     return file;
   },
+  /**
+   * @param {CoinData | null | undefined} form
+   * @param {import('obsidian').TFile | null} [currentFile]
+   */
   getReferenceYearSuggestions(form, currentFile = null) {
     const country = countryName(form?.country).toLowerCase();
     const title = tx(form?.title).toLowerCase().replace(/\s+/g, " ");
@@ -2498,7 +1952,7 @@ ${embed}`);
     if (!country || !title || !type) return [];
     const years = /* @__PURE__ */ new Set();
     for (const row of this.getRows()) {
-      if (currentFile instanceof import_obsidian8.TFile && row.file.path === currentFile.path) continue;
+      if (currentFile instanceof import_obsidian4.TFile && row.file.path === currentFile.path) continue;
       if (!row.cover_locked) continue;
       if (!this.coverSrc(row)) continue;
       if (countryName(row.country).toLowerCase() !== country) continue;
@@ -2558,11 +2012,17 @@ ${embed}`);
         photo_license: tx(m.photo_license),
         photo_license_url: tx(m.photo_license_url),
         numismatic_value_currency: tx(m.numismatic_value_currency),
-        numismatic_values: Array.isArray(m.numismatic_values) ? m.numismatic_values : [],
+        numismatic_values: Array.isArray(m.numismatic_values) ? (
+          /** @type {import('../types').NumistaValue[]} */
+          m.numismatic_values
+        ) : [],
         numismatic_value_unc: m.numismatic_value_unc
       };
     }).filter((r) => r.country && r.year);
   },
+  /**
+   * @param {CoinData | null | undefined} r
+   */
   localPath(r) {
     const p = tx(r?.cover).replace(/^\[\[/, "").replace(/\]\]$/, "").split("|")[0].trim();
     if (!p) return "";
@@ -2575,14 +2035,21 @@ ${embed}`);
     }
     return this.join(this.covers(), p);
   },
+  /**
+   * @param {CoinData | null | undefined} r
+   */
   coverSrc(r) {
     const p = this.localPath(r);
     if (!p || !this.isSupportedImage(p)) {
       return "";
     }
     const file = this.app.vault.getAbstractFileByPath(p);
-    return file instanceof import_obsidian8.TFile ? this.app.vault.getResourcePath(file) : "";
+    return file instanceof import_obsidian4.TFile ? this.app.vault.getResourcePath(file) : "";
   },
+  /**
+   * @param {CoinRow[]} rows
+   * @param {Partial<DashboardState>} state
+   */
   filterRowsByState(rows, state) {
     let list = rows.filter(
       (r) => !state.mode || state.mode === "all" || state.mode === r.coin_type || state.mode === "owned" && r.owned || state.mode === "missing" && !r.owned || state.mode === "swap" && r.owned && (Number(r.quantity) || 1) > 1
@@ -2596,17 +2063,24 @@ ${embed}`);
       );
     return list;
   },
+  /**
+   * @param {CoinData | null | undefined} row
+   */
   formatNumismaticValue(row) {
     const values = Array.isArray(row?.numismatic_values) ? row.numismatic_values : [], currency = tx(row?.numismatic_value_currency) || "EUR";
     if (!values.length) return "";
     return values.map((item) => `${String(item.grade || "").toUpperCase()}: ${item.price} ${currency}`).join(" · ");
   },
   getCurrentCoinFile() {
-    if (this.currentCoinFile instanceof import_obsidian8.TFile) return this.currentCoinFile;
+    if (this.currentCoinFile instanceof import_obsidian4.TFile) return this.currentCoinFile;
     const active = this.app.workspace.getActiveFile();
     const prefix = `${this.coins().replace(/\/$/, "")}/`;
-    return active instanceof import_obsidian8.TFile && active.path.startsWith(prefix) ? active : null;
+    return active instanceof import_obsidian4.TFile && active.path.startsWith(prefix) ? active : null;
   },
+  /**
+   * @param {import('obsidian').TFile} file
+   * @param {number} [attempts]
+   */
   async waitForFreshRow(file, attempts = 8) {
     for (let i = 0; i < attempts; i++) {
       const row = this.getRows().find((r) => r.file.path === file.path);
@@ -2619,50 +2093,61 @@ ${embed}`);
     }
     return this.getRows().find((r) => r.file.path === file.path) || null;
   },
+  /**
+   * @param {import('obsidian').TFile} file
+   */
   async readCoinRowFresh(file) {
     const content = await this.app.vault.read(file), match = content.match(/^---\r?\n([\s\S]*?)\r?\n---/);
     let fm = {};
     if (match) {
       try {
-        fm = (0, import_obsidian8.parseYaml)(match[1]) || {};
+        fm = /** @type {Record<string, unknown> | null} */
+        parseYamlText(match[1]) || {};
       } catch {
         fm = {};
       }
     }
     const cached = this.getRows().find((row) => row.file.path === file.path) || { file };
-    return {
-      ...cached,
-      file,
-      country: countryName(fm.country ?? cached.country),
-      year: tx(fm.year ?? cached.year),
-      title: normalizeCoinTitle(tx(fm.title ?? cached.title) || file.basename),
-      coin_type: tx(fm.coin_type ?? cached.coin_type) || "commemorative",
-      mint_mark: tx(fm.mint_mark ?? cached.mint_mark),
-      owned: isTrue(fm.owned ?? cached.owned),
-      quantity: Number(fm.quantity ?? cached.quantity) || 0,
-      acquisition_date: tx(fm.acquisition_date ?? cached.acquisition_date),
-      acquisition_price: fm.acquisition_price ?? cached.acquisition_price,
-      acquisition_currency: tx(fm.acquisition_currency ?? cached.acquisition_currency),
-      condition: tx(fm.condition ?? cached.condition),
-      notes: tx(fm.notes ?? cached.notes),
-      cover: tx(fm.cover ?? cached.cover),
-      cover_url: tx(fm.cover_url ?? cached.cover_url),
-      reference_year: tx(fm.reference_year ?? cached.reference_year),
-      cover_locked: isTrue(fm.cover_locked ?? cached.cover_locked),
-      own_cover: isTrue(fm.own_cover ?? cached.own_cover),
-      photo_author: tx(fm.photo_author ?? cached.photo_author),
-      photo_license: tx(fm.photo_license ?? cached.photo_license),
-      numismatic_value_currency: tx(
-        fm.numismatic_value_currency ?? cached.numismatic_value_currency
-      ),
-      numismatic_values: Array.isArray(fm.numismatic_values) ? fm.numismatic_values : cached.numismatic_values || [],
-      numismatic_value_unc: fm.numismatic_value_unc ?? cached.numismatic_value_unc
-    };
+    return (
+      /** @type {CoinRow} */
+      {
+        ...cached,
+        file,
+        country: countryName(fm.country ?? cached.country),
+        year: tx(fm.year ?? cached.year),
+        title: normalizeCoinTitle(tx(fm.title ?? cached.title) || file.basename),
+        coin_type: tx(fm.coin_type ?? cached.coin_type) || "commemorative",
+        mint_mark: tx(fm.mint_mark ?? cached.mint_mark),
+        owned: isTrue(fm.owned ?? cached.owned),
+        quantity: Number(fm.quantity ?? cached.quantity) || 0,
+        acquisition_date: tx(fm.acquisition_date ?? cached.acquisition_date),
+        acquisition_price: fm.acquisition_price ?? cached.acquisition_price,
+        acquisition_currency: tx(fm.acquisition_currency ?? cached.acquisition_currency),
+        condition: tx(fm.condition ?? cached.condition),
+        notes: tx(fm.notes ?? cached.notes),
+        cover: tx(fm.cover ?? cached.cover),
+        cover_url: tx(fm.cover_url ?? cached.cover_url),
+        reference_year: tx(fm.reference_year ?? cached.reference_year),
+        cover_locked: isTrue(fm.cover_locked ?? cached.cover_locked),
+        own_cover: isTrue(fm.own_cover ?? cached.own_cover),
+        photo_author: tx(fm.photo_author ?? cached.photo_author),
+        photo_license: tx(fm.photo_license ?? cached.photo_license),
+        numismatic_value_currency: tx(
+          fm.numismatic_value_currency ?? cached.numismatic_value_currency
+        ),
+        numismatic_values: Array.isArray(fm.numismatic_values) ? (
+          /** @type {import('../types').NumistaValue[]} */
+          fm.numismatic_values
+        ) : cached.numismatic_values || [],
+        numismatic_value_unc: fm.numismatic_value_unc ?? cached.numismatic_value_unc
+      }
+    );
   }
 };
 
 // src/plugin/maintenance.js
-var import_obsidian9 = require("obsidian");
+var import_obsidian5 = require("obsidian");
+var parseYamlText2 = (text) => (0, import_obsidian5.parseYaml)(text);
 var maintenanceMethods = {
   async normalizeExistingTitles() {
     let updated = 0, unchanged = 0, errors = 0;
@@ -2674,7 +2159,10 @@ var maintenanceMethods = {
           unchanged++;
           continue;
         }
-        const fm = (0, import_obsidian9.parseYaml)(match[1]) || {}, rawTitle = tx(fm.title), normalized = normalizeCoinTitle(rawTitle);
+        const fm = (
+          /** @type {Record<string, unknown> | null} */
+          parseYamlText2(match[1]) || {}
+        ), rawTitle = tx(fm.title), normalized = normalizeCoinTitle(rawTitle);
         if (!rawTitle || rawTitle === normalized) {
           unchanged++;
           continue;
@@ -2683,7 +2171,7 @@ var maintenanceMethods = {
         let body = content.slice(match[0].length);
         body = body.replace(/^(\s*#\s+)2\s*Euros?\.?\b/im, `$1${normalized}`);
         const rewritten = `---
-${(0, import_obsidian9.stringifyYaml)(fm).trimEnd()}
+${(0, import_obsidian5.stringifyYaml)(fm).trimEnd()}
 ---${body}`;
         await this.app.vault.modify(file, rewritten);
         updated++;
@@ -2695,7 +2183,7 @@ ${(0, import_obsidian9.stringifyYaml)(fm).trimEnd()}
     await new Promise((resolve) => window.setTimeout(resolve, 120));
     await this.refreshDashboards();
     this.refreshFilterViews();
-    new import_obsidian9.Notice(this.t("notice.titlesNormalized", { updated, unchanged, errors }));
+    new import_obsidian5.Notice(this.t("notice.titlesNormalized", { updated, unchanged, errors }));
     return { updated, unchanged, errors };
   },
   async normalizeCountryFolders() {
@@ -2720,16 +2208,19 @@ ${(0, import_obsidian9.stringifyYaml)(fm).trimEnd()}
     let updated = 0, unchanged = 0;
     for (const row of this.getRows()) {
       let changed = false;
-      await this.app.fileManager.processFrontMatter(row.file, (fm) => {
-        if (!Object.prototype.hasOwnProperty.call(fm, "reference_year")) {
-          fm.reference_year = "";
-          changed = true;
+      await this.app.fileManager.processFrontMatter(
+        row.file,
+        (fm) => {
+          if (!Object.prototype.hasOwnProperty.call(fm, "reference_year")) {
+            fm.reference_year = "";
+            changed = true;
+          }
+          if (!Object.prototype.hasOwnProperty.call(fm, "cover_locked")) {
+            fm.cover_locked = false;
+            changed = true;
+          }
         }
-        if (!Object.prototype.hasOwnProperty.call(fm, "cover_locked")) {
-          fm.cover_locked = false;
-          changed = true;
-        }
-      });
+      );
       if (changed) updated++;
       else unchanged++;
     }
@@ -2763,7 +2254,7 @@ ${(0, import_obsidian9.stringifyYaml)(fm).trimEnd()}
           removed++;
         }
       } catch (error) {
-        if (this.isNumistaAuthError(error) || error?.aborted) throw error;
+        if (this.isNumistaAuthError(error) || asError(error).aborted) throw error;
         errors++;
         console.error("Remove unofficial import", row.file?.path, error);
       }
@@ -2780,22 +2271,25 @@ ${(0, import_obsidian9.stringifyYaml)(fm).trimEnd()}
     for (const r of this.getRows()) {
       const k = coinIdentityKey(r);
       if (!g.has(k)) g.set(k, []);
-      g.get(k).push(r);
+      g.get(k)?.push(r);
     }
     let n = 0;
     for (const a of g.values()) {
       if (a.length < 2) continue;
       const keep = a.find((x) => x.owned) || a.find((x) => x.own_cover || x.cover_locked) || a.find((x) => this.coverSrc(x)) || a[0];
       const donor = a.find((x) => x !== keep && x.numista_id);
-      if (!keep.numista_id && donor && keep.file instanceof import_obsidian9.TFile) {
-        await this.app.fileManager.processFrontMatter(keep.file, (fm) => {
-          fm.numista_id = donor.numista_id;
-          if (donor.numista_issue_id) fm.numista_issue_id = donor.numista_issue_id;
-          if (donor.numista_url) fm.numista_url = donor.numista_url;
-        });
+      if (!keep.numista_id && donor && keep.file instanceof import_obsidian5.TFile) {
+        await this.app.fileManager.processFrontMatter(
+          keep.file,
+          (fm) => {
+            fm.numista_id = donor.numista_id;
+            if (donor.numista_issue_id) fm.numista_issue_id = donor.numista_issue_id;
+            if (donor.numista_url) fm.numista_url = donor.numista_url;
+          }
+        );
       }
       for (const r of a)
-        if (r !== keep && !r.owned && r.file instanceof import_obsidian9.TFile) {
+        if (r !== keep && !r.owned && r.file instanceof import_obsidian5.TFile) {
           await this.app.fileManager.trashFile(r.file);
           n++;
         }
@@ -2835,7 +2329,7 @@ ${(0, import_obsidian9.stringifyYaml)(fm).trimEnd()}
           continue;
         }
         const file = this.app.vault.getAbstractFileByPath(oldPath);
-        if (!(file instanceof import_obsidian9.TFile)) {
+        if (!(file instanceof import_obsidian5.TFile)) {
           skipped++;
           continue;
         }
@@ -2844,10 +2338,13 @@ ${(0, import_obsidian9.stringifyYaml)(fm).trimEnd()}
           oldPath
         );
         if (desired !== oldPath) await this.app.fileManager.renameFile(file, desired);
-        await this.app.fileManager.processFrontMatter(row.file, (fm) => {
-          fm.cover = `[[${desired}]]`;
-          if (fm.own_cover === true) fm.cover_locked = true;
-        });
+        await this.app.fileManager.processFrontMatter(
+          row.file,
+          (fm) => {
+            fm.cover = `[[${desired}]]`;
+            if (fm.own_cover === true) fm.cover_locked = true;
+          }
+        );
         renamed++;
       } catch (error) {
         errors++;
@@ -2855,7 +2352,7 @@ ${(0, import_obsidian9.stringifyYaml)(fm).trimEnd()}
       }
     }
     await this.refreshDashboards();
-    new import_obsidian9.Notice(this.t("notice.coverNamesNormalized", { renamed, skipped, errors }));
+    new import_obsidian5.Notice(this.t("notice.coverNamesNormalized", { renamed, skipped, errors }));
     return { renamed, skipped, errors };
   },
   /*
@@ -2872,12 +2369,12 @@ ${(0, import_obsidian9.stringifyYaml)(fm).trimEnd()}
       const coverPath = this.localPath(row);
       if (!coverPath.startsWith(prefix) || !coverPath.toLowerCase().endsWith(".png")) continue;
       const file = this.app.vault.getAbstractFileByPath(coverPath);
-      if (!(file instanceof import_obsidian9.TFile)) continue;
+      if (!(file instanceof import_obsidian5.TFile)) continue;
       if (!groups.has(coverPath)) groups.set(coverPath, { file, rows: [] });
-      groups.get(coverPath).rows.push(row);
+      groups.get(coverPath)?.rows.push(row);
     }
     if (!groups.size) {
-      new import_obsidian9.Notice(this.t("notice.convertCoversNone"));
+      new import_obsidian5.Notice(this.t("notice.convertCoversNone"));
       return;
     }
     const mb = (bytes) => (bytes / 1e6).toFixed(1);
@@ -2904,20 +2401,23 @@ ${(0, import_obsidian9.stringifyYaml)(fm).trimEnd()}
           return;
         }
         const newPath = await this.uniqueCoverPath(oldPath.replace(/\.png$/i, ".webp"));
-        const bytes = new Uint8Array(await blob.arrayBuffer());
+        const bytes = await blob.arrayBuffer();
         await this.app.vault.adapter.writeBinary(newPath, bytes);
         for (const row of group.rows) {
           const oldLink = tx(row.cover);
-          await this.app.fileManager.processFrontMatter(row.file, (fm) => {
-            fm.cover = `[[${newPath}]]`;
-          });
+          await this.app.fileManager.processFrontMatter(
+            row.file,
+            (fm) => {
+              fm.cover = `[[${newPath}]]`;
+            }
+          );
           await this.app.vault.process(
             row.file,
             (content) => oldLink ? content.split(`!${oldLink}`).join(`![[${newPath}]]`) : content
           );
         }
         before += binary.byteLength;
-        after += bytes.length;
+        after += bytes.byteLength;
         await this.app.fileManager.trashFile(group.file);
         converted++;
       } catch (error) {
@@ -2940,13 +2440,20 @@ ${(0, import_obsidian9.stringifyYaml)(fm).trimEnd()}
 };
 
 // src/plugin/numista.js
-var import_obsidian10 = require("obsidian");
+var import_obsidian6 = require("obsidian");
 var numistaMethods = {
+  /**
+   * @param {number} [minIntervalMs]
+   */
   async waitForRequestSlot(minIntervalMs = 1250) {
     const now = Date.now(), wait = Math.max(0, (this._lastRequestAt || 0) + minIntervalMs - now);
     if (wait > 0) await new Promise((r) => window.setTimeout(r, wait));
     this._lastRequestAt = Date.now();
   },
+  /**
+   * @param {import('obsidian').RequestUrlParam} options
+   * @param {{ minIntervalMs?: number, maxAttempts?: number, label?: string }} [config]
+   */
   async requestWithRetry(options, config = {}) {
     const minIntervalMs = config.minIntervalMs || 1250, maxAttempts = config.maxAttempts || 5, label = config.label || "Numista";
     let lastError;
@@ -2956,21 +2463,28 @@ var numistaMethods = {
       this.throwIfAborted();
       try {
         this.countNumistaRequest();
-        return await (0, import_obsidian10.requestUrl)(options);
+        return await (0, import_obsidian6.requestUrl)(options);
       } catch (error) {
         lastError = error;
-        const match = String(error?.message || "").match(/status\s+(\d+)/i), status = Number(error?.status || error?.response?.status || match && match[1] || 0);
+        const err = asError(error), match = (err.message || "").match(/status\s+(\d+)/i), status = Number(err.status || err.response?.status || match && match[1] || 0);
         if (status !== 429 || attempt === maxAttempts) throw error;
         const delayMs = Math.min(6e4, 5e3 * 2 ** (attempt - 1)) + Math.floor(Math.random() * 1e3);
-        console.warn(`${label}: HTTP 429; ponowienie po ${delayMs} ms`);
+        console.warn(`${label}: HTTP 429; retrying in ${delayMs} ms`);
         await new Promise((r) => window.setTimeout(r, delayMs));
       }
     }
     throw lastError;
   },
+  /**
+   * @param {unknown} error
+   */
   isNumistaAuthError(error) {
-    return Boolean(error?.numistaAuth);
+    return Boolean(asError(error).numistaAuth);
   },
+  /**
+   * @param {string} path
+   * @returns {Promise<unknown>}
+   */
   async api(path) {
     let r;
     try {
@@ -2985,7 +2499,7 @@ var numistaMethods = {
         { minIntervalMs: 1250, maxAttempts: 5, label: "Numista API" }
       );
     } catch (error) {
-      const match = String(error?.message || "").match(/status\s+(\d+)/i), status = Number(error?.status || match && match[1] || 0);
+      const err = asError(error), match = (err.message || "").match(/status\s+(\d+)/i), status = Number(err.status || match && match[1] || 0);
       if (status === 401 || status === 403) {
         const authError = new Error(this.t("error.numistaAuth", { status }));
         authError.status = status;
@@ -2995,8 +2509,47 @@ var numistaMethods = {
       throw error;
     }
     if (r.status >= 400) throw new Error(`Numista HTTP ${r.status}`);
-    return r.json || JSON.parse(r.text || "{}");
+    const json = r.json;
+    return json || parseJson(r.text || "{}");
   },
+  /**
+   * @param {unknown} country
+   */
+  async getNumistaIssuerCode(country) {
+    const selected = countryName(country);
+    if (!selected) return "";
+    try {
+      if (!this._numistaIssuers) {
+        const result = (
+          /** @type {{ issuers?: import('../types').NumistaIssuer[] } | import('../types').NumistaIssuer[] | null} */
+          await this.api("/issuers?lang=en")
+        );
+        this._numistaIssuers = Array.isArray(result) ? result : Array.isArray(result?.issuers) ? result.issuers : [];
+      }
+      const match = this._numistaIssuers.find(
+        (issuer) => tx(issuer?.code) && this.matchesNumistaSyncCountry(issuer?.name, selected)
+      );
+      return match ? tx(match.code) : "";
+    } catch (error) {
+      if (this.isNumistaAuthError(error)) throw error;
+      console.warn("Numista issuers unavailable", error);
+      return "";
+    }
+  },
+  /**
+   * @param {unknown} numistaCountry
+   * @param {unknown} selectedCountry
+   */
+  matchesNumistaSyncCountry(numistaCountry, selectedCountry) {
+    if (!selectedCountry) return true;
+    const source = countryName(numistaCountry);
+    const selected = countryName(selectedCountry);
+    return source.localeCompare(selected, void 0, { sensitivity: "base" }) === 0;
+  },
+  /**
+   * @param {unknown} v
+   * @returns {string}
+   */
   extractImage(v) {
     if (!v) return "";
     if (typeof v === "string") return /^https?:/i.test(v) ? v : "";
@@ -3007,45 +2560,25 @@ var numistaMethods = {
       }
     } else if (typeof v === "object") {
       for (const k of ["picture", "image", "url", "uri", "full", "large", "thumbnail", "preview"]) {
-        const u = this.extractImage(v[k]);
+        const u = this.extractImage(
+          /** @type {Record<string, unknown>} */
+          v[k]
+        );
         if (u) return u;
       }
     }
     return "";
   },
+  /**
+   * @param {NumistaType | null | undefined} d
+   * @returns {string}
+   */
   pickImage(d) {
     return this.extractImage(d && d.obverse) || this.extractImage(d && d.pictures) || this.extractImage(d && d.images);
   },
-  isTwoEuro(d) {
-    const numericValue = Number(d?.value?.numeric_value);
-    const currencyName = tx(d?.value?.currency?.name).trim().toLowerCase();
-    const currencyFullName = tx(d?.value?.currency?.full_name).trim().toLowerCase();
-    const isEuroCurrency = currencyName === "euro" || currencyFullName === "euro" || currencyFullName.startsWith("euro (");
-    return numericValue === 2 && isEuroCurrency;
-  },
-  async downloadCover(url, id, issue) {
-    if (!/^https?:/i.test(url)) return "";
-    await this.ensureFolder(this.covers());
-    const headers = { accept: "image/*,*/*" };
-    try {
-      const host = new URL(url).hostname.toLowerCase();
-      if (host === "numista.com" || host.endsWith(".numista.com"))
-        headers["Numista-API-Key"] = this.getNumistaApiKey();
-    } catch {
-      return "";
-    }
-    const r = await this.requestWithRetry(
-      {
-        url,
-        headers
-      },
-      { minIntervalMs: 1800, maxAttempts: 5, label: "Numista cover" }
-    );
-    if (r.status >= 400) throw new Error(`Cover HTTP ${r.status}`);
-    const ct = tx(r.headers?.["content-type"] || r.headers?.["Content-Type"]).toLowerCase(), ext = ct.includes("png") ? "png" : ct.includes("webp") ? "webp" : "jpg", p = this.join(this.covers(), `numista-${clean(id)}-${clean(issue)}.${ext}`);
-    await this.app.vault.adapter.writeBinary(p, new Uint8Array(r.arrayBuffer));
-    return p;
-  },
+  /**
+   * @param {NumistaType | null | undefined} details
+   */
   photoMetadata(details) {
     const side = details?.obverse || {};
     return {
@@ -3055,16 +2588,471 @@ var numistaMethods = {
       photo_license_url: tx(side.picture_license_url)
     };
   },
+  /**
+   * @param {NumistaType | null | undefined} d
+   */
+  isTwoEuro(d) {
+    const numericValue = Number(d?.value?.numeric_value);
+    const currencyName = tx(d?.value?.currency?.name).trim().toLowerCase();
+    const currencyFullName = tx(d?.value?.currency?.full_name).trim().toLowerCase();
+    const isEuroCurrency = currencyName === "euro" || currencyFullName === "euro" || currencyFullName.startsWith("euro (");
+    return numericValue === 2 && isEuroCurrency;
+  },
+  officialEuroIssuers() {
+    const builtIn = this.settings.referenceDataInitialized && this.settings.referenceIssuers?.length ? this.settings.referenceIssuers : DEFAULT_REFERENCE_ISSUERS;
+    const additional = Array.isArray(this.settings.additionalIssuers) ? this.settings.additionalIssuers : [];
+    return new Set([...builtIn, ...additional].map(countryName).filter(Boolean));
+  },
+  /**
+   * @param {NumistaType | null | undefined} details
+   */
+  isOfficialTwoEuroType(details) {
+    if (!this.isTwoEuro(details)) return false;
+    const issuer = countryName(details?.issuer?.name), objectId = Number(details?.object_type?.id || 0), objectName = tx(details?.object_type?.name).toLowerCase();
+    const officialObject = objectId === 1 || objectId === 2 || objectId === 3 || objectName === "standard circulation coins" || objectName === "circulating commemorative coins" || objectName === "non-circulating coins";
+    if (!officialObject || !this.officialEuroIssuers().has(issuer)) return false;
+    const haystack = [details?.title, details?.object_type?.name, details?.issuer?.name].map(tx).join(" ").toLowerCase();
+    return !/(medal|medallion|token|jeton|pattern|trial|probe|proba|essai|fantasy|fantaisie|private issue|souvenir|replica|copy)/i.test(
+      haystack
+    );
+  }
+};
+
+// src/plugin/sync.js
+var import_obsidian7 = require("obsidian");
+var SYNC_PAGE_SIZE = 50;
+var SYNC_MAX_PAGES = 200;
+var syncRowKey = (id, year, mint) => [tx(id), tx(year), tx(mint)].join(":");
+var syncFingerprint = (row) => JSON.stringify([
+  row.country,
+  row.title,
+  row.coin_type,
+  row.numista_url,
+  row.mintage,
+  row.cover_url,
+  row.reference_year,
+  row.cover_locked,
+  row.photo_author,
+  row.photo_license,
+  row.numismatic_value_currency,
+  row.numismatic_values,
+  row.numismatic_value_unc
+]);
+var syncMethods = {
+  getNumistaSyncScope() {
+    const state = this.getDashboardState();
+    return {
+      country: tx(state.country),
+      year: tx(state.year),
+      coinType: ["national", "commemorative"].includes(state.mode) ? state.mode : ""
+    };
+  },
+  /**
+   * @param {SyncScope | null} [scope]
+   */
+  syncNumista(scope = null) {
+    return this.runOperation(() => this.syncNumistaRun(scope));
+  },
+  /*
+   * Synchronization with the Numista catalogue, split into steps:
+   * createSyncRun (state of one run) -> fetchNumistaTypesPage (one page of
+   * search results) -> syncNumistaType (one catalogue type) -> syncNumistaIssue
+   * (one year / mint of that type, saved as a coin note) -> finishSyncRun.
+   */
+  /**
+   * @param {SyncScope | null} [scope]
+   * @returns {Promise<(SyncCounts & { scope: SyncScope }) | undefined>}
+   */
+  async syncNumistaRun(scope = null) {
+    if (!this.getNumistaApiKey()) {
+      new import_obsidian7.Notice(this.t("notice.apiKeyMissing"));
+      return;
+    }
+    const run = this.createSyncRun(scope);
+    const objectTypes = run.scope.coinType === "national" ? ["1"] : run.scope.coinType === "commemorative" ? ["2", "3"] : ["1", "2", "3"];
+    try {
+      const issuerCode = run.scope.country ? await this.getNumistaIssuerCode(run.scope.country) : "";
+      for (const objectType of objectTypes) {
+        const typeLabel = objectType === "1" ? this.t("filter.national") : this.t("filter.commemorative");
+        for (let page = 1; ; page++) {
+          if (page > SYNC_MAX_PAGES) {
+            throw new Error(
+              `Numista pagination safety limit exceeded for object type ${objectType}.`
+            );
+          }
+          const types = await this.fetchNumistaTypesPage(run, objectType, page, issuerCode);
+          for (const basic of types) {
+            run.processed++;
+            run.progress.setMessage(
+              run.filtered ? this.t("notice.syncProgress", {
+                scope: run.label,
+                type: typeLabel,
+                count: run.processed
+              }) : this.t("notice.syncProgressAll", { type: typeLabel, count: run.processed })
+            );
+            try {
+              await this.syncNumistaType(run, basic);
+            } catch (error) {
+              if (this.isNumistaAuthError(error) || asError(error).aborted) throw error;
+              run.counts.errors++;
+              run.report.push({
+                id: tx(basic?.id),
+                title: tx(basic?.title),
+                reason: `error: ${errorText(error)}`
+              });
+              console.error("Numista type synchronization", basic?.id, error);
+            }
+          }
+          if (types.length < SYNC_PAGE_SIZE) break;
+        }
+      }
+      await this.finishSyncRun(run);
+      run.progress.setMessage(this.t("notice.syncDone", { ...run.counts, scope: run.label }));
+      window.setTimeout(() => run.progress.hide(), 8e3);
+      return { ...run.counts, scope: run.scope };
+    } catch (error) {
+      run.progress.setMessage(this.t("notice.syncAborted", { message: errorText(error) }));
+      window.setTimeout(() => run.progress.hide(), 1e4);
+      await this.finishSyncRun(run);
+      console.error(error);
+    }
+  },
+  /**
+   * State of one synchronization: its scope, progress notice, counters,
+   * report and indexes of the coins already in the collection.
+   * @param {SyncScope | null} [scope]
+   * @returns {SyncRun}
+   */
+  createSyncRun(scope = null) {
+    const syncScope = {
+      country: tx(scope?.country),
+      year: tx(scope?.year),
+      coinType: tx(scope?.coinType)
+    };
+    const labels = [];
+    if (syncScope.country) labels.push(syncScope.country);
+    if (syncScope.year) labels.push(syncScope.year);
+    if (syncScope.coinType) {
+      labels.push(
+        syncScope.coinType === "commemorative" ? this.t("filter.commemorative") : this.t("filter.national")
+      );
+    }
+    const filtered = labels.length > 0;
+    const label = filtered ? labels.join(" / ") : this.t("notice.syncScopeAll");
+    const current = this.getRows();
+    const localYears = /* @__PURE__ */ new Map();
+    for (const row of current) {
+      if (!row.numista_id) continue;
+      const years = localYears.get(row.numista_id) || /* @__PURE__ */ new Set();
+      years.add(row.year);
+      localYears.set(row.numista_id, years);
+    }
+    return {
+      scope: syncScope,
+      filtered,
+      label,
+      progress: this.progressNotice(
+        filtered ? this.t("notice.syncScope", { scope: label }) : this.t("notice.syncOfficial")
+      ),
+      byKey: new Map(
+        current.map((row) => [syncRowKey(row.numista_id, row.year, row.mint_mark), row])
+      ),
+      /*
+       * Coins identified by country, year, title and mint. Catches coins added
+       * manually (no numista_id) or under another Numista id, so synchronization
+       * does not create duplicates of them.
+       */
+      byIdentity: new Map(current.map((row) => [coinIdentityKey(row), row])),
+      localYears,
+      updateExisting: isTrue(this.settings.syncUpdateExisting),
+      useServerFilters: true,
+      processed: 0,
+      counts: { created: 0, updated: 0, unchanged: 0, existing: 0, skipped: 0, errors: 0 },
+      report: []
+    };
+  },
+  /**
+   * One page of Numista search results for 2 euro coins of an object type.
+   * Year and issuer are filtered on the server when Numista accepts it;
+   * if it rejects those filters, the search is repeated without them (the
+   * country, year and type are still checked locally).
+   * @param {SyncRun} run
+   * @param {string} objectType
+   * @param {number} page
+   * @param {string} issuerCode
+   * @returns {Promise<NumistaType[]>}
+   */
+  async fetchNumistaTypesPage(run, objectType, page, issuerCode) {
+    const q = new URLSearchParams({
+      q: "2 Euros",
+      object_type: objectType,
+      page: String(page),
+      count: String(SYNC_PAGE_SIZE),
+      lang: "en"
+    });
+    if (run.useServerFilters && run.scope.year) q.set("year", run.scope.year);
+    if (run.useServerFilters && issuerCode) q.set("issuer", issuerCode);
+    let listing;
+    try {
+      listing = /** @type {import('../types').NumistaTypesPage} */
+      await this.api(`/types?${q}`);
+    } catch (error) {
+      if (this.isNumistaAuthError(error) || page !== 1 || !run.useServerFilters || !(q.has("year") || q.has("issuer"))) {
+        throw error;
+      }
+      console.warn("Numista rejected server-side filters, retrying without them", error);
+      run.useServerFilters = false;
+      q.delete("year");
+      q.delete("issuer");
+      listing = /** @type {import('../types').NumistaTypesPage} */
+      await this.api(`/types?${q}`);
+    }
+    return listing.types || [];
+  },
+  /**
+   * Synchronizes one Numista type: checks that it is an official 2 euro coin
+   * in the requested country and type, then saves each matching issue.
+   * @param {SyncRun} run
+   * @param {NumistaType} basic search result
+   */
+  async syncNumistaType(run, basic) {
+    const id = tx(basic.id);
+    const skip = (reason) => {
+      run.counts.skipped++;
+      run.report.push({ id, title: tx(basic.title), reason });
+    };
+    if (!id) return skip("no id");
+    if (!run.updateExisting && this.isTypeAlreadyInCollection(basic, run.scope, run.localYears)) {
+      run.counts.existing++;
+      return;
+    }
+    const details = await this.getTypeDetails(id);
+    if (!details || !this.isOfficialTwoEuroType(details)) {
+      return skip(
+        `not official 2 euro (issuer: ${tx(details?.issuer?.name)}, type: ${tx(details?.object_type?.name)}, value: ${tx(details?.value?.text)})`
+      );
+    }
+    if (run.scope.country && !this.matchesNumistaSyncCountry(details.issuer?.name, run.scope.country)) {
+      return skip(`other country (${tx(details.issuer?.name)})`);
+    }
+    const coinType = this.numistaCoinType(details);
+    if (run.scope.coinType && coinType !== run.scope.coinType) {
+      return skip(`other type (${coinType})`);
+    }
+    const issues = await this.getTypeIssues(id);
+    const selected = this.selectSyncIssues(issues, run.scope.year);
+    if (!selected.length) {
+      return skip(
+        `no matching issues (Numista issues: ${issues.length}, years: ${issues.map((item) => tx(item.gregorian_year || item.year)).join(", ") || "-"})`
+      );
+    }
+    for (const issue of selected) await this.syncNumistaIssue(run, details, coinType, issue);
+  },
+  /**
+   * Local coin type of a Numista type: commemorative or national (circulation).
+   * @param {NumistaType} details
+   * @returns {'commemorative' | 'national'}
+   */
+  numistaCoinType(details) {
+    const kind = tx(details.object_type?.name).toLowerCase();
+    const objectTypeId = Number(details.object_type?.id);
+    return objectTypeId === 2 || objectTypeId === 3 || kind.includes("commemorative") || kind.includes("non-circulating") || Boolean(tx(details.commemorated_topic)) ? "commemorative" : "national";
+  },
+  /**
+   * Issues to save, one per year and mint, limited to the requested year.
+   * When Numista lists the same year and mint more than once, the record
+   * with the largest mintage is kept.
+   * @param {NumistaIssue[]} issues
+   * @param {string} year requested year, '' for all
+   * @returns {NumistaIssue[]}
+   */
+  selectSyncIssues(issues, year) {
+    const unique = /* @__PURE__ */ new Map();
+    for (const issue of issues) {
+      const issueYear = tx(issue.gregorian_year || issue.year);
+      if (!Number(issueYear)) continue;
+      if (year && issueYear !== year) continue;
+      const key = `${issueYear}|${tx(issue.mint_letter)}`;
+      const previous = unique.get(key);
+      if (!previous || Number(issue.mintage || 0) > Number(previous.mintage || 0)) {
+        unique.set(key, issue);
+      }
+    }
+    return [...unique.values()];
+  },
+  /**
+   * Saves one issue (year and mint) of a Numista type as a coin note:
+   * creates it, updates it (when enabled), or links an existing coin that
+   * has no Numista id yet instead of creating a duplicate.
+   * @param {SyncRun} run
+   * @param {NumistaType} details
+   * @param {string} coinType
+   * @param {NumistaIssue} issueRow
+   */
+  async syncNumistaIssue(run, details, coinType, issueRow) {
+    const id = tx(details.id);
+    const issue = tx(issueRow.id);
+    const year = tx(issueRow.gregorian_year || issueRow.year);
+    const mint = tx(issueRow.mint_letter);
+    const rowKey = syncRowKey(id, year, mint);
+    const old = run.byKey.get(rowKey);
+    if (old && !run.updateExisting) {
+      run.counts.existing++;
+      return;
+    }
+    if (!old) {
+      const twin = run.byIdentity.get(
+        coinIdentityKey({
+          country: details.issuer?.name,
+          year,
+          title: details.title,
+          mint_mark: mint
+        })
+      );
+      if (twin) {
+        if (!twin.numista_id && twin.file instanceof import_obsidian7.TFile) {
+          await this.app.fileManager.processFrontMatter(
+            twin.file,
+            (fm) => {
+              fm.numista_id = id;
+              fm.numista_issue_id = issue;
+              if (tx(details.url)) fm.numista_url = tx(details.url);
+            }
+          );
+          twin.numista_id = id;
+          twin.numista_issue_id = issue;
+        }
+        run.report.push({
+          id,
+          title: tx(details.title),
+          reason: `matched existing coin ${twin.file?.path || ""}`
+        });
+        run.byKey.set(rowKey, twin);
+        run.counts.existing++;
+        return;
+      }
+    }
+    const sourceImage = this.pickImage(details);
+    const data = {
+      ...old || {},
+      country: countryName(details.issuer?.name),
+      year,
+      title: normalizeCoinTitle(details.title),
+      coin_type: coinType,
+      mint_mark: mint,
+      source: "numista",
+      numista_id: id,
+      numista_issue_id: issue,
+      numista_url: tx(details.url),
+      mintage: issueRow.mintage ?? null,
+      official_issue: true,
+      object_type_id: tx(details.object_type?.id),
+      object_type_name: tx(details.object_type?.name),
+      ...this.photoMetadata(details),
+      // Prices are not downloaded during synchronization (use "Update
+      // prices"), so existing values are kept.
+      numismatic_value_currency: old?.numismatic_value_currency,
+      numismatic_values: old?.numismatic_values,
+      numismatic_value_unc: old?.numismatic_value_unc,
+      cover: old?.cover,
+      cover_url: old?.cover_locked ? old?.cover_url : sourceImage || old?.cover_url,
+      reference_year: old?.reference_year,
+      cover_locked: old?.cover_locked || old?.own_cover || false,
+      own_cover: old?.own_cover || false
+    };
+    if (old) {
+      if (syncFingerprint(old) === syncFingerprint(data)) {
+        run.counts.unchanged++;
+        return;
+      }
+      await this.upsert(data, old.file);
+      run.counts.updated++;
+    } else {
+      await this.upsert(data, null);
+      run.counts.created++;
+    }
+    run.byKey.set(rowKey, { ...data, file: old?.file });
+  },
+  /**
+   * Refreshes the views and keeps the report of skipped types.
+   * @param {SyncRun} run
+   */
+  async finishSyncRun(run) {
+    await this.refreshDashboards();
+    this.refreshFilterViews();
+    this.storeSyncReport(run.report, run.label);
+  },
+  /**
+   * @param {NumistaType} basic
+   * @param {SyncScope} scope
+   * @param {Map<string, Set<string>>} localYears
+   */
+  isTypeAlreadyInCollection(basic, scope, localYears) {
+    const years = localYears.get(tx(basic?.id));
+    if (!years?.size) return false;
+    if (scope.year) return years.has(String(scope.year));
+    const min = Number(basic?.min_year), max = Number(basic?.max_year);
+    if (Number.isInteger(min) && Number.isInteger(max) && max >= min && max - min < 100) {
+      for (let year = min; year <= max; year++) if (!years.has(String(year))) return false;
+    }
+    return true;
+  },
+  /* Keeps the list of skipped Numista types for the "last synchronization report" command. */
+  /**
+   * @param {SyncReportItem[]} items
+   * @param {string} scope
+   */
+  storeSyncReport(items, scope) {
+    this.lastSyncReport = { date: (/* @__PURE__ */ new Date()).toLocaleString(), scope, items: [...items] };
+    if (items.length) console.debug("2 Euro Collection: skipped Numista types", items);
+  },
+  /**
+   * @param {CoinRow} row
+   */
+  async updateSingleCoinFromNumista(row) {
+    if (!row.numista_id) throw new Error(this.t("error.noNumistaId"));
+    const details = await this.getTypeDetails(row.numista_id, { fresh: true }), issues = await this.getTypeIssues(row.numista_id, { fresh: true }), issue = issues.find((i) => String(i.id) === String(row.numista_issue_id)) || issues.find(
+      (i) => String(i.gregorian_year || i.year) === String(row.year) && tx(i.mint_letter) === tx(row.mint_mark)
+    );
+    if (!issue) throw new Error(this.t("error.noNumistaIssue"));
+    const photo = this.photoMetadata(details), valuation = await this.issueNumismaticValues(row.numista_id, issue.id);
+    await this.upsert(
+      {
+        ...row,
+        country: countryName(details.issuer?.name),
+        title: normalizeCoinTitle(details.title),
+        mintage: issue.mintage ?? row.mintage,
+        numista_url: tx(details.url),
+        ...photo,
+        numismatic_value_currency: valuation ? valuation.currency : row.numismatic_value_currency,
+        numismatic_values: valuation ? valuation.values : row.numismatic_values,
+        numismatic_value_unc: valuation ? valuation.unc : row.numismatic_value_unc
+      },
+      row.file
+    );
+  }
+};
+
+// src/plugin/prices.js
+var import_obsidian8 = require("obsidian");
+var pricesMethods = {
+  /**
+   * @param {unknown} typeId
+   * @param {unknown} issueId
+   */
   async issueNumismaticValues(typeId, issueId) {
     if (!typeId || !issueId) return { currency: "EUR", values: [], unc: null };
     try {
-      const result = await this.api(
-        `/types/${encodeURIComponent(typeId)}/issues/${encodeURIComponent(issueId)}/prices?currency=EUR&lang=en`
+      const result = (
+        /** @type {import('../types').NumistaPrices | null} */
+        await this.api(
+          `/types/${encodeURIComponent(tx(typeId))}/issues/${encodeURIComponent(tx(issueId))}/prices?currency=EUR&lang=en`
+        )
       ), prices = Array.isArray(result?.prices) ? result.prices : [], values = prices.filter((item) => item && item.price != null).map((item) => ({ grade: tx(item.grade), price: Number(item.price) })).filter((item) => Number.isFinite(item.price));
       const unc = values.find((item) => item.grade.toLowerCase() === "unc")?.price ?? null;
       return { currency: tx(result?.currency) || "EUR", values, unc };
     } catch (error) {
-      if (this.isNumistaAuthError(error) || error?.aborted) throw error;
+      if (this.isNumistaAuthError(error) || asError(error).aborted) throw error;
       console.warn("Numista prices unavailable", typeId, issueId, error);
       return null;
     }
@@ -3074,14 +3062,14 @@ var numistaMethods = {
   },
   async updateNumistaPricesRun() {
     if (!this.getNumistaApiKey()) {
-      new import_obsidian10.Notice(this.t("notice.apiKeyMissing"));
+      new import_obsidian8.Notice(this.t("notice.apiKeyMissing"));
       return;
     }
     const rows = this.filterRowsByState(this.getRows(), this.getDashboardState()).filter(
       (row) => row.numista_id && row.numista_issue_id
     );
     if (!rows.length) {
-      new import_obsidian10.Notice(this.t("notice.pricesNone"));
+      new import_obsidian8.Notice(this.t("notice.pricesNone"));
       return;
     }
     if (!await this.confirm(this.t("confirm.updatePrices", { count: rows.length }))) return;
@@ -3110,421 +3098,65 @@ var numistaMethods = {
           unchanged++;
           continue;
         }
-        await this.app.fileManager.processFrontMatter(row.file, (fm) => {
-          fm.numismatic_value_currency = valuation.currency;
-          fm.numismatic_values = valuation.values;
-          if (valuation.unc == null) delete fm.numismatic_value_unc;
-          else fm.numismatic_value_unc = valuation.unc;
-        });
+        await this.app.fileManager.processFrontMatter(
+          row.file,
+          (fm) => {
+            fm.numismatic_value_currency = valuation.currency;
+            fm.numismatic_values = valuation.values;
+            if (valuation.unc == null) delete fm.numismatic_value_unc;
+            else fm.numismatic_value_unc = valuation.unc;
+          }
+        );
         updated++;
       }
       progress2.setMessage(this.t("notice.pricesDone", { updated, unchanged, errors }));
       await this.recordValueSnapshot();
     } catch (error) {
       console.error("Numista prices", error);
-      progress2.setMessage(error?.message || String(error));
+      progress2.setMessage(errorText(error));
     }
     window.setTimeout(() => progress2.hide(), 8e3);
     return { updated, unchanged, errors };
-  },
-  isTypeAlreadyInCollection(basic, scope, localYears) {
-    const years = localYears.get(tx(basic?.id));
-    if (!years?.size) return false;
-    if (scope.year) return years.has(String(scope.year));
-    const min = Number(basic?.min_year), max = Number(basic?.max_year);
-    if (Number.isInteger(min) && Number.isInteger(max) && max >= min && max - min < 100) {
-      for (let year = min; year <= max; year++) if (!years.has(String(year))) return false;
-    }
-    return true;
-  },
-  officialEuroIssuers() {
-    const builtIn = this.settings.referenceDataInitialized && this.settings.referenceIssuers?.length ? this.settings.referenceIssuers : DEFAULT_REFERENCE_ISSUERS;
-    const additional = Array.isArray(this.settings.additionalIssuers) ? this.settings.additionalIssuers : [];
-    return new Set([...builtIn, ...additional].map(countryName).filter(Boolean));
-  },
-  isOfficialTwoEuroType(details) {
-    if (!this.isTwoEuro(details)) return false;
-    const issuer = countryName(details?.issuer?.name), objectId = Number(details?.object_type?.id || 0), objectName = tx(details?.object_type?.name).toLowerCase();
-    const officialObject = objectId === 1 || objectId === 2 || objectId === 3 || objectName === "standard circulation coins" || objectName === "circulating commemorative coins" || objectName === "non-circulating coins";
-    if (!officialObject || !this.officialEuroIssuers().has(issuer)) return false;
-    const haystack = [details?.title, details?.object_type?.name, details?.issuer?.name].map(tx).join(" ").toLowerCase();
-    return !/(medal|medallion|token|jeton|pattern|trial|probe|proba|essai|fantasy|fantaisie|private issue|souvenir|replica|copy)/i.test(
-      haystack
-    );
-  },
-  /* Keeps the list of skipped Numista types for the "last synchronization report" command. */
-  storeSyncReport(items, scope) {
-    this.lastSyncReport = { date: (/* @__PURE__ */ new Date()).toLocaleString(), scope, items: [...items] };
-    if (items.length) console.debug("2 Euro Collection: skipped Numista types", items);
-  },
-  getNumistaSyncScope() {
-    const state = this.getDashboardState();
-    return {
-      country: tx(state.country),
-      year: tx(state.year),
-      coinType: ["national", "commemorative"].includes(state.mode) ? state.mode : ""
-    };
-  },
-  matchesNumistaSyncCountry(numistaCountry, selectedCountry) {
-    if (!selectedCountry) return true;
-    const source = countryName(numistaCountry);
-    const selected = countryName(selectedCountry);
-    return source.localeCompare(selected, void 0, { sensitivity: "base" }) === 0;
-  },
-  async getNumistaIssuerCode(country) {
-    const selected = countryName(country);
-    if (!selected) return "";
+  }
+};
+
+// src/plugin/covers.js
+var import_obsidian9 = require("obsidian");
+var coversMethods = {
+  /**
+   * @param {string} url
+   * @param {unknown} id
+   * @param {unknown} issue
+   */
+  async downloadCover(url, id, issue) {
+    if (!/^https?:/i.test(url)) return "";
+    await this.ensureFolder(this.covers());
+    const headers = { accept: "image/*,*/*" };
     try {
-      if (!this._numistaIssuers) {
-        const result = await this.api("/issuers?lang=en");
-        this._numistaIssuers = Array.isArray(result?.issuers) ? result.issuers : Array.isArray(result) ? result : [];
-      }
-      const match = this._numistaIssuers.find(
-        (issuer) => tx(issuer?.code) && this.matchesNumistaSyncCountry(issuer?.name, selected)
-      );
-      return match ? tx(match.code) : "";
-    } catch (error) {
-      if (this.isNumistaAuthError(error)) throw error;
-      console.warn("Numista issuers unavailable", error);
+      const host = new URL(url).hostname.toLowerCase();
+      if (host === "numista.com" || host.endsWith(".numista.com"))
+        headers["Numista-API-Key"] = this.getNumistaApiKey();
+    } catch {
       return "";
     }
-  },
-  syncNumista(scope = null) {
-    return this.runOperation(() => this.syncNumistaRun(scope));
-  },
-  async syncNumistaRun(scope = null) {
-    if (!this.getNumistaApiKey()) {
-      new import_obsidian10.Notice(this.t("notice.apiKeyMissing"));
-      return;
-    }
-    const syncScope = {
-      country: tx(scope?.country),
-      year: tx(scope?.year),
-      coinType: tx(scope?.coinType)
-    };
-    const scopeLabels = [];
-    if (syncScope.country) {
-      scopeLabels.push(syncScope.country);
-    }
-    if (syncScope.year) {
-      scopeLabels.push(syncScope.year);
-    }
-    if (syncScope.coinType) {
-      scopeLabels.push(
-        syncScope.coinType === "commemorative" ? this.t("filter.commemorative") : this.t("filter.national")
-      );
-    }
-    const filteredSync = Boolean(syncScope.country) || Boolean(syncScope.year) || Boolean(syncScope.coinType);
-    const progress2 = this.progressNotice(
-      filteredSync ? this.t("notice.syncScope", { scope: scopeLabels.join(" / ") }) : this.t("notice.syncOfficial")
+    const r = await this.requestWithRetry(
+      {
+        url,
+        headers
+      },
+      { minIntervalMs: 1800, maxAttempts: 5, label: "Numista cover" }
     );
-    const current = this.getRows();
-    const by = new Map(
-      current.map((row) => [[row.numista_id, row.year, row.mint_mark].join(":"), row])
-    );
-    const updateExisting = isTrue(this.settings.syncUpdateExisting);
-    const localYears = /* @__PURE__ */ new Map();
-    const byIdentity = new Map(current.map((row) => [coinIdentityKey(row), row]));
-    for (const row of current) {
-      if (!row.numista_id) continue;
-      if (!localYears.has(row.numista_id)) localYears.set(row.numista_id, /* @__PURE__ */ new Set());
-      localYears.get(row.numista_id).add(String(row.year));
-    }
-    let created = 0;
-    let updated = 0;
-    let unchanged = 0;
-    let skipped = 0;
-    let existing = 0;
-    let errors = 0;
-    let processed = 0;
-    const report = [];
-    const objectTypes = syncScope.coinType === "national" ? ["1"] : syncScope.coinType === "commemorative" ? ["2", "3"] : ["1", "2", "3"];
-    const pageSize = 50;
-    let useServerFilters = true;
-    try {
-      const issuerCode = syncScope.country ? await this.getNumistaIssuerCode(syncScope.country) : "";
-      for (const objectType of objectTypes) {
-        let page = 1;
-        while (true) {
-          if (page > 200) {
-            throw new Error(
-              `Numista pagination safety limit exceeded for object type ${objectType}.`
-            );
-          }
-          const q = new URLSearchParams({
-            q: "2 Euros",
-            object_type: objectType,
-            page: String(page),
-            count: String(pageSize),
-            lang: "en"
-          });
-          if (useServerFilters && syncScope.year) {
-            q.set("year", String(syncScope.year));
-          }
-          if (useServerFilters && issuerCode) {
-            q.set("issuer", issuerCode);
-          }
-          let listing;
-          try {
-            listing = await this.api(`/types?${q}`);
-          } catch (error) {
-            if (this.isNumistaAuthError(error) || page !== 1 || !useServerFilters || !(q.has("year") || q.has("issuer"))) {
-              throw error;
-            }
-            console.warn("Numista rejected server-side filters, retrying without them", error);
-            useServerFilters = false;
-            q.delete("year");
-            q.delete("issuer");
-            listing = await this.api(`/types?${q}`);
-          }
-          const types = listing.types || [];
-          if (!types.length) {
-            break;
-          }
-          for (const basic of types) {
-            processed++;
-            const objectTypeLabel = objectType === "1" ? this.t("filter.national") : this.t("filter.commemorative");
-            progress2.setMessage(
-              filteredSync ? this.t("notice.syncProgress", {
-                scope: scopeLabels.join(" / "),
-                type: objectTypeLabel,
-                count: processed
-              }) : this.t("notice.syncProgressAll", { type: objectTypeLabel, count: processed })
-            );
-            try {
-              const id = tx(basic.id);
-              const skip = (reason) => {
-                skipped++;
-                report.push({ id, title: tx(basic.title), reason });
-              };
-              if (!id) {
-                skip("no id");
-                continue;
-              }
-              if (!updateExisting && this.isTypeAlreadyInCollection(basic, syncScope, localYears)) {
-                existing++;
-                continue;
-              }
-              let d = await this.getTypeDetails(id);
-              if (!this.isOfficialTwoEuroType(d)) {
-                skip(
-                  `not official 2 euro (issuer: ${tx(d.issuer?.name)}, type: ${tx(d.object_type?.name)}, value: ${tx(d.value?.text)})`
-                );
-                continue;
-              }
-              if (syncScope.country && !this.matchesNumistaSyncCountry(d.issuer?.name, syncScope.country)) {
-                skip(`other country (${tx(d.issuer?.name)})`);
-                continue;
-              }
-              const kind = tx(d.object_type?.name).toLowerCase();
-              const objectTypeId = Number(d.object_type?.id);
-              const coinType = objectTypeId === 2 || objectTypeId === 3 || kind.includes("commemorative") || kind.includes("non-circulating") || Boolean(tx(d.commemorated_topic)) ? "commemorative" : "national";
-              if (syncScope.coinType && coinType !== syncScope.coinType) {
-                skip(`other type (${coinType})`);
-                continue;
-              }
-              let raw = await this.getTypeIssues(id);
-              const issues = Array.isArray(raw) ? raw : raw.issues || [];
-              const uniq = /* @__PURE__ */ new Map();
-              for (const issueRow of issues) {
-                const year = tx(issueRow.gregorian_year || issueRow.year);
-                const mint = tx(issueRow.mint_letter);
-                if (!Number(year)) {
-                  continue;
-                }
-                if (syncScope.year && year !== syncScope.year) {
-                  continue;
-                }
-                const key = `${year}|${mint}`;
-                const previous = uniq.get(key);
-                if (!previous || Number(issueRow.mintage || 0) > Number(previous.mintage || 0)) {
-                  uniq.set(key, issueRow);
-                }
-              }
-              if (!uniq.size) {
-                skip(
-                  `no matching issues (Numista issues: ${issues.length}, years: ${issues.map((item) => tx(item.gregorian_year || item.year)).join(", ") || "-"})`
-                );
-                continue;
-              }
-              const sourceImage = this.pickImage(d);
-              const photoMeta = this.photoMetadata(d);
-              for (const issueRow of uniq.values()) {
-                const issue = tx(issueRow.id);
-                const year = tx(issueRow.gregorian_year || issueRow.year);
-                const mint = tx(issueRow.mint_letter);
-                const rowKey = [id, year, mint].join(":");
-                const old = by.get(rowKey);
-                if (old && !updateExisting) {
-                  existing++;
-                  continue;
-                }
-                if (!old) {
-                  const twin = byIdentity.get(
-                    coinIdentityKey({
-                      country: d.issuer?.name,
-                      year,
-                      title: d.title,
-                      mint_mark: mint
-                    })
-                  );
-                  if (twin) {
-                    if (!twin.numista_id && twin.file instanceof import_obsidian10.TFile) {
-                      await this.app.fileManager.processFrontMatter(twin.file, (fm) => {
-                        fm.numista_id = id;
-                        fm.numista_issue_id = issue;
-                        if (tx(d.url)) fm.numista_url = tx(d.url);
-                      });
-                      twin.numista_id = id;
-                      twin.numista_issue_id = issue;
-                    }
-                    report.push({
-                      id,
-                      title: tx(d.title),
-                      reason: `matched existing coin ${twin.file?.path || ""}`
-                    });
-                    by.set(rowKey, twin);
-                    existing++;
-                    continue;
-                  }
-                }
-                const data = {
-                  ...old || {},
-                  country: countryName(d.issuer?.name),
-                  year,
-                  title: normalizeCoinTitle(d.title),
-                  coin_type: coinType,
-                  mint_mark: mint,
-                  source: "numista",
-                  numista_id: id,
-                  numista_issue_id: issue,
-                  numista_url: tx(d.url),
-                  mintage: issueRow.mintage ?? null,
-                  official_issue: true,
-                  object_type_id: tx(d.object_type?.id),
-                  object_type_name: tx(d.object_type?.name),
-                  ...photoMeta,
-                  /*
-                   * Prices are not downloaded during synchronization
-                   * (use "Update prices"), so existing values are kept.
-                   */
-                  numismatic_value_currency: old?.numismatic_value_currency,
-                  numismatic_values: old?.numismatic_values,
-                  numismatic_value_unc: old?.numismatic_value_unc,
-                  cover: old?.cover,
-                  cover_url: old?.cover_locked ? old?.cover_url : sourceImage || old?.cover_url,
-                  reference_year: old?.reference_year,
-                  cover_locked: old?.cover_locked || old?.own_cover || false,
-                  own_cover: old?.own_cover || false
-                };
-                if (old) {
-                  const before = JSON.stringify([
-                    old.country,
-                    old.title,
-                    old.coin_type,
-                    old.numista_url,
-                    old.mintage,
-                    old.cover_url,
-                    old.reference_year,
-                    old.cover_locked,
-                    old.photo_author,
-                    old.photo_license,
-                    old.numismatic_value_currency,
-                    old.numismatic_values,
-                    old.numismatic_value_unc
-                  ]);
-                  const after = JSON.stringify([
-                    data.country,
-                    data.title,
-                    data.coin_type,
-                    data.numista_url,
-                    data.mintage,
-                    data.cover_url,
-                    data.reference_year,
-                    data.cover_locked,
-                    data.photo_author,
-                    data.photo_license,
-                    data.numismatic_value_currency,
-                    data.numismatic_values,
-                    data.numismatic_value_unc
-                  ]);
-                  if (before === after) {
-                    unchanged++;
-                    continue;
-                  }
-                  await this.upsert(data, old.file);
-                  updated++;
-                } else {
-                  await this.upsert(data, null);
-                  created++;
-                }
-                by.set(rowKey, {
-                  ...data,
-                  file: old?.file
-                });
-              }
-            } catch (error) {
-              if (this.isNumistaAuthError(error) || error?.aborted) throw error;
-              errors++;
-              report.push({
-                id: tx(basic?.id),
-                title: tx(basic?.title),
-                reason: `error: ${error?.message || error}`
-              });
-              console.error("Synchronizacja typu Numista", basic?.id, error);
-            }
-          }
-          if (types.length < pageSize) {
-            break;
-          }
-          page++;
-        }
-      }
-      await this.refreshDashboards();
-      this.refreshFilterViews();
-      this.storeSyncReport(
-        report,
-        filteredSync ? scopeLabels.join(" / ") : this.t("notice.syncScopeAll")
-      );
-      progress2.setMessage(
-        this.t("notice.syncDone", {
-          created,
-          updated,
-          unchanged,
-          existing,
-          skipped,
-          errors,
-          scope: filteredSync ? scopeLabels.join(" / ") : this.t("notice.syncScopeAll")
-        })
-      );
-      window.setTimeout(() => progress2.hide(), 8e3);
-      return {
-        created,
-        updated,
-        unchanged,
-        existing,
-        skipped,
-        errors,
-        scope: syncScope
-      };
-    } catch (error) {
-      progress2.setMessage(this.t("notice.syncAborted", { message: error?.message || error }));
-      window.setTimeout(() => progress2.hide(), 1e4);
-      this.storeSyncReport(
-        report,
-        filteredSync ? scopeLabels.join(" / ") : this.t("notice.syncScopeAll")
-      );
-      await this.refreshDashboards();
-      this.refreshFilterViews();
-      console.error(error);
-    }
+    if (r.status >= 400) throw new Error(`Cover HTTP ${r.status}`);
+    const ct = tx(r.headers?.["content-type"] || r.headers?.["Content-Type"]).toLowerCase(), ext = ct.includes("png") ? "png" : ct.includes("webp") ? "webp" : "jpg", p = this.join(this.covers(), `numista-${clean(id)}-${clean(issue)}.${ext}`);
+    await this.app.vault.adapter.writeBinary(p, r.arrayBuffer);
+    return p;
   },
   backfillCovers() {
     return this.runOperation(() => this.backfillCoversRun());
   },
   async backfillCoversRun() {
     if (!this.getNumistaApiKey()) {
-      new import_obsidian10.Notice(this.t("notice.apiKeyMissing"));
+      new import_obsidian9.Notice(this.t("notice.apiKeyMissing"));
       return;
     }
     const candidates = this.getRows().filter(
@@ -3559,53 +3191,42 @@ var numistaMethods = {
         await this.upsert({ ...r, cover_path: path, cover_url: url, cover_locked: false }, r.file);
         downloaded++;
       } catch (error) {
-        if (this.isNumistaAuthError(error) || error?.aborted) throw error;
+        if (this.isNumistaAuthError(error) || asError(error).aborted) throw error;
         errors++;
-        console.error("Pobieranie okładki", r.file?.path, error);
+        console.error("Cover download", r.file?.path, error);
       }
     }
     progress2.setMessage(this.t("notice.coversDone", { downloaded, skipped, errors }));
     window.setTimeout(() => progress2.hide(), 8e3);
     return { downloaded, skipped, errors };
   },
+  /**
+   * @param {CoinRow} row
+   */
   async downloadNumistaCoverForCoin(row) {
     if (!row.numista_id) throw new Error(this.t("error.noNumistaId"));
     const details = await this.getTypeDetails(row.numista_id, { fresh: true }), url = this.pickImage(details);
     if (!url) throw new Error(this.t("error.noNumistaCover"));
     const path = await this.downloadCover(url, row.numista_id, row.numista_issue_id || row.year);
-    await this.app.fileManager.processFrontMatter(row.file, (fm) => {
-      fm.cover = `[[${path}]]`;
-      fm.cover_url = url;
-      fm.cover_locked = false;
-      fm.own_cover = false;
-    });
-  },
-  async updateSingleCoinFromNumista(row) {
-    if (!row.numista_id) throw new Error(this.t("error.noNumistaId"));
-    const details = await this.getTypeDetails(row.numista_id, { fresh: true }), issuesRaw = await this.getTypeIssues(row.numista_id, { fresh: true }), issues = Array.isArray(issuesRaw) ? issuesRaw : issuesRaw.issues || [], issue = issues.find((i) => String(i.id) === String(row.numista_issue_id)) || issues.find(
-      (i) => String(i.gregorian_year || i.year) === String(row.year) && tx(i.mint_letter) === tx(row.mint_mark)
-    );
-    if (!issue) throw new Error(this.t("error.noNumistaIssue"));
-    const photo = this.photoMetadata(details), valuation = await this.issueNumismaticValues(row.numista_id, issue.id);
-    await this.upsert(
-      {
-        ...row,
-        country: countryName(details.issuer?.name),
-        title: normalizeCoinTitle(details.title),
-        mintage: issue.mintage ?? row.mintage,
-        numista_url: tx(details.url),
-        ...photo,
-        numismatic_value_currency: valuation ? valuation.currency : row.numismatic_value_currency,
-        numismatic_values: valuation ? valuation.values : row.numismatic_values,
-        numismatic_value_unc: valuation ? valuation.unc : row.numismatic_value_unc
-      },
-      row.file
+    await this.app.fileManager.processFrontMatter(
+      row.file,
+      (fm) => {
+        fm.cover = `[[${path}]]`;
+        fm.cover_url = url;
+        fm.cover_locked = false;
+        fm.own_cover = false;
+      }
     );
   }
 };
 
 // src/plugin/starter.js
-var import_obsidian11 = require("obsidian");
+var import_obsidian10 = require("obsidian");
+var withoutCover = (coin) => {
+  const copy = { ...coin };
+  delete copy.cover;
+  return copy;
+};
 var starterMethods = {
   async installStarterCollection() {
     const urls = [
@@ -3615,7 +3236,7 @@ var starterMethods = {
     let response = null, lastError = null;
     for (const url of urls) {
       try {
-        response = await (0, import_obsidian11.requestUrl)({ url, headers: { accept: "application/json" } });
+        response = await (0, import_obsidian10.requestUrl)({ url, headers: { accept: "application/json" } });
         if (response.status < 400) break;
         lastError = new Error(`Starter collection HTTP ${response.status}`);
       } catch (error) {
@@ -3624,7 +3245,11 @@ var starterMethods = {
       response = null;
     }
     if (!response) throw lastError || new Error("Starter collection unavailable");
-    const starterPack = response.json || JSON.parse(response.text || "{}");
+    const json = response.json;
+    const starterPack = (
+      /** @type {import('../types').StarterPack} */
+      json || parseJson(response.text || "{}")
+    );
     if (starterPack.schemaVersion !== 1 || !Array.isArray(starterPack.coins)) {
       throw new Error(this.t("error.starterFormat"));
     }
@@ -3664,10 +3289,10 @@ var starterMethods = {
           }
           const binary = atob(coin.cover.base64);
           const bytes = Uint8Array.from(binary, (character) => character.charCodeAt(0));
-          await this.app.vault.adapter.writeBinary(coverPath, bytes);
+          await this.app.vault.adapter.writeBinary(coverPath, bytes.buffer);
         }
         const data = {
-          ...coin,
+          ...withoutCover(coin),
           owned: false,
           quantity: 1,
           acquisition_date: "",
@@ -3676,15 +3301,10 @@ var starterMethods = {
           condition: "",
           notes: "",
           cover_path: coverPath,
-          /*
-           * Okładka pochodząca ze starter packa
-           * ma być chroniona przed synchronizacją
-           * z Numista.
-           */
+          /* A cover from the starter pack is protected from Numista synchronization. */
           cover_locked: Boolean(coverPath),
           own_cover: Boolean(coverPath)
         };
-        delete data.cover;
         await this.upsert(data, null);
         if (numistaKey) {
           existingNumistaKeys.add(numistaKey);
@@ -3708,7 +3328,7 @@ var starterMethods = {
     }
     await this.refreshDashboards();
     this.refreshFilterViews();
-    new import_obsidian11.Notice(
+    new import_obsidian10.Notice(
       this.t("notice.starterInstalled", {
         created,
         skipped,
@@ -3724,12 +3344,16 @@ var starterMethods = {
 };
 
 // src/plugin/selection.js
-var import_obsidian12 = require("obsidian");
+var import_obsidian11 = require("obsidian");
 var selectionMethods = {
   getSelectedCoinFiles() {
     const selected = this.selectedCoinPaths || /* @__PURE__ */ new Set();
     return this.getRows().filter((row) => selected.has(row.file.path));
   },
+  /**
+   * @param {string} path
+   * @param {boolean} selected
+   */
   toggleCoinSelection(path, selected) {
     if (!this.selectedCoinPaths) this.selectedCoinPaths = /* @__PURE__ */ new Set();
     if (selected) this.selectedCoinPaths.add(path);
@@ -3743,7 +3367,7 @@ var selectionMethods = {
   async duplicateSelectedCoins() {
     const rows = this.getSelectedCoinFiles();
     if (!rows.length) {
-      new import_obsidian12.Notice(this.t("notice.noSelection"));
+      new import_obsidian11.Notice(this.t("notice.noSelection"));
       return;
     }
     let count = 0;
@@ -3751,13 +3375,16 @@ var selectionMethods = {
     for (const row of rows) {
       try {
         const source = await this.app.vault.read(row.file), target = await this.uniquePath(row.file.path), duplicate = await this.app.vault.create(target, source);
-        await this.app.fileManager.processFrontMatter(duplicate, (fm) => {
-          fm.coin_id = `duplicate-${Date.now()}-${count + 1}`;
-          fm.source = "manual";
-          delete fm.numista_id;
-          delete fm.numista_issue_id;
-          delete fm.numista_url;
-        });
+        await this.app.fileManager.processFrontMatter(
+          duplicate,
+          (fm) => {
+            fm.coin_id = `duplicate-${Date.now()}-${count + 1}`;
+            fm.source = "manual";
+            delete fm.numista_id;
+            delete fm.numista_issue_id;
+            delete fm.numista_url;
+          }
+        );
         newSelection.add(duplicate.path);
         count++;
       } catch (error) {
@@ -3767,12 +3394,12 @@ var selectionMethods = {
     this.selectedCoinPaths = newSelection;
     await this.refreshDashboards();
     this.refreshFilterViews();
-    new import_obsidian12.Notice(this.t("notice.batchDuplicate", { count }));
+    new import_obsidian11.Notice(this.t("notice.batchDuplicate", { count }));
   },
   async deleteSelectedCoins() {
     const rows = this.getSelectedCoinFiles();
     if (!rows.length) {
-      new import_obsidian12.Notice(this.t("notice.noSelection"));
+      new import_obsidian11.Notice(this.t("notice.noSelection"));
       return;
     }
     if (!await this.confirm(this.t("confirm.deleteSelected", { count: rows.length }), {
@@ -3798,7 +3425,7 @@ var selectionMethods = {
     for (const coverPath of coverPaths) {
       if (usedCovers.has(coverPath)) continue;
       const coverFile = this.app.vault.getAbstractFileByPath(coverPath);
-      if (!(coverFile instanceof import_obsidian12.TFile)) continue;
+      if (!(coverFile instanceof import_obsidian11.TFile)) continue;
       try {
         await this.app.fileManager.trashFile(coverFile);
       } catch (error) {
@@ -3808,12 +3435,12 @@ var selectionMethods = {
     this.clearCoinSelection();
     await this.refreshDashboards();
     this.refreshFilterViews();
-    new import_obsidian12.Notice(this.t("notice.batchDelete", { count }));
+    new import_obsidian11.Notice(this.t("notice.batchDelete", { count }));
   }
 };
 
 // src/plugin/images.js
-var import_obsidian13 = require("obsidian");
+var import_obsidian12 = require("obsidian");
 
 // src/images/background.js
 function removeBackgroundPixels(pixels, width, height) {
@@ -3890,6 +3517,9 @@ function removeBackgroundPixels(pixels, width, height) {
 
 // src/plugin/images.js
 var imagesMethods = {
+  /**
+   * @param {CoinData} row
+   */
   coverFileStem(row) {
     const parts = [
       countryName(row.country),
@@ -3903,6 +3533,10 @@ var imagesMethods = {
     if (tx(row.mint_mark)) parts.push(tx(row.mint_mark));
     return parts.map((part) => clean(part).replace(/\s+/g, "-").replace(/-+/g, "-")).filter(Boolean).join("-");
   },
+  /**
+   * @param {string} desired
+   * @param {string} [currentPath]
+   */
   async uniqueCoverPath(desired, currentPath = "") {
     if (desired === currentPath || !await this.app.vault.adapter.exists(desired)) return desired;
     const dot = desired.lastIndexOf("."), base = dot >= 0 ? desired.slice(0, dot) : desired, ext = dot >= 0 ? desired.slice(dot) : "";
@@ -3913,29 +3547,35 @@ var imagesMethods = {
     }
     return candidate;
   },
+  /**
+   * @param {CoinRow} row
+   */
   async processBackgroundForRow(row) {
     const coinFile = row?.file;
-    if (!(coinFile instanceof import_obsidian13.TFile)) return { ok: false, reason: "no-file" };
+    if (!(coinFile instanceof import_obsidian12.TFile)) return { ok: false, reason: "no-file" };
     const allRows = this.getRows(), referenceIndex = this.buildReferenceCoverIndex(allRows), resolution = this.resolveDisplayCover(row, referenceIndex);
     let sourceRow = row, sourcePath = this.localPath(row), sourceFile = sourcePath && this.app.vault.getAbstractFileByPath(sourcePath);
-    if (!(sourceFile instanceof import_obsidian13.TFile) && resolution?.source) {
+    if (!(sourceFile instanceof import_obsidian12.TFile) && resolution?.source) {
       sourceRow = resolution.source;
       sourcePath = this.localPath(sourceRow);
       sourceFile = sourcePath && this.app.vault.getAbstractFileByPath(sourcePath);
     }
-    if (!(sourceFile instanceof import_obsidian13.TFile)) return { ok: false, reason: "no-cover" };
+    if (!(sourceFile instanceof import_obsidian12.TFile)) return { ok: false, reason: "no-cover" };
     const binary = await this.app.vault.readBinary(sourceFile), image = await this.loadImageFromArrayBuffer(binary), canvas = this.makeTransparentBackground(image), pngPath = await this.saveProcessedCover(row, canvas);
-    await this.app.fileManager.processFrontMatter(coinFile, (fm) => {
-      fm.cover = `[[${pngPath}]]`;
-      fm.reference_year = tx(row.year);
-      fm.cover_locked = true;
-    });
+    await this.app.fileManager.processFrontMatter(
+      coinFile,
+      (fm) => {
+        fm.cover = `[[${pngPath}]]`;
+        fm.reference_year = tx(row.year);
+        fm.cover_locked = true;
+      }
+    );
     return { ok: true, pngPath, usedReference: sourceRow.file?.path !== row.file.path };
   },
   async removeBackgroundFromSelectedCoins() {
     const rows = this.getSelectedCoinFiles();
     if (!rows.length) {
-      new import_obsidian13.Notice(this.t("notice.noSelection"));
+      new import_obsidian12.Notice(this.t("notice.noSelection"));
       return;
     }
     let done = 0, skipped = 0, errors = 0;
@@ -3956,8 +3596,12 @@ var imagesMethods = {
     await new Promise((resolve) => window.setTimeout(resolve, 50));
     await this.refreshDashboards();
     this.refreshFilterViews();
-    new import_obsidian13.Notice(this.t("notice.batchBackground", { done, skipped, errors }));
+    new import_obsidian12.Notice(this.t("notice.batchBackground", { done, skipped, errors }));
   },
+  /**
+   * @param {ArrayBuffer} arrayBuffer
+   * @returns {Promise<HTMLImageElement>}
+   */
   async loadImageFromArrayBuffer(arrayBuffer) {
     const blob = new Blob([arrayBuffer]);
     const objectUrl = URL.createObjectURL(blob);
@@ -3972,6 +3616,9 @@ var imagesMethods = {
       URL.revokeObjectURL(objectUrl);
     }
   },
+  /**
+   * @param {HTMLImageElement} image
+   */
   makeTransparentBackground(image) {
     const canvas = activeDocument.createElement("canvas"), naturalWidth = image.naturalWidth || image.width, naturalHeight = image.naturalHeight || image.height, scale = Math.min(1, COVER_MAX_SIZE / Math.max(naturalWidth, naturalHeight, 1));
     canvas.width = Math.max(1, Math.round(naturalWidth * scale));
@@ -3986,6 +3633,9 @@ var imagesMethods = {
     context.putImageData(frame, 0, 0);
     return canvas;
   },
+  /**
+   * @param {HTMLImageElement} image
+   */
   makeCatalogCoinCanvas(image) {
     const segmented = this.makeTransparentBackground(image), source = segmented.getContext("2d", { willReadFrequently: true }).getImageData(0, 0, segmented.width, segmented.height), pixels = source.data, w = segmented.width, h = segmented.height;
     let minX = w, minY = h, maxX = -1, maxY = -1;
@@ -4030,23 +3680,29 @@ var imagesMethods = {
     ctx.putImageData(frame, 0, 0);
     return canvas;
   },
+  /**
+   * @param {CoinRow} row
+   */
   async processCatalogPresetForRow(row) {
     const coinFile = row?.file;
-    if (!(coinFile instanceof import_obsidian13.TFile)) return { ok: false, reason: "no-file" };
+    if (!(coinFile instanceof import_obsidian12.TFile)) return { ok: false, reason: "no-file" };
     const allRows = this.getRows(), referenceIndex = this.buildReferenceCoverIndex(allRows), resolution = this.resolveDisplayCover(row, referenceIndex);
     let sourcePath = this.localPath(row), sourceFile = sourcePath && this.app.vault.getAbstractFileByPath(sourcePath);
-    if (!(sourceFile instanceof import_obsidian13.TFile) && resolution?.source) {
+    if (!(sourceFile instanceof import_obsidian12.TFile) && resolution?.source) {
       sourcePath = this.localPath(resolution.source);
       sourceFile = sourcePath && this.app.vault.getAbstractFileByPath(sourcePath);
     }
-    if (!(sourceFile instanceof import_obsidian13.TFile)) return { ok: false, reason: "no-cover" };
+    if (!(sourceFile instanceof import_obsidian12.TFile)) return { ok: false, reason: "no-cover" };
     const binary = await this.app.vault.readBinary(sourceFile), image = await this.loadImageFromArrayBuffer(binary), canvas = this.makeCatalogCoinCanvas(image), pngPath = await this.saveProcessedCover(row, canvas);
-    await this.app.fileManager.processFrontMatter(coinFile, (fm) => {
-      fm.cover = `[[${pngPath}]]`;
-      fm.reference_year = tx(row.year);
-      fm.cover_locked = true;
-      fm.image_preset = "catalog-coin";
-    });
+    await this.app.fileManager.processFrontMatter(
+      coinFile,
+      (fm) => {
+        fm.cover = `[[${pngPath}]]`;
+        fm.reference_year = tx(row.year);
+        fm.cover_locked = true;
+        fm.image_preset = "catalog-coin";
+      }
+    );
     return {
       ok: true,
       pngPath,
@@ -4061,6 +3717,9 @@ var imagesMethods = {
       }
     };
   },
+  /**
+   * @param {string} preset
+   */
   async processSelectedImages(preset) {
     if (preset === "catalog") return this.applyCatalogPresetToSelectedCoins();
     return this.removeBackgroundFromSelectedCoins();
@@ -4068,7 +3727,7 @@ var imagesMethods = {
   async applyCatalogPresetToSelectedCoins() {
     const rows = this.getSelectedCoinFiles();
     if (!rows.length) {
-      new import_obsidian13.Notice(this.t("notice.noSelection"));
+      new import_obsidian12.Notice(this.t("notice.noSelection"));
       return;
     }
     let done = 0, skipped = 0, errors = 0;
@@ -4086,35 +3745,39 @@ var imagesMethods = {
     this.clearCoinSelection();
     await this.refreshDashboards();
     this.refreshFilterViews();
-    new import_obsidian13.Notice(this.t("notice.batchCatalog", { done, skipped, errors }));
+    new import_obsidian12.Notice(this.t("notice.batchCatalog", { done, skipped, errors }));
   },
   async applyCatalogPresetToCurrentCoin() {
     const file = this.getCurrentCoinFile();
     if (!file) {
-      new import_obsidian13.Notice(this.t("notice.noCurrentCoin"));
+      new import_obsidian12.Notice(this.t("notice.noCurrentCoin"));
       return;
     }
     const row = this.getRows().find((item) => item.file.path === file.path);
     if (!row) {
-      new import_obsidian13.Notice(this.t("notice.noCurrentCoin"));
+      new import_obsidian12.Notice(this.t("notice.noCurrentCoin"));
       return;
     }
     try {
       const result = await this.processCatalogPresetForRow(row);
       if (!result.ok) {
-        new import_obsidian13.Notice(this.t("notice.noCover"));
+        new import_obsidian12.Notice(this.t("notice.noCover"));
         return;
       }
       await this.refreshDashboards();
-      new import_obsidian13.Notice(this.t("notice.catalogDone"));
+      new import_obsidian12.Notice(this.t("notice.catalogDone"));
     } catch (error) {
       console.error("Catalog preset", error);
-      new import_obsidian13.Notice(this.t("notice.backgroundError", { message: error?.message || error }));
+      new import_obsidian12.Notice(this.t("notice.backgroundError", { message: errorText(error) }));
     }
   },
   /*
    * Encodes as WebP (much smaller than PNG, keeps transparency). Falls back to
    * PNG where the platform cannot encode WebP (older iOS/Safari WebViews).
+   */
+  /**
+   * @param {HTMLCanvasElement} canvas
+   * @returns {Promise<{ blob: Blob, ext: string }>}
    */
   async canvasToCoverBlob(canvas) {
     const webp = await new Promise(
@@ -4123,6 +3786,9 @@ var imagesMethods = {
     if (webp && webp.type === "image/webp") return { blob: webp, ext: "webp" };
     return { blob: await this.canvasToPngBlob(canvas), ext: "png" };
   },
+  /**
+   * @param {HTMLImageElement} image
+   */
   resizeImageToCanvas(image) {
     const naturalWidth = image.naturalWidth || image.width, naturalHeight = image.naturalHeight || image.height, scale = Math.min(1, COVER_MAX_SIZE / Math.max(naturalWidth, naturalHeight, 1)), canvas = activeDocument.createElement("canvas");
     canvas.width = Math.max(1, Math.round(naturalWidth * scale));
@@ -4134,15 +3800,19 @@ var imagesMethods = {
     context.drawImage(image, 0, 0, canvas.width, canvas.height);
     return canvas;
   },
+  /**
+   * @param {CoinRow} row
+   * @param {HTMLCanvasElement} canvas
+   */
   async saveProcessedCover(row, canvas) {
     await this.ensureFolder(this.covers());
     const { blob, ext } = await this.canvasToCoverBlob(canvas), stem = this.coverFileStem(row), oldPath = this.localPath(row), path = await this.uniqueCoverPath(this.join(this.covers(), `${stem}.${ext}`), oldPath);
-    await this.app.vault.adapter.writeBinary(path, new Uint8Array(await blob.arrayBuffer()));
+    await this.app.vault.adapter.writeBinary(path, await blob.arrayBuffer());
     if (oldPath && oldPath !== path) {
       const oldName = oldPath.split("/").pop() || "", oldStem = oldName.replace(/\.[^.]+$/, "").replace(/-\d+$/, ""), oldFile = this.app.vault.getAbstractFileByPath(oldPath), usedElsewhere = this.getRows().some(
         (other) => other.file.path !== row.file.path && this.localPath(other) === oldPath
       );
-      if (oldStem === stem && oldPath.startsWith(`${this.covers()}/`) && oldFile instanceof import_obsidian13.TFile && !usedElsewhere) {
+      if (oldStem === stem && oldPath.startsWith(`${this.covers()}/`) && oldFile instanceof import_obsidian12.TFile && !usedElsewhere) {
         try {
           await this.app.fileManager.trashFile(oldFile);
         } catch (error) {
@@ -4152,46 +3822,164 @@ var imagesMethods = {
     }
     return path;
   },
+  /**
+   * @param {HTMLCanvasElement} canvas
+   */
   canvasToPngBlob(canvas) {
-    return new Promise(
-      (resolve, reject) => canvas.toBlob(
-        (blob) => blob ? resolve(blob) : reject(new Error("PNG encoding failed")),
-        "image/png"
+    return (
+      /** @type {Promise<Blob>} */
+      new Promise(
+        (resolve, reject) => canvas.toBlob(
+          (blob) => blob ? resolve(blob) : reject(new Error("PNG encoding failed")),
+          "image/png"
+        )
       )
     );
   },
   async removeBackgroundFromCurrentCoin() {
     const coinFile = this.getCurrentCoinFile();
     if (!coinFile) {
-      new import_obsidian13.Notice(this.t("notice.noCurrentCoin"));
+      new import_obsidian12.Notice(this.t("notice.noCurrentCoin"));
       return;
     }
     try {
       const row = this.getRows().find((item) => item.file.path === coinFile.path);
       if (!row) {
-        new import_obsidian13.Notice(this.t("notice.noCurrentCoin"));
+        new import_obsidian12.Notice(this.t("notice.noCurrentCoin"));
         return;
       }
       const result = await this.processBackgroundForRow(row);
       if (!result.ok) {
-        new import_obsidian13.Notice(this.t("notice.noCover"));
+        new import_obsidian12.Notice(this.t("notice.noCover"));
         return;
       }
       await this.refreshDashboards();
-      new import_obsidian13.Notice(this.t("notice.backgroundRemoved", { year: tx(row.year) }));
+      new import_obsidian12.Notice(this.t("notice.backgroundRemoved", { year: tx(row.year) }));
     } catch (error) {
       console.error("2 Euro background removal", error);
-      new import_obsidian13.Notice(this.t("notice.backgroundError", { message: error?.message || error }));
+      new import_obsidian12.Notice(this.t("notice.backgroundError", { message: errorText(error) }));
     }
   }
 };
 
 // src/plugin/dashboard.js
-var import_obsidian15 = require("obsidian");
+var import_obsidian16 = require("obsidian");
+
+// src/ui/CoinModal.js
+var import_obsidian13 = require("obsidian");
+var CoinModal = class extends import_obsidian13.Modal {
+  /**
+   * @param {import('obsidian').App} app
+   * @param {import('../types').TwoEuroPlugin} plugin
+   * @param {import('../types').CoinRow | null} [row]
+   */
+  constructor(app, plugin, row) {
+    super(app);
+    this.plugin = plugin;
+    this.row = row || null;
+    if (this.row?.file instanceof import_obsidian13.TFile) this.plugin.currentCoinFile = this.row.file;
+  }
+  onOpen() {
+    const p = this.plugin, t = (k, v = {}) => p.t(k, v), c = this.contentEl, f = this.row ? { ...this.row } : {
+      country: "",
+      year: "",
+      title: "",
+      coin_type: "commemorative",
+      mint_mark: "",
+      owned: false,
+      quantity: 1,
+      acquisition_date: "",
+      acquisition_price: "",
+      acquisition_currency: p.settings.defaultCurrency || "PLN",
+      condition: "",
+      notes: "",
+      cover_url: "",
+      reference_year: "",
+      cover_locked: false,
+      own_cover: false
+    };
+    c.empty();
+    c.createEl("h2", { text: t(this.row ? "coin.edit" : "coin.add") });
+    const input = (key, field, ph = "", desc = "") => {
+      const setting = new import_obsidian13.Setting(c).setName(t(key));
+      if (desc) setting.setDesc(t(desc));
+      setting.addText(
+        (x) => x.setValue(tx(f[field])).setPlaceholder(ph ? t(ph) : "").onChange((v) => f[field] = v)
+      );
+      return setting;
+    };
+    input("coin.country", "country");
+    input("coin.year", "year");
+    input("coin.title", "title");
+    new import_obsidian13.Setting(c).setName(t("coin.type")).addDropdown(
+      (d) => d.addOption("commemorative", t("coin.commemorative")).addOption("national", t("coin.national")).setValue(f.coin_type || "commemorative").onChange((v) => {
+        f.coin_type = v;
+      })
+    );
+    input("coin.mint", "mint_mark");
+    new import_obsidian13.Setting(c).setName(t("coin.owned")).addToggle((x) => x.setValue(isTrue(f.owned)).onChange((v) => f.owned = v));
+    input("coin.quantity", "quantity");
+    input("coin.date", "acquisition_date");
+    input("coin.price", "acquisition_price");
+    input("coin.currency", "acquisition_currency");
+    input("coin.condition", "condition");
+    input("coin.coverUrl", "cover_url");
+    const referenceSetting = new import_obsidian13.Setting(c).setName(t("coin.referenceYear")).setDesc(t("coin.referenceYearDesc"));
+    const datalistId = `twoeuro-reference-years-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const datalist = c.createEl("datalist", { attr: { id: datalistId } });
+    const updateReferenceSuggestions = () => {
+      datalist.empty();
+      const years = p.getReferenceYearSuggestions(f, this.row?.file);
+      for (const year of years) datalist.createEl("option", { attr: { value: String(year) } });
+    };
+    referenceSetting.addText((text) => {
+      text.setValue(tx(f.reference_year)).setPlaceholder(t("coin.referenceYearPh"));
+      text.inputEl.setAttribute("list", datalistId);
+      text.inputEl.setAttribute("inputmode", "numeric");
+      text.inputEl.addEventListener("focus", updateReferenceSuggestions);
+      text.onChange((value) => {
+        f.reference_year = value;
+      });
+    });
+    updateReferenceSuggestions();
+    new import_obsidian13.Setting(c).setName(t("coin.coverLocked")).setDesc(t("coin.coverLockedDesc")).addToggle((x) => x.setValue(isTrue(f.cover_locked)).onChange((v) => f.cover_locked = v));
+    new import_obsidian13.Setting(c).setName(t("coin.ownCover")).setDesc(t("coin.ownCoverDesc")).addToggle(
+      (x) => x.setValue(isTrue(f.own_cover)).onChange((v) => {
+        f.own_cover = v;
+        if (v) f.cover_locked = true;
+      })
+    );
+    input("coin.photoAuthor", "photo_author");
+    input("coin.photoLicense", "photo_license");
+    new import_obsidian13.Setting(c).setName(t("coin.numismaticValue")).setDesc(t("coin.numismaticValueDesc")).addTextArea((x) => {
+      x.setValue(p.formatNumismaticValue(f));
+      x.inputEl.readOnly = true;
+    });
+    new import_obsidian13.Setting(c).setName(t("coin.notes")).addTextArea((x) => x.setValue(tx(f.notes)).onChange((v) => f.notes = v));
+    const actions = c.createDiv({ cls: "twoeuro-actions" });
+    actions.createEl("button", { text: t("action.cancel") }).onclick = () => this.close();
+    actions.createEl("button", { text: t("action.save"), cls: "mod-cta" }).onclick = async () => {
+      if (!clean(f.country) || !tx(f.year) || !clean(f.title)) {
+        new import_obsidian13.Notice(t("error.required"));
+        return;
+      }
+      await p.upsert(f, this.row && this.row.file, { rename: true });
+      await p.refreshDashboards();
+      new import_obsidian13.Notice(t("notice.saved"));
+      this.close();
+    };
+  }
+};
 
 // src/ui/CoinCoverManagerModal.js
 var import_obsidian14 = require("obsidian");
 var CoinCoverManagerModal = class extends import_obsidian14.Modal {
+  /**
+   * @param {import('obsidian').App} app
+   * @param {import('../types').TwoEuroPlugin} plugin
+   * @param {import('../types').CoinRow} row
+   * @param {string} [displaySrc]
+   */
   constructor(app, plugin, row, displaySrc = "") {
     super(app);
     this.plugin = plugin;
@@ -4203,8 +3991,12 @@ var CoinCoverManagerModal = class extends import_obsidian14.Modal {
     this.modalEl.addClass("twoeuro-cover-manager-modal");
     await this.render();
   }
+  /**
+   * @param {HTMLElement} container
+   * @param {CoinRow} fresh
+   */
   buildEditableForm(container, fresh) {
-    const p = this.plugin, t = (k, v) => p.t(k, v), f = { ...fresh };
+    const p = this.plugin, t = (k, v = {}) => p.t(k, v), f = { ...fresh };
     this.form = f;
     const input = (key, field, ph = "", desc = "") => {
       const item = new import_obsidian14.Setting(container).setName(t(key));
@@ -4251,7 +4043,7 @@ var CoinCoverManagerModal = class extends import_obsidian14.Modal {
     });
   }
   render() {
-    const p = this.plugin, t = (k, v) => p.t(k, v), c = this.contentEl;
+    const p = this.plugin, t = (k, v = {}) => p.t(k, v), c = this.contentEl;
     c.empty();
     c.addClass("twoeuro-cover-manager");
     const fresh = p.getRows().find((r) => r.file.path === this.row.file.path) || this.row;
@@ -4283,7 +4075,7 @@ var CoinCoverManagerModal = class extends import_obsidian14.Modal {
         await this.render();
       } catch (error) {
         console.error("Coin cover manager", error);
-        new import_obsidian14.Notice(error?.message || String(error));
+        new import_obsidian14.Notice(errorText(error));
       }
     };
     const saveActions = right.createDiv({ cls: "twoeuro-cover-manager-save" });
@@ -4296,7 +4088,7 @@ var CoinCoverManagerModal = class extends import_obsidian14.Modal {
         this.close();
       } catch (error) {
         console.error("Coin cover manager save", error);
-        new import_obsidian14.Notice(error?.message || String(error));
+        new import_obsidian14.Notice(errorText(error));
       }
     };
     left.createEl("h3", {
@@ -4355,8 +4147,225 @@ var CoinCoverManagerModal = class extends import_obsidian14.Modal {
   }
 };
 
+// src/ui/EuroFiltersView.js
+var import_obsidian15 = require("obsidian");
+var EuroFiltersView = class extends import_obsidian15.ItemView {
+  /**
+   * @param {import('obsidian').WorkspaceLeaf} leaf
+   * @param {import('../types').TwoEuroPlugin} plugin
+   */
+  constructor(leaf, plugin) {
+    super(leaf);
+    this.plugin = plugin;
+  }
+  getViewType() {
+    return VIEW_TYPE_FILTERS;
+  }
+  getDisplayText() {
+    return this.plugin.t("sidebar.title");
+  }
+  getIcon() {
+    return "sliders-horizontal";
+  }
+  onOpen() {
+    this.render();
+    return Promise.resolve();
+  }
+  render() {
+    const p = this.plugin, t = (k, v = {}) => p.t(k, v), c = this.contentEl;
+    c.empty();
+    c.addClass("twoeuro-sidebar");
+    c.createEl("h3", { cls: "twoeuro-sidebar-section-title", text: t("sidebar.actions") });
+    const actions = c.createDiv({ cls: "twoeuro-sidebar-actions" });
+    if (p.isOperationRunning()) {
+      actions.createEl("button", { text: t("action.abort"), cls: "mod-warning" }).onclick = () => p.abortOperation();
+    }
+    actions.createEl("button", { text: `+ ${t("action.add")}`, cls: "mod-cta" }).onclick = () => new CoinModal(this.app, p).open();
+    actions.createEl("button", {
+      text: t("action.sync")
+    }).onclick = () => p.syncNumista();
+    actions.createEl("button", {
+      text: t("action.syncFiltered")
+    }).onclick = () => p.syncNumista(p.getNumistaSyncScope());
+    actions.createEl("button", { text: t("action.downloadCovers") }).onclick = () => p.backfillCovers();
+    actions.createEl("button", { text: t("action.updatePrices") }).onclick = () => p.updateNumistaPrices();
+    const exportRow = actions.createDiv({ cls: "twoeuro-sidebar-export" });
+    const exportKind = exportRow.createEl("select", { cls: "twoeuro-sidebar-select" });
+    [
+      ["missing", "export.kindMissing"],
+      ["owned", "export.kindOwned"],
+      ["swap", "export.kindSwap"]
+    ].forEach(([v, k]) => exportKind.createEl("option", { text: t(k), attr: { value: v } }));
+    exportKind.value = p.exportKind || "missing";
+    exportKind.onchange = () => {
+      p.exportKind = exportKind.value;
+    };
+    exportRow.createEl("button", { text: t("action.exportList") }).onclick = () => p.exportCoinList(exportKind.value);
+    const selectedCount = p.getSelectedCoinFiles().length;
+    c.createDiv({
+      cls: "twoeuro-sidebar-selected",
+      text: t("sidebar.selected", { count: selectedCount })
+    });
+    const batch = c.createDiv({ cls: "twoeuro-sidebar-batch-actions" });
+    const imageAction = c.createDiv({ cls: "twoeuro-sidebar-image-action" });
+    imageAction.createDiv({ cls: "twoeuro-sidebar-label", text: t("action.imagePreset") });
+    const imagePreset = imageAction.createEl("select", { cls: "twoeuro-sidebar-select" });
+    imagePreset.createEl("option", {
+      text: t("action.removeBackgroundSelected"),
+      attr: { value: "background" }
+    });
+    imagePreset.createEl("option", {
+      text: t("action.catalogPresetSelected"),
+      attr: { value: "catalog" }
+    });
+    imagePreset.value = p.imagePreset === "catalog" ? "catalog" : "background";
+    imagePreset.onchange = () => {
+      p.imagePreset = imagePreset.value;
+    };
+    const processBtn = imageAction.createEl("button", {
+      text: t("action.processImage"),
+      cls: "twoeuro-sidebar-process"
+    });
+    processBtn.disabled = selectedCount === 0;
+    processBtn.onclick = () => p.processSelectedImages(imagePreset.value);
+    const duplicateBtn = batch.createEl("button", { text: t("action.duplicateSelected") });
+    duplicateBtn.disabled = selectedCount === 0;
+    duplicateBtn.onclick = () => p.duplicateSelectedCoins();
+    const deleteBtn = batch.createEl("button", { text: t("action.deleteSelected") });
+    deleteBtn.disabled = selectedCount === 0;
+    deleteBtn.onclick = () => p.deleteSelectedCoins();
+    const clearBtn = c.createEl("button", {
+      text: t("sidebar.clearSelection"),
+      cls: "twoeuro-sidebar-clear"
+    });
+    clearBtn.disabled = selectedCount === 0;
+    clearBtn.onclick = () => {
+      p.clearCoinSelection();
+      void p.refreshDashboards();
+      p.refreshFilterViews();
+    };
+    c.createEl("hr");
+    c.createEl("h3", { cls: "twoeuro-sidebar-section-title", text: t("sidebar.filtersSorting") });
+    const state = p.getDashboardState();
+    c.createDiv({ cls: "twoeuro-sidebar-label", text: t("filter.search") });
+    const search = c.createEl("input", {
+      cls: "twoeuro-sidebar-search",
+      attr: { type: "search", placeholder: t("filter.search") }
+    });
+    search.value = state.searchText || "";
+    c.createDiv({ cls: "twoeuro-sidebar-label", text: t("coin.country") });
+    const country = c.createEl("select", { cls: "twoeuro-sidebar-select" });
+    country.createEl("option", { text: t("filter.countries"), attr: { value: "" } });
+    p.getReferenceIssuers().forEach((value) => {
+      country.createEl("option", {
+        text: value,
+        attr: {
+          value
+        }
+      });
+    });
+    country.value = state.country || "";
+    c.createDiv({ cls: "twoeuro-sidebar-label", text: t("coin.year") });
+    const year = c.createEl("select", { cls: "twoeuro-sidebar-select" });
+    year.createEl("option", { text: t("filter.years"), attr: { value: "" } });
+    p.getReferenceYears().forEach((value) => {
+      year.createEl("option", {
+        text: value,
+        attr: {
+          value
+        }
+      });
+    });
+    year.value = state.year || "";
+    c.createDiv({ cls: "twoeuro-sidebar-label", text: t("coin.type") });
+    const mode = c.createEl("select", { cls: "twoeuro-sidebar-select" });
+    [
+      ["all", "filter.all"],
+      ["owned", "filter.owned"],
+      ["missing", "filter.missing"],
+      ["commemorative", "filter.commemorative"],
+      ["national", "filter.national"],
+      ["swap", "filter.swap"]
+    ].forEach(([v, k]) => mode.createEl("option", { text: t(k), attr: { value: v } }));
+    mode.value = state.mode || "all";
+    c.createDiv({ cls: "twoeuro-sidebar-label", text: t("sort.label") });
+    const sort = c.createEl("select", { cls: "twoeuro-sidebar-select" });
+    [
+      ["yearAsc", "sort.yearAsc"],
+      ["yearDesc", "sort.yearDesc"],
+      ["countryAsc", "sort.countryAsc"],
+      ["countryDesc", "sort.countryDesc"]
+    ].forEach(([v, k]) => sort.createEl("option", { text: t(k), attr: { value: v } }));
+    sort.value = state.sortMode || "yearAsc";
+    c.createDiv({ cls: "twoeuro-sidebar-label", text: t("group.label") });
+    const groupBy = c.createEl("select", { cls: "twoeuro-sidebar-select" });
+    [
+      ["none", "group.none"],
+      ["country", "group.country"],
+      ["year", "group.year"]
+    ].forEach(([v, k]) => groupBy.createEl("option", { text: t(k), attr: { value: v } }));
+    groupBy.value = state.groupBy || "none";
+    c.createEl("hr");
+    c.createEl("h3", { cls: "twoeuro-sidebar-section-title", text: t("sidebar.configuration") });
+    c.createDiv({ cls: "twoeuro-sidebar-label", text: t("settings.columns") });
+    const columnsWrap = c.createDiv({ cls: "twoeuro-sidebar-slider-row" });
+    const columns = columnsWrap.createEl("input", {
+      attr: {
+        type: "range",
+        min: "4",
+        max: "10",
+        step: "1",
+        value: String(Number(p.settings.columns) || 6)
+      }
+    });
+    const columnsValue = columnsWrap.createSpan({
+      cls: "twoeuro-sidebar-slider-value",
+      text: String(Number(p.settings.columns) || 6)
+    });
+    c.createDiv({ cls: "twoeuro-sidebar-label", text: t("settings.language") });
+    const language = c.createEl("select", { cls: "twoeuro-sidebar-select" });
+    language.createEl("option", { text: t("settings.auto"), attr: { value: "auto" } });
+    for (const lang of p.getAvailableLanguages())
+      language.createEl("option", { text: lang.name, attr: { value: lang.code } });
+    language.value = p.settings.language || "auto";
+    const apply = () => {
+      p.setDashboardState({
+        mode: mode.value,
+        country: country.value,
+        year: year.value,
+        searchText: search.value,
+        sortMode: sort.value,
+        groupBy: groupBy.value
+      });
+      void p.refreshDashboards();
+    };
+    search.oninput = apply;
+    country.onchange = apply;
+    year.onchange = apply;
+    mode.onchange = apply;
+    sort.onchange = apply;
+    groupBy.onchange = apply;
+    columns.oninput = () => {
+      columnsValue.setText(String(Math.min(10, Math.max(4, Number(columns.value) || 6))));
+    };
+    columns.onchange = async () => {
+      const value = Math.min(10, Math.max(4, Number(columns.value) || 6));
+      columnsValue.setText(String(value));
+      p.settings.columns = value;
+      await p.saveSettings();
+      await p.refreshDashboards();
+    };
+    language.onchange = async () => {
+      p.settings.language = language.value;
+      await p.saveSettings();
+      await p.refreshDashboards();
+      p.refreshFilterViews();
+    };
+  }
+};
+
 // src/collection.js
-var compareText = (a, b, locale) => String(a || "").localeCompare(String(b || ""), locale, { numeric: true, sensitivity: "base" });
+var compareText = (a, b, locale) => tx(a).localeCompare(tx(b), locale, { numeric: true, sensitivity: "base" });
 function sortRows(list, sortMode = "yearAsc", locale = "en") {
   return [...list].sort((a, b) => {
     const yearA = Number(a.year) || 0, yearB = Number(b.year) || 0, countryCmp = compareText(a.country, b.country, locale), titleCmp = compareText(a.title, b.title, locale), mintCmp = compareText(a.mint_mark, b.mint_mark, locale);
@@ -4375,9 +4384,9 @@ function groupRows(sortedRows, groupBy = "none", sortMode = "yearAsc", locale = 
     return [{ key: "", label: "", rows: sortedRows, ...progress(sortedRows) }];
   const groups = /* @__PURE__ */ new Map();
   for (const row of sortedRows) {
-    const key = groupBy === "country" ? String(row.country || "") : String(row.year || "");
+    const key = groupBy === "country" ? tx(row.country) : tx(row.year);
     if (!groups.has(key)) groups.set(key, []);
-    groups.get(key).push(row);
+    groups.get(key)?.push(row);
   }
   const keys = [...groups.keys()];
   if (groupBy === "year") {
@@ -4387,16 +4396,14 @@ function groupRows(sortedRows, groupBy = "none", sortMode = "yearAsc", locale = 
     keys.sort((a, b) => compareText(a, b, locale));
     if (sortMode === "countryDesc") keys.reverse();
   }
-  return keys.map((key) => ({
-    key,
-    label: key,
-    rows: groups.get(key),
-    ...progress(groups.get(key))
-  }));
+  return keys.map((key) => {
+    const rows = groups.get(key) || [];
+    return { key, label: key, rows, ...progress(rows) };
+  });
 }
 var finite = (value) => {
   if (value === null || value === void 0 || value === "") return null;
-  const number = Number(String(value).replace(/\s+/g, "").replace(",", "."));
+  const number = Number(tx(value).replace(/\s+/g, "").replace(",", "."));
   return Number.isFinite(number) ? number : null;
 };
 var addAmount = (map, currency, amount) => map.set(currency, (map.get(currency) || 0) + amount);
@@ -4406,7 +4413,7 @@ var breakdown = (rows, keyOf, compare) => {
   for (const row of rows) {
     const key = keyOf(row);
     if (!groups.has(key)) groups.set(key, []);
-    groups.get(key).push(row);
+    groups.get(key)?.push(row);
   }
   return [...groups.entries()].map(([key, items]) => ({ key, ...progress(items) })).sort((a, b) => compare(a.key, b.key));
 };
@@ -4431,12 +4438,12 @@ function computeStats(rows, locale = "en") {
     ...progress(rows),
     byCountry: breakdown(
       rows,
-      (row) => String(row.country || ""),
+      (row) => tx(row.country),
       (a, b) => compareText(a, b, locale)
     ),
     byYear: breakdown(
       rows,
-      (row) => String(row.year || ""),
+      (row) => tx(row.year),
       (a, b) => (Number(a) || 0) - (Number(b) || 0)
     ),
     value: amounts(value),
@@ -4448,7 +4455,7 @@ function computeStats(rows, locale = "en") {
   };
 }
 function formatMoney(amount, currency, locale = "en") {
-  const code = String(currency || "").trim().toUpperCase();
+  const code = tx(currency).toUpperCase();
   if (/^[A-Z]{3}$/.test(code)) {
     try {
       return new Intl.NumberFormat(locale, { style: "currency", currency: code }).format(amount);
@@ -4463,7 +4470,7 @@ function formatMoney(amount, currency, locale = "en") {
 }
 function toCsv(header, records) {
   const cell = (value) => {
-    const text = value === null || value === void 0 ? "" : String(value);
+    const text = asText(value);
     return /[",\r\n;]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
   };
   return [header, ...records].map((record) => record.map(cell).join(",")).join("\r\n") + "\r\n";
@@ -4476,9 +4483,10 @@ function addValueSnapshot(history, stats, date, limit = 120) {
     value: stats.value,
     spent: stats.spent
   };
-  const next = (Array.isArray(history) ? history : []).filter((item) => item.date !== date);
+  const list = Array.isArray(history) ? history : [];
+  const next = list.filter((item) => item.date !== date);
   next.push(entry);
-  next.sort((a, b) => String(a.date).localeCompare(String(b.date)));
+  next.sort((a, b) => tx(a.date).localeCompare(tx(b.date)));
   return next.slice(-limit);
 }
 
@@ -4497,6 +4505,9 @@ var dashboardMethods = {
       }
     };
   },
+  /**
+   * @param {Partial<DashboardState>} next
+   */
   setDashboardState(next) {
     this.dashboardState = { ...this.getDashboardState(), ...next };
     this.settings.dashboardState = this.dashboardState;
@@ -4512,10 +4523,14 @@ var dashboardMethods = {
     for (const el of [...this._dashboards]) if (!el.isConnected) this._dashboards.delete(el);
     return [...this._dashboards];
   },
+  /**
+   * @param {HTMLElement} el
+   * @param {import('obsidian').MarkdownPostProcessorContext} ctx
+   */
   registerDashboard(el, ctx) {
     if (!this._dashboards) this._dashboards = /* @__PURE__ */ new Set();
     this._dashboards.add(el);
-    const child = new import_obsidian15.MarkdownRenderChild(el);
+    const child = new import_obsidian16.MarkdownRenderChild(el);
     child.onunload = () => {
       this._dashboards.delete(el);
       this.closeFiltersViewIfDashboardClosed();
@@ -4545,7 +4560,7 @@ var dashboardMethods = {
       leaf = this.app.workspace.getRightLeaf(false);
       await leaf.setViewState({ type: VIEW_TYPE_FILTERS, active: true });
     }
-    this.app.workspace.revealLeaf(leaf);
+    void this.app.workspace.revealLeaf(leaf);
     if (leaf.view instanceof EuroFiltersView) leaf.view.render();
   },
   refreshFilterViews() {
@@ -4553,6 +4568,9 @@ var dashboardMethods = {
       if (leaf.view instanceof EuroFiltersView) leaf.view.render();
     }
   },
+  /**
+   * @param {number} [delayMs]
+   */
   scheduleDashboardRefresh(delayMs = 300) {
     if (this._refreshTimer) window.clearTimeout(this._refreshTimer);
     this._refreshTimer = window.setTimeout(async () => {
@@ -4573,6 +4591,9 @@ var dashboardMethods = {
     this.refreshFilterViews();
     return Promise.resolve();
   },
+  /**
+   * @param {CoinRow[]} rows
+   */
   buildReferenceCoverIndex(rows) {
     const index = /* @__PURE__ */ new Map();
     for (const row of rows) {
@@ -4582,10 +4603,14 @@ var dashboardMethods = {
         String(row.year)
       ].join("|");
       if (!index.has(key)) index.set(key, []);
-      index.get(key).push(row);
+      index.get(key)?.push(row);
     }
     return index;
   },
+  /**
+   * @param {CoinRow} row
+   * @param {Map<string, CoinRow[]>} index
+   */
   resolveDisplayCover(row, index) {
     const ownSrc = this.coverSrc(row);
     const referenceYear = tx(row.reference_year);
@@ -4611,6 +4636,10 @@ var dashboardMethods = {
     }
     return { src: ownSrc, source: null, resolved: false, usesReference: true };
   },
+  /**
+   * @param {HTMLElement} el
+   * @param {Partial<DashboardState> | null} [initialState]
+   */
   renderDashboard(el, initialState = null) {
     const rows = this.getRows();
     const referenceCoverIndex = this.buildReferenceCoverIndex(rows);
@@ -4648,10 +4677,15 @@ var dashboardMethods = {
       }
       for (const r of group.rows) this.renderCoinCard(grid, r, referenceCoverIndex);
     }
-    el._twoEuroState = this.getDashboardState();
   },
   /*
    * Collapsible statistics for the coins matching the current filters.
+   */
+  /**
+   * @param {HTMLElement} el
+   * @param {CoinRow[]} list
+   * @param {DashboardState} state
+   * @param {string} locale
    */
   renderStats(el, list, state, locale) {
     const stats = computeStats(list, locale);
@@ -4712,6 +4746,10 @@ var dashboardMethods = {
     await this.saveSettings();
     return this.settings.valueHistory.at(-1);
   },
+  /**
+   * @param {HTMLElement} container
+   * @param {(items: import('../types').Amount[]) => string} money
+   */
   renderValueHistory(container, money) {
     const history = Array.isArray(this.settings.valueHistory) ? this.settings.valueHistory : [];
     const section = container.createDiv({ cls: "twoeuro-stats-history" });
@@ -4739,28 +4777,48 @@ var dashboardMethods = {
    * Keyboard: arrows move between cards, Enter opens the coin, Space toggles
    * its selection.
    */
+  /**
+   * @param {HTMLElement} grid
+   * @param {KeyboardEvent} event
+   */
   handleGridKeydown(grid, event) {
-    const card = event.target?.closest?.(".twoeuro-card");
-    if (!card) return;
-    const cards = Array.from(grid.querySelectorAll(".twoeuro-card"));
+    const target = (
+      /** @type {Node | null} */
+      event.target
+    );
+    const card = target?.instanceOf(HTMLElement) ? target.closest(".twoeuro-card") : null;
+    if (!card?.instanceOf(HTMLElement)) return;
+    const cards = Array.from(grid.querySelectorAll(".twoeuro-card")).filter(
+      (item) => item.instanceOf(HTMLElement)
+    );
     const index = cards.indexOf(card);
     const columns = Math.max(
       1,
       window.getComputedStyle?.(grid)?.gridTemplateColumns?.split(" ").filter(Boolean).length || 1
     );
-    const move = { ArrowRight: 1, ArrowLeft: -1, ArrowDown: columns, ArrowUp: -columns }[event.key];
+    const clickIn = (selector) => {
+      const element = card.querySelector(selector);
+      if (element?.instanceOf(HTMLElement)) element.click();
+    };
+    const moves = { ArrowRight: 1, ArrowLeft: -1, ArrowDown: columns, ArrowUp: -columns };
+    const move = moves[event.key];
     if (move) {
-      const target = cards[Math.min(cards.length - 1, Math.max(0, index + move))];
-      target?.focus();
+      const next = cards[Math.min(cards.length - 1, Math.max(0, index + move))];
+      if (next?.instanceOf(HTMLElement)) next.focus();
       event.preventDefault();
     } else if (event.key === "Enter") {
-      card.querySelector(".twoeuro-info")?.click();
+      clickIn(".twoeuro-info");
       event.preventDefault();
     } else if (event.key === " ") {
-      card.querySelector(".twoeuro-card-select input")?.click();
+      clickIn(".twoeuro-card-select input");
       event.preventDefault();
     }
   },
+  /**
+   * @param {HTMLElement} grid
+   * @param {CoinRow} r
+   * @param {Map<string, CoinRow[]>} referenceCoverIndex
+   */
   renderCoinCard(grid, r, referenceCoverIndex) {
     const card = grid.createDiv({
       cls: `twoeuro-card ${r.owned ? "is-owned" : "is-missing"} ${(this.selectedCoinPaths || /* @__PURE__ */ new Set()).has(r.file.path) ? "is-selected" : ""}`,
@@ -4833,14 +4891,20 @@ var dashboardMethods = {
 };
 
 // src/plugin/history.js
-var import_obsidian16 = require("obsidian");
+var import_obsidian17 = require("obsidian");
 var historyMethods = {
   historyFolder() {
     return this.join(this.root(), ".history");
   },
+  /**
+   * @param {CoinRow} row
+   */
   historyKey(row) {
     return clean(row.file.path).replace(/\s+/g, "-");
   },
+  /**
+   * @param {CoinRow} row
+   */
   async snapshotCoinState(row) {
     await this.ensureFolder(this.historyFolder());
     const noteContent = await this.app.vault.read(row.file), coverPath = this.localPath(row), snapshot = {
@@ -4852,11 +4916,11 @@ var historyMethods = {
     };
     if (coverPath) {
       const coverFile = this.app.vault.getAbstractFileByPath(coverPath);
-      if (coverFile instanceof import_obsidian16.TFile) {
+      if (coverFile instanceof import_obsidian17.TFile) {
         const ext = coverFile.extension || "bin", backup = this.join(this.historyFolder(), `${this.historyKey(row)}.${ext}`);
         await this.app.vault.adapter.writeBinary(
           backup,
-          new Uint8Array(await this.app.vault.readBinary(coverFile))
+          await this.app.vault.readBinary(coverFile)
         );
         snapshot.backupImagePath = backup;
       }
@@ -4866,14 +4930,20 @@ var historyMethods = {
       JSON.stringify(snapshot, null, 2)
     );
   },
+  /**
+   * @param {CoinRow} row
+   */
   async undoCoinChange(row) {
     const metaPath = this.join(this.historyFolder(), `${this.historyKey(row)}.json`);
     if (!await this.app.vault.adapter.exists(metaPath)) return false;
-    const snapshot = JSON.parse(await this.app.vault.adapter.read(metaPath)), current = this.getRows().find((r) => r.file.path === row.file.path), currentCover = current ? this.localPath(current) : "";
+    const snapshot = (
+      /** @type {import('../types').CoinSnapshot} */
+      parseJson(await this.app.vault.adapter.read(metaPath))
+    ), current = this.getRows().find((r) => r.file.path === row.file.path), currentCover = current ? this.localPath(current) : "";
     if (snapshot.backupImagePath && snapshot.coverPath && await this.app.vault.adapter.exists(snapshot.backupImagePath)) {
       await this.app.vault.adapter.writeBinary(
         snapshot.coverPath,
-        new Uint8Array(await this.app.vault.adapter.readBinary(snapshot.backupImagePath))
+        await this.app.vault.adapter.readBinary(snapshot.backupImagePath)
       );
     }
     await this.app.vault.modify(row.file, snapshot.noteContent);
@@ -4884,24 +4954,31 @@ var historyMethods = {
       await this.app.vault.adapter.remove(snapshot.backupImagePath);
     return true;
   },
+  /**
+   * @param {CoinRow} row
+   * @param {File} file
+   */
   async loadCustomCoverFromDisk(row, file) {
     await this.ensureFolder(this.covers());
     const ext = (file.name.split(".").pop() || "png").toLowerCase(), desired = await this.uniqueCoverPath(
       this.join(this.covers(), `${this.coverFileStem(row)}.${ext}`),
       this.localPath(row)
     );
-    await this.app.vault.adapter.writeBinary(desired, new Uint8Array(await file.arrayBuffer()));
-    await this.app.fileManager.processFrontMatter(row.file, (fm) => {
-      fm.cover = `[[${desired}]]`;
-      fm.reference_year = tx(row.year);
-      fm.cover_locked = true;
-      fm.own_cover = true;
-    });
+    await this.app.vault.adapter.writeBinary(desired, await file.arrayBuffer());
+    await this.app.fileManager.processFrontMatter(
+      row.file,
+      (fm) => {
+        fm.cover = `[[${desired}]]`;
+        fm.reference_year = tx(row.year);
+        fm.cover_locked = true;
+        fm.own_cover = true;
+      }
+    );
   }
 };
 
 // src/plugin/export.js
-var import_obsidian17 = require("obsidian");
+var import_obsidian18 = require("obsidian");
 var KINDS = {
   missing: { title: "export.titleMissing", file: "export.fileMissing" },
   owned: { title: "export.titleOwned", file: "export.fileOwned" },
@@ -4916,6 +4993,9 @@ var exportMethods = {
    * country / year / type / search filters to a Markdown checklist and a CSV
    * file in the collection folder, then opens the Markdown note.
    */
+  /**
+   * @param {string} [kind]
+   */
   async exportCoinList(kind = "missing") {
     const config = KINDS[kind] || KINDS.missing;
     const state = this.getDashboardState();
@@ -4925,18 +5005,19 @@ var exportMethods = {
     };
     const locale = this.getLanguage() === "pl" ? "pl" : "en";
     const quantity = (row) => Math.max(1, Number(row.quantity) || 1);
-    const select = {
+    const selectors = {
       missing: (row) => !row.owned,
       owned: (row) => row.owned,
       swap: (row) => row.owned && quantity(row) > 1
-    }[kind] || ((row) => !row.owned);
+    };
+    const select = selectors[kind] || selectors.missing;
     const items = sortRows(
       this.filterRowsByState(this.getRows(), scopeState).filter(select),
       "countryAsc",
       locale
     );
     if (!items.length) {
-      new import_obsidian17.Notice(this.t("notice.exportNone"));
+      new import_obsidian18.Notice(this.t("notice.exportNone"));
       return null;
     }
     const pieces = (row) => kind === "swap" ? quantity(row) - 1 : kind === "owned" ? quantity(row) : null;
@@ -4989,31 +5070,36 @@ var exportMethods = {
     const base = this.join(this.root(), this.t(config.file, { date }));
     const write = async (path, content) => {
       const existing = this.app.vault.getAbstractFileByPath(path);
-      if (existing instanceof import_obsidian17.TFile) await this.app.vault.modify(existing, content);
+      if (existing instanceof import_obsidian18.TFile) await this.app.vault.modify(existing, content);
       else await this.app.vault.create(path, content);
       return this.app.vault.getAbstractFileByPath(path);
     };
     const mdFile = await write(`${base}.md`, markdown);
     await write(`${base}.csv`, `\uFEFF${csv}`);
     const name = base.split("/").pop();
-    new import_obsidian17.Notice(
+    new import_obsidian18.Notice(
       this.t("notice.exportDone", { count: items.length, md: `${name}.md`, csv: `${name}.csv` })
     );
-    if (mdFile instanceof import_obsidian17.TFile && this.app.workspace.getLeaf)
+    if (mdFile instanceof import_obsidian18.TFile && this.app.workspace.getLeaf)
       await this.app.workspace.getLeaf(true).openFile(mdFile);
     return { count: items.length, markdownPath: `${base}.md`, csvPath: `${base}.csv` };
   }
 };
 
 // src/plugin/operations.js
-var import_obsidian18 = require("obsidian");
+var import_obsidian19 = require("obsidian");
 var operationsMethods = {
   isOperationRunning() {
     return Boolean(this._operation);
   },
+  /**
+   * @template T
+   * @param {() => Promise<T>} fn
+   * @returns {Promise<T | null>}
+   */
   async runOperation(fn) {
     if (this._operation) {
-      new import_obsidian18.Notice(this.t("notice.operationRunning"));
+      new import_obsidian19.Notice(this.t("notice.operationRunning"));
       return null;
     }
     const operation = { aborted: false, requests: 0, notices: [] };
@@ -5022,15 +5108,15 @@ var operationsMethods = {
     try {
       return await fn();
     } catch (error) {
-      if (!error?.aborted) throw error;
+      if (!asError(error).aborted) throw error;
       for (const notice of operation.notices) notice.hide();
-      new import_obsidian18.Notice(this.t("notice.aborted"));
+      new import_obsidian19.Notice(this.t("notice.aborted"));
       await this.refreshDashboards();
       return null;
     } finally {
       this._operation = null;
       if (operation.requests)
-        new import_obsidian18.Notice(
+        new import_obsidian19.Notice(
           this.t("notice.requestsUsed", {
             count: operation.requests,
             month: this.settings.numistaRequestCount
@@ -5043,7 +5129,7 @@ var operationsMethods = {
   abortOperation() {
     if (!this._operation) return;
     this._operation.aborted = true;
-    new import_obsidian18.Notice(this.t("notice.aborting"));
+    new import_obsidian19.Notice(this.t("notice.aborting"));
   },
   throwIfAborted() {
     if (!this._operation?.aborted) return;
@@ -5052,8 +5138,11 @@ var operationsMethods = {
     throw error;
   },
   /* Persistent progress notice that is hidden automatically when aborted. */
+  /**
+   * @param {string} message
+   */
   progressNotice(message) {
-    const notice = new import_obsidian18.Notice(message, 0);
+    const notice = new import_obsidian19.Notice(message, 0);
     this._operation?.notices.push(notice);
     return notice;
   },
@@ -5071,7 +5160,7 @@ var operationsMethods = {
 };
 
 // src/plugin/cache.js
-var import_obsidian19 = require("obsidian");
+var import_obsidian20 = require("obsidian");
 var trimType = (d) => d && {
   id: d.id,
   title: d.title,
@@ -5101,7 +5190,7 @@ var trimIssues = (raw) => (Array.isArray(raw) ? raw : raw?.issues || []).map((is
 }));
 var cacheMethods = {
   numistaCachePath() {
-    return (0, import_obsidian19.normalizePath)(`${this.manifest.dir}/numista-cache.json`);
+    return (0, import_obsidian20.normalizePath)(`${this.manifest.dir}/numista-cache.json`);
   },
   async loadNumistaCache() {
     if (this._numistaCache) return this._numistaCache;
@@ -5109,7 +5198,10 @@ var cacheMethods = {
     try {
       const path = this.numistaCachePath();
       if (await this.app.vault.adapter.exists(path)) {
-        const parsed = JSON.parse(await this.app.vault.adapter.read(path));
+        const parsed = (
+          /** @type {Partial<import('../types').NumistaCache>} */
+          parseJson(await this.app.vault.adapter.read(path))
+        );
         this._numistaCache = { types: parsed.types || {}, issues: parsed.issues || {} };
       }
     } catch (error) {
@@ -5121,32 +5213,57 @@ var cacheMethods = {
     const days = Number(this.settings.numistaCacheDays);
     return (Number.isFinite(days) ? Math.max(0, days) : 7) * 24 * 60 * 60 * 1e3;
   },
+  /**
+   * @template {keyof import('../types').NumistaCache} K
+   * @param {K} kind
+   * @param {unknown} id
+   * @param {() => Promise<import('../types').NumistaCache[K][string]['v']>} fetcher
+   * @param {{ fresh?: boolean }} [options]
+   * @returns {Promise<import('../types').NumistaCache[K][string]['v']>}
+   */
   async cachedNumista(kind, id, fetcher, { fresh = false } = {}) {
     const maxAge = this.numistaCacheMaxAge();
     const cache = await this.loadNumistaCache();
-    const key = String(id);
-    const entry = cache[kind][key];
+    const key = tx(id);
+    const store = cache[kind];
+    const entry = store[key];
     if (!fresh && maxAge && entry && Date.now() - entry.t < maxAge) return entry.v;
     const value = await fetcher();
     if (maxAge) {
-      cache[kind][key] = { t: Date.now(), v: value };
+      store[key] = { t: Date.now(), v: value };
       this.scheduleNumistaCacheSave();
     }
     return value;
   },
+  /**
+   * @param {unknown} id
+   * @param {{ fresh?: boolean }} [options]
+   * @returns {Promise<import('../types').NumistaType | null>}
+   */
   async getTypeDetails(id, options = {}) {
     return this.cachedNumista(
       "types",
       id,
-      async () => trimType(await this.api(`/types/${encodeURIComponent(id)}?lang=en`)),
+      async () => trimType(
+        /** @type {import('../types').NumistaType} */
+        await this.api(`/types/${encodeURIComponent(tx(id))}?lang=en`)
+      ),
       options
     );
   },
+  /**
+   * @param {unknown} id
+   * @param {{ fresh?: boolean }} [options]
+   * @returns {Promise<import('../types').NumistaIssue[]>}
+   */
   async getTypeIssues(id, options = {}) {
     return this.cachedNumista(
       "issues",
       id,
-      async () => trimIssues(await this.api(`/types/${encodeURIComponent(id)}/issues?lang=en`)),
+      async () => trimIssues(
+        /** @type {import('../types').NumistaIssue[]} */
+        await this.api(`/types/${encodeURIComponent(tx(id))}/issues?lang=en`)
+      ),
       options
     );
   },
@@ -5178,7 +5295,7 @@ var cacheMethods = {
 };
 
 // src/plugin/diagnostics.js
-var import_obsidian20 = require("obsidian");
+var import_obsidian21 = require("obsidian");
 var diagnosticsMethods = {
   /*
    * Text for bug reports: versions, platform, folders, collection counts and
@@ -5193,8 +5310,8 @@ var diagnosticsMethods = {
     const lines = [
       "## 2 Euro Collection – diagnostics",
       `- Plugin: ${this.manifest.version}`,
-      `- Obsidian API: ${import_obsidian20.apiVersion || "?"}`,
-      `- Platform: ${import_obsidian20.Platform?.isMobile ? "mobile" : "desktop"}${import_obsidian20.Platform?.isIosApp ? " (iOS)" : ""}${import_obsidian20.Platform?.isAndroidApp ? " (Android)" : ""}${import_obsidian20.Platform?.isMacOS ? " (macOS)" : ""}${import_obsidian20.Platform?.isWin ? " (Windows)" : ""}${import_obsidian20.Platform?.isLinux ? " (Linux)" : ""}`,
+      `- Obsidian API: ${import_obsidian21.apiVersion || "?"}`,
+      `- Platform: ${import_obsidian21.Platform?.isMobile ? "mobile" : "desktop"}${import_obsidian21.Platform?.isIosApp ? " (iOS)" : ""}${import_obsidian21.Platform?.isAndroidApp ? " (Android)" : ""}${import_obsidian21.Platform?.isMacOS ? " (macOS)" : ""}${import_obsidian21.Platform?.isWin ? " (Windows)" : ""}${import_obsidian21.Platform?.isLinux ? " (Linux)" : ""}`,
       `- Interface language: ${this.getLanguage()} (setting: ${this.settings.language})`,
       `- Collection folder: ${this.root()}`,
       `- Coins: ${rows.length} (owned ${rows.filter((r) => r.owned).length}, linked to Numista ${rows.filter((r) => r.numista_id).length})`,
@@ -5216,26 +5333,405 @@ var diagnosticsMethods = {
     const report = this.diagnosticsReport();
     try {
       await navigator.clipboard.writeText(report);
-      new import_obsidian20.Notice(this.t("notice.diagnosticsCopied"));
+      new import_obsidian21.Notice(this.t("notice.diagnosticsCopied"));
     } catch {
       console.warn(report);
-      new import_obsidian20.Notice(this.t("notice.diagnosticsConsole"));
+      new import_obsidian21.Notice(this.t("notice.diagnosticsConsole"));
     }
     return report;
   }
 };
 
-// src/main.js
-var TwoEuroCollectionPlugin = class extends import_obsidian21.Plugin {
-  onunload() {
-    if (this._refreshTimer) window.clearTimeout(this._refreshTimer);
-    if (this._cacheSaveTimer) this.saveNumistaCache();
-    if (this._settingsSaveTimer) {
-      window.clearTimeout(this._settingsSaveTimer);
-      this.saveSettings();
+// src/plugin/lifecycle.js
+var import_obsidian24 = require("obsidian");
+
+// src/ui/EuroSettings.js
+var import_obsidian22 = require("obsidian");
+var settingText = (value) => typeof value === "string" || typeof value === "number" ? String(value) : "";
+var EuroSettings = class extends import_obsidian22.PluginSettingTab {
+  /**
+   * @param {import('obsidian').App} app
+   * @param {import('../types').TwoEuroPlugin} plugin
+   */
+  constructor(app, plugin) {
+    super(app, plugin);
+    this.plugin = plugin;
+    this.folderDraft = {};
+  }
+  /* Re-renders after changes that add or remove settings. */
+  refresh() {
+    this.update();
+  }
+  /** @returns {import('obsidian').SettingDefinitionItem[]} */
+  getSettingDefinitions() {
+    const p = this.plugin, t = (k, v = {}) => p.t(k, v);
+    const def = (name, render, desc = "") => ({
+      name,
+      desc,
+      render: (setting) => {
+        render(setting);
+      }
+    });
+    const text = (
+      /**
+       * @param {string} field
+       * @param {{ placeholder?: string, onChange: (value: string) => unknown }} options
+       */
+      (field, { placeholder = "", onChange }) => (
+        /** @param {import('obsidian').Setting} setting */
+        (setting) => setting.addText(
+          (x) => x.setPlaceholder(placeholder).setValue(settingText(p.settings[field])).onChange(onChange)
+        )
+      )
+    );
+    const button = (
+      /**
+       * @param {string} label
+       * @param {() => unknown} onClick
+       * @param {{ cta?: boolean, warning?: boolean }} [options]
+       */
+      (label, onClick, { cta = false, warning = false } = {}) => (
+        /** @param {import('obsidian').Setting} setting */
+        (setting) => setting.addButton((b) => {
+          b.setButtonText(label).onClick(onClick);
+          if (cta) b.setCta();
+          if (warning) b.setWarning();
+        })
+      )
+    );
+    const month = (/* @__PURE__ */ new Date()).toISOString().slice(0, 7);
+    const requests = p.settings.numistaRequestMonth === month ? p.settings.numistaRequestCount || 0 : 0;
+    const general = {
+      type: "group",
+      items: [
+        def(
+          t("settings.language"),
+          (setting) => setting.addDropdown((d) => {
+            d.addOption("auto", t("settings.auto"));
+            for (const lang of p.getAvailableLanguages()) d.addOption(lang.code, lang.name);
+            d.setValue(p.settings.language || "auto").onChange(async (v) => {
+              p.settings.language = v;
+              await p.saveSettings();
+              this.refresh();
+            });
+          }),
+          t("settings.languageDesc")
+        ),
+        def(
+          t("settings.columns"),
+          (setting) => setting.addSlider(
+            (sl) => sl.setLimits(4, 10, 1).setValue(Number(p.settings.columns) || 6).setDynamicTooltip().onChange(async (v) => {
+              p.settings.columns = v;
+              await p.saveSettings();
+            })
+          ),
+          t("settings.columnsDesc")
+        ),
+        def(
+          t("settings.defaultCurrency"),
+          text("defaultCurrency", {
+            placeholder: "PLN",
+            onChange: async (v) => {
+              p.settings.defaultCurrency = v.trim();
+              await p.saveSettings();
+            }
+          })
+        )
+      ]
+    };
+    const folderField = (key, field) => def(
+      t(key),
+      text(field, {
+        onChange: (v) => {
+          this.folderDraft[field] = v;
+        }
+      })
+    );
+    const folders = {
+      type: "group",
+      heading: t("settings.headingFolders"),
+      items: [
+        folderField("settings.root", "rootFolder"),
+        folderField("settings.collection", "collectionFolder"),
+        folderField("settings.coins", "coinsFolder"),
+        folderField("settings.covers", "coversFolder"),
+        folderField("settings.dashboardFile", "dashboardFile"),
+        def(
+          t("settings.applyFolders"),
+          button(
+            t("settings.applyFoldersButton"),
+            async () => {
+              if (!Object.keys(this.folderDraft).length) return;
+              await p.changeFolders(this.folderDraft);
+              this.folderDraft = {};
+              this.refresh();
+            },
+            { cta: true }
+          ),
+          t("settings.applyFoldersDesc")
+        )
+      ]
+    };
+    const apiKeySetting = (setting) => {
+      setting.addComponent(
+        (el) => new import_obsidian22.SecretComponent(this.app, el).setValue(p.settings.numistaSecretId || "").onChange(async (id) => {
+          p.settings.numistaSecretId = id || "";
+          if (id) p.settings.numistaApiKey = "";
+          await p.saveSettings();
+        })
+      );
+    };
+    const numista = {
+      type: "group",
+      heading: t("settings.headingNumista"),
+      items: [
+        def(t("settings.apiKey"), apiKeySetting, t("settings.apiKeyDesc", { count: requests })),
+        def(
+          t("settings.syncUpdateExisting"),
+          (setting) => setting.addToggle(
+            (x) => x.setValue(isTrue(p.settings.syncUpdateExisting)).onChange(async (v) => {
+              p.settings.syncUpdateExisting = v;
+              await p.saveSettings();
+            })
+          ),
+          t("settings.syncUpdateExistingDesc")
+        ),
+        def(
+          t("settings.cacheDays"),
+          (setting) => setting.addSlider(
+            (slider) => slider.setLimits(0, 30, 1).setValue(
+              Number.isFinite(Number(p.settings.numistaCacheDays)) ? Number(p.settings.numistaCacheDays) : 7
+            ).setDynamicTooltip().onChange(async (value) => {
+              p.settings.numistaCacheDays = value;
+              await p.saveSettings();
+            })
+          ).addButton(
+            (b) => b.setButtonText(t("settings.cacheClear")).onClick(async () => {
+              await p.clearNumistaCache();
+              new import_obsidian22.Notice(t("settings.cacheCleared"));
+            })
+          ),
+          t("settings.cacheDaysDesc")
+        )
+      ]
+    };
+    const setup = {
+      type: "group",
+      heading: t("settings.initialSetup"),
+      items: [
+        def(
+          t("settings.initStructure"),
+          button(
+            t("settings.initStructureButton"),
+            async () => {
+              await p.ensureDashboard();
+              new import_obsidian22.Notice(t("settings.initStructureDone"));
+            },
+            { cta: true }
+          ),
+          t("settings.initStructureDesc")
+        ),
+        def(
+          t("settings.initReferenceData"),
+          button(
+            t("settings.initReferenceDataButton"),
+            async () => {
+              const result = await p.initializeReferenceData();
+              new import_obsidian22.Notice(
+                t("settings.initReferenceDataDone", {
+                  issuers: result.issuers,
+                  years: result.years
+                })
+              );
+              this.refresh();
+            },
+            { cta: true }
+          ),
+          t("settings.initReferenceDataDesc")
+        ),
+        def(
+          t("settings.initStarterPack"),
+          button(t("settings.initStarterPackButton"), async () => {
+            if (!await p.confirm(t("confirm.installStarter"))) return;
+            try {
+              await p.installStarterCollection();
+            } catch (error) {
+              console.error("Starter collection installation", error);
+              new import_obsidian22.Notice(errorText(error));
+            }
+          }),
+          t("settings.initStarterPackDesc")
+        )
+      ]
+    };
+    let issuerToAdd = "", yearToAdd = "";
+    const additionalIssuers = Array.isArray(p.settings.additionalIssuers) ? p.settings.additionalIssuers : [];
+    const additionalYears = Array.isArray(p.settings.additionalYears) ? p.settings.additionalYears : [];
+    const reference = {
+      type: "group",
+      heading: t("settings.referenceData"),
+      items: [
+        def(
+          t("settings.referenceYearFrom"),
+          (setting) => setting.addText((x) => {
+            x.inputEl.type = "number";
+            x.inputEl.min = "1999";
+            x.inputEl.max = "2200";
+            x.setValue(String(p.settings.referenceYearFrom || 1999)).onChange(async (value) => {
+              const year = Number(value);
+              if (!Number.isInteger(year) || year < 1999 || year > 2200) return;
+              p.settings.referenceYearFrom = year;
+              await p.saveSettings();
+              p.refreshFilterViews();
+            });
+          }),
+          t("settings.referenceYearFromDesc")
+        ),
+        def(
+          t("settings.futureYears"),
+          (setting) => setting.addSlider(
+            (slider) => slider.setLimits(0, 10, 1).setValue(
+              Number.isFinite(Number(p.settings.futureYears)) ? Number(p.settings.futureYears) : 1
+            ).setDynamicTooltip().onChange(async (value) => {
+              p.settings.futureYears = value;
+              await p.saveSettings();
+              p.refreshFilterViews();
+            })
+          ),
+          t("settings.futureYearsDesc")
+        ),
+        def(
+          t("settings.additionalIssuer"),
+          (setting) => setting.addText(
+            (x) => x.setPlaceholder(t("settings.issuerPlaceholder")).onChange((value) => {
+              issuerToAdd = value;
+            })
+          ).addButton(
+            (b) => b.setButtonText(t("settings.addIssuerButton")).setCta().onClick(async () => {
+              const issuer = countryName(issuerToAdd);
+              if (!issuer) return;
+              if (await p.addReferenceIssuer(issuer)) {
+                new import_obsidian22.Notice(t("settings.issuerAdded", { issuer }));
+                this.refresh();
+              } else new import_obsidian22.Notice(t("settings.issuerExists"));
+            })
+          ),
+          `${t("settings.additionalIssuerDesc")} ${t("settings.referenceDataDesc")}`
+        ),
+        ...additionalIssuers.map(
+          (issuer) => def(
+            issuer,
+            button(
+              t("settings.removeIssuer"),
+              async () => {
+                await p.removeReferenceIssuer(issuer);
+                this.refresh();
+              },
+              { warning: true }
+            )
+          )
+        ),
+        def(
+          t("settings.additionalYear"),
+          (setting) => setting.addText((x) => {
+            x.inputEl.type = "number";
+            x.inputEl.min = "1999";
+            x.inputEl.max = "2200";
+            x.setPlaceholder(t("settings.yearPlaceholder")).onChange((value) => {
+              yearToAdd = value;
+            });
+          }).addButton(
+            (b) => b.setButtonText(t("settings.addYearButton")).setCta().onClick(async () => {
+              const year = Number(yearToAdd);
+              if (!Number.isInteger(year) || year < 1999 || year > 2200) {
+                new import_obsidian22.Notice(t("settings.invalidYear"));
+                return;
+              }
+              if (await p.addReferenceYear(year)) {
+                new import_obsidian22.Notice(t("settings.yearAdded", { year }));
+                this.refresh();
+              } else new import_obsidian22.Notice(t("settings.yearExists"));
+            })
+          ),
+          t("settings.additionalYearDesc")
+        ),
+        ...additionalYears.map(
+          (year) => def(
+            String(year),
+            button(
+              t("settings.removeYear"),
+              async () => {
+                await p.removeReferenceYear(year);
+                this.refresh();
+              },
+              { warning: true }
+            )
+          )
+        )
+      ]
+    };
+    return [general, folders, numista, setup, reference];
+  }
+};
+
+// src/ui/SyncReportModal.js
+var import_obsidian23 = require("obsidian");
+var SyncReportModal = class extends import_obsidian23.Modal {
+  /**
+   * @param {import('obsidian').App} app
+   * @param {import('../types').TwoEuroPlugin} plugin
+   */
+  constructor(app, plugin) {
+    super(app);
+    this.plugin = plugin;
+  }
+  onOpen() {
+    const p = this.plugin, t = (k, v = {}) => p.t(k, v), c = this.contentEl, report = p.lastSyncReport;
+    c.empty();
+    c.addClass("twoeuro-sync-report");
+    c.createEl("h2", { text: t("report.title") });
+    if (!report) {
+      c.createEl("p", { text: t("report.none") });
+      return;
+    }
+    c.createEl("p", {
+      text: t("report.summary", {
+        date: report.date,
+        scope: report.scope,
+        count: report.items.length
+      })
+    });
+    if (!report.items.length) {
+      c.createEl("p", { text: t("report.empty") });
+      return;
+    }
+    const list = c.createEl("ul");
+    for (const item of report.items) {
+      const li = list.createEl("li");
+      if (item.id)
+        li.createEl("a", {
+          text: `N#${item.id}`,
+          attr: { href: `https://en.numista.com/${item.id}` }
+        });
+      li.appendText(` ${item.title || ""} — ${item.reason}`);
     }
   }
-  async onload() {
+  onClose() {
+    this.contentEl.empty();
+  }
+};
+
+// src/plugin/lifecycle.js
+var lifecycleMethods = {
+  teardown() {
+    if (this._refreshTimer) window.clearTimeout(this._refreshTimer);
+    if (this._cacheSaveTimer) void this.saveNumistaCache();
+    if (this._settingsSaveTimer) {
+      window.clearTimeout(this._settingsSaveTimer);
+      void this.saveSettings();
+    }
+  },
+  async setup() {
     await this.loadSettings();
     await this.loadExternalLanguages();
     await this.migrateApiKeyToSecretStorage();
@@ -5259,13 +5755,11 @@ var TwoEuroCollectionPlugin = class extends import_obsidian21.Plugin {
         if (this.isCollectionPath(file?.path)) this.scheduleDashboardRefresh();
       })
     );
-    for (const eventName of ["create", "delete"]) {
-      this.registerEvent(
-        this.app.vault.on(eventName, (file) => {
-          if (this.isCollectionPath(file?.path)) this.scheduleDashboardRefresh();
-        })
-      );
-    }
+    const onFileChange = (file) => {
+      if (this.isCollectionPath(file?.path)) this.scheduleDashboardRefresh();
+    };
+    this.registerEvent(this.app.vault.on("create", onFileChange));
+    this.registerEvent(this.app.vault.on("delete", onFileChange));
     this.registerEvent(
       this.app.vault.on("rename", (file, oldPath) => {
         if (this.isCollectionPath(file?.path) || this.isCollectionPath(oldPath))
@@ -5300,7 +5794,7 @@ var TwoEuroCollectionPlugin = class extends import_obsidian21.Plugin {
           await this.installStarterCollection();
         } catch (error) {
           console.error("Starter collection installation", error);
-          new import_obsidian21.Notice(error?.message || String(error));
+          new import_obsidian24.Notice(errorText(error));
         }
       }
     });
@@ -5343,7 +5837,7 @@ var TwoEuroCollectionPlugin = class extends import_obsidian21.Plugin {
       name: this.t("command.valueSnapshot"),
       callback: async () => {
         await this.recordValueSnapshot();
-        new import_obsidian21.Notice(this.t("notice.valueSnapshot"));
+        new import_obsidian24.Notice(this.t("notice.valueSnapshot"));
         await this.refreshDashboards();
       }
     });
@@ -5380,14 +5874,14 @@ var TwoEuroCollectionPlugin = class extends import_obsidian21.Plugin {
     this.addCommand({
       id: "two-euro-dedupe",
       name: this.t("command.dedupe"),
-      callback: async () => new import_obsidian21.Notice(this.t("notice.dedupe", { count: await this.dedupe() }))
+      callback: async () => new import_obsidian24.Notice(this.t("notice.dedupe", { count: await this.dedupe() }))
     });
     this.addCommand({
       id: "two-euro-init-reference-fields",
       name: this.t("command.initFields"),
       callback: async () => {
         const result = await this.initializeReferenceFields();
-        new import_obsidian21.Notice(this.t("notice.initFields", result));
+        new import_obsidian24.Notice(this.t("notice.initFields", result));
       }
     });
     this.addCommand({
@@ -5395,13 +5889,13 @@ var TwoEuroCollectionPlugin = class extends import_obsidian21.Plugin {
       name: this.t("command.migrateCovers"),
       callback: async () => {
         const fixed = await this.migrateCoverLinks();
-        new import_obsidian21.Notice(this.t("notice.coversMigrated", { count: fixed }));
+        new import_obsidian24.Notice(this.t("notice.coversMigrated", { count: fixed }));
       }
     });
     this.addCommand({
       id: "two-euro-normalize-folders",
       name: this.t("command.normalizeFolders"),
-      callback: async () => new import_obsidian21.Notice(
+      callback: async () => new import_obsidian24.Notice(
         this.t("notice.foldersNormalized", { count: await this.normalizeCountryFolders() })
       )
     });
@@ -5427,21 +5921,42 @@ var TwoEuroCollectionPlugin = class extends import_obsidian21.Plugin {
       } catch (e) {
         console.error("2 Euro dashboard", e);
         el.empty();
-        el.createEl("pre", { text: `2 Euro Collection: ${e.message || e}` });
+        el.createEl("pre", { text: `2 Euro Collection: ${errorText(e)}` });
       }
     });
     this.settingTab = new EuroSettings(this.app, this);
     this.addSettingTab(this.settingTab);
   }
 };
+
+// src/main.js
+var TwoEuroCollectionPlugin = class extends import_obsidian25.Plugin {
+  async onload() {
+    await asPlugin(this).setup();
+  }
+  onunload() {
+    asPlugin(this).teardown();
+  }
+};
+function asPlugin(plugin) {
+  return (
+    /** @type {import('./types').TwoEuroPlugin} */
+    /** @type {unknown} */
+    plugin
+  );
+}
 Object.assign(
   TwoEuroCollectionPlugin.prototype,
+  lifecycleMethods,
   settingsMethods,
   i18nMethods,
   vaultMethods,
   coinsMethods,
   maintenanceMethods,
   numistaMethods,
+  syncMethods,
+  pricesMethods,
+  coversMethods,
   starterMethods,
   selectionMethods,
   imagesMethods,

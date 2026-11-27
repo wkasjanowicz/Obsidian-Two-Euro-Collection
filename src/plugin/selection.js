@@ -1,11 +1,16 @@
 import { Notice, TFile } from 'obsidian';
 
+/** @satisfies {ThisType<import('../types').TwoEuroPlugin>} */
 export const selectionMethods = {
   getSelectedCoinFiles() {
     const selected = this.selectedCoinPaths || new Set();
     return this.getRows().filter((row) => selected.has(row.file.path));
   },
 
+  /**
+   * @param {string} path
+   * @param {boolean} selected
+   */
   toggleCoinSelection(path, selected) {
     if (!this.selectedCoinPaths) this.selectedCoinPaths = new Set();
     if (selected) this.selectedCoinPaths.add(path);
@@ -25,19 +30,23 @@ export const selectionMethods = {
       return;
     }
     let count = 0;
+    /** @type {Set<string>} */
     const newSelection = new Set();
     for (const row of rows) {
       try {
         const source = await this.app.vault.read(row.file),
           target = await this.uniquePath(row.file.path),
           duplicate = await this.app.vault.create(target, source);
-        await this.app.fileManager.processFrontMatter(duplicate, (fm) => {
-          fm.coin_id = `duplicate-${Date.now()}-${count + 1}`;
-          fm.source = 'manual';
-          delete fm.numista_id;
-          delete fm.numista_issue_id;
-          delete fm.numista_url;
-        });
+        await this.app.fileManager.processFrontMatter(
+          duplicate,
+          (/** @type {Record<string, unknown>} */ fm) => {
+            fm.coin_id = `duplicate-${Date.now()}-${count + 1}`;
+            fm.source = 'manual';
+            delete fm.numista_id;
+            delete fm.numista_issue_id;
+            delete fm.numista_url;
+          }
+        );
         newSelection.add(duplicate.path);
         count++;
       } catch (error) {
@@ -63,7 +72,9 @@ export const selectionMethods = {
     )
       return;
     let count = 0;
+    /** @type {Set<string>} */
     const deletedPaths = new Set(),
+      /** @type {Set<string>} */
       coverPaths = new Set();
     for (const row of rows) {
       try {

@@ -4,9 +4,23 @@
  * so they are covered directly by tests.
  */
 
-const compareText = (a, b, locale) =>
-  String(a || '').localeCompare(String(b || ''), locale, { numeric: true, sensitivity: 'base' });
+import { tx, asText } from './utils.js';
 
+/**
+ * @param {string} a
+ * @param {string} b
+ * @param {string} locale
+ */
+const compareText = (a, b, locale) =>
+  tx(a).localeCompare(tx(b), locale, { numeric: true, sensitivity: 'base' });
+
+/**
+ * @template {import('./types').CoinRow} T
+ * @param {T[]} list
+ * @param {string} [sortMode]
+ * @param {string} [locale]
+ * @returns {T[]}
+ */
 export function sortRows(list, sortMode = 'yearAsc', locale = 'en') {
   return [...list].sort((a, b) => {
     const yearA = Number(a.year) || 0,
@@ -21,6 +35,7 @@ export function sortRows(list, sortMode = 'yearAsc', locale = 'en') {
   });
 }
 
+/** @param {import('./types').CoinRow[]} rows */
 const progress = (rows) => ({
   owned: rows.filter((row) => row.owned).length,
   total: rows.length,
@@ -30,14 +45,23 @@ const progress = (rows) => ({
  * Splits sorted rows into groups by country or year. Group order follows the
  * sort direction (descending sort -> descending groups).
  */
+/**
+ * @template {import('./types').CoinRow} T
+ * @param {T[]} sortedRows
+ * @param {string} [groupBy]
+ * @param {string} [sortMode]
+ * @param {string} [locale]
+ * @returns {{ key: string, label: string, rows: T[], owned: number, total: number }[]}
+ */
 export function groupRows(sortedRows, groupBy = 'none', sortMode = 'yearAsc', locale = 'en') {
   if (groupBy !== 'country' && groupBy !== 'year')
     return [{ key: '', label: '', rows: sortedRows, ...progress(sortedRows) }];
+  /** @type {Map<string, T[]>} */
   const groups = new Map();
   for (const row of sortedRows) {
-    const key = groupBy === 'country' ? String(row.country || '') : String(row.year || '');
+    const key = groupBy === 'country' ? tx(row.country) : tx(row.year);
     if (!groups.has(key)) groups.set(key, []);
-    groups.get(key).push(row);
+    groups.get(key)?.push(row);
   }
   const keys = [...groups.keys()];
   if (groupBy === 'year') {
@@ -47,33 +71,50 @@ export function groupRows(sortedRows, groupBy = 'none', sortMode = 'yearAsc', lo
     keys.sort((a, b) => compareText(a, b, locale));
     if (sortMode === 'countryDesc') keys.reverse();
   }
-  return keys.map((key) => ({
-    key,
-    label: key,
-    rows: groups.get(key),
-    ...progress(groups.get(key)),
-  }));
+  return keys.map((key) => {
+    const rows = groups.get(key) || [];
+    return { key, label: key, rows, ...progress(rows) };
+  });
 }
 
+/**
+ * @param {unknown} value
+ * @returns {number | null}
+ */
 const finite = (value) => {
   if (value === null || value === undefined || value === '') return null;
-  const number = Number(String(value).replace(/\s+/g, '').replace(',', '.'));
+  const number = Number(tx(value).replace(/\s+/g, '').replace(',', '.'));
   return Number.isFinite(number) ? number : null;
 };
 
+/**
+ * @param {Map<string, number>} map
+ * @param {string} currency
+ * @param {number} amount
+ */
 const addAmount = (map, currency, amount) => map.set(currency, (map.get(currency) || 0) + amount);
 
+/**
+ * @param {Map<string, number>} map
+ * @returns {import('./types').Amount[]}
+ */
 const amounts = (map) =>
   [...map.entries()]
     .map(([currency, amount]) => ({ currency, amount: Math.round(amount * 100) / 100 }))
     .sort((a, b) => b.amount - a.amount);
 
+/**
+ * @param {import('./types').CoinRow[]} rows
+ * @param {(row: import('./types').CoinRow) => string} keyOf
+ * @param {(a: string, b: string) => number} compare
+ */
 const breakdown = (rows, keyOf, compare) => {
+  /** @type {Map<string, import('./types').CoinRow[]>} */
   const groups = new Map();
   for (const row of rows) {
     const key = keyOf(row);
     if (!groups.has(key)) groups.set(key, []);
-    groups.get(key).push(row);
+    groups.get(key)?.push(row);
   }
   return [...groups.entries()]
     .map(([key, items]) => ({ key, ...progress(items) }))
@@ -87,9 +128,15 @@ const breakdown = (rows, keyOf, compare) => {
  * - money spent on purchases (acquisition_price per piece x quantity),
  * - coins available for swap (quantity above 1).
  */
+/**
+ * @param {import('./types').CoinRow[]} rows
+ * @param {string} [locale]
+ */
 export function computeStats(rows, locale = 'en') {
   const owned = rows.filter((row) => row.owned);
+  /** @type {Map<string, number>} */
   const value = new Map(),
+    /** @type {Map<string, number>} */
     spent = new Map();
   let valueMissing = 0,
     spentMissing = 0,
@@ -113,12 +160,12 @@ export function computeStats(rows, locale = 'en') {
     ...progress(rows),
     byCountry: breakdown(
       rows,
-      (row) => String(row.country || ''),
+      (row) => tx(row.country),
       (a, b) => compareText(a, b, locale)
     ),
     byYear: breakdown(
       rows,
-      (row) => String(row.year || ''),
+      (row) => tx(row.year),
       (a, b) => (Number(a) || 0) - (Number(b) || 0)
     ),
     value: amounts(value),
@@ -130,10 +177,14 @@ export function computeStats(rows, locale = 'en') {
   };
 }
 
+/**
+ * @param {number} amount
+ * @param {string} currency
+ * @param {string} [locale]
+ * @returns {string}
+ */
 export function formatMoney(amount, currency, locale = 'en') {
-  const code = String(currency || '')
-    .trim()
-    .toUpperCase();
+  const code = tx(currency).toUpperCase();
   if (/^[A-Z]{3}$/.test(code)) {
     try {
       return new Intl.NumberFormat(locale, { style: 'currency', currency: code }).format(amount);
@@ -149,9 +200,15 @@ export function formatMoney(amount, currency, locale = 'en') {
 }
 
 /* RFC 4180 CSV; values containing a separator, quote or newline are quoted. */
+/**
+ * @param {string[]} header
+ * @param {unknown[][]} records
+ * @returns {string}
+ */
 export function toCsv(header, records) {
+  /** @param {unknown} value */
   const cell = (value) => {
-    const text = value === null || value === undefined ? '' : String(value);
+    const text = asText(value);
     return /[",\r\n;]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
   };
   return [header, ...records].map((record) => record.map(cell).join(',')).join('\r\n') + '\r\n';
@@ -160,7 +217,15 @@ export function toCsv(header, records) {
 /*
  * Adds today's snapshot to the value history (one entry per day, newest last).
  */
+/**
+ * @param {unknown} history
+ * @param {{ owned: number, total: number, value: import('./types').Amount[], spent: import('./types').Amount[] }} stats
+ * @param {string} date
+ * @param {number} [limit]
+ * @returns {import('./types').ValueSnapshot[]}
+ */
 export function addValueSnapshot(history, stats, date, limit = 120) {
+  /** @type {import('./types').ValueSnapshot} */
   const entry = {
     date,
     owned: stats.owned,
@@ -168,8 +233,10 @@ export function addValueSnapshot(history, stats, date, limit = 120) {
     value: stats.value,
     spent: stats.spent,
   };
-  const next = (Array.isArray(history) ? history : []).filter((item) => item.date !== date);
+  /** @type {import('./types').ValueSnapshot[]} */
+  const list = Array.isArray(history) ? history : [];
+  const next = list.filter((item) => item.date !== date);
   next.push(entry);
-  next.sort((a, b) => String(a.date).localeCompare(String(b.date)));
+  next.sort((a, b) => tx(a.date).localeCompare(tx(b.date)));
   return next.slice(-limit);
 }

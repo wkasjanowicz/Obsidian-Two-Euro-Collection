@@ -1,10 +1,15 @@
 import { normalizePath } from 'obsidian';
+import { tx, parseJson } from '../utils.js';
 
 /*
  * Persistent cache of Numista type details and issue lists, stored in the
  * plugin folder (numista-cache.json). Repeated synchronizations of the same
  * range then do not spend API requests. Entries expire after
  * settings.numistaCacheDays days (0 disables the cache).
+ */
+/**
+ * @param {import('../types').NumistaType | null} d
+ * @returns {import('../types').NumistaType | null}
  */
 const trimType = (d) =>
   d && {
@@ -27,6 +32,10 @@ const trimType = (d) =>
     images: d.images,
   };
 
+/**
+ * @param {import('../types').NumistaIssue[] | { issues?: import('../types').NumistaIssue[] } | null} raw
+ * @returns {import('../types').NumistaIssue[]}
+ */
 const trimIssues = (raw) =>
   (Array.isArray(raw) ? raw : raw?.issues || []).map((issue) => ({
     id: issue.id,
@@ -37,6 +46,7 @@ const trimIssues = (raw) =>
     comment: issue.comment,
   }));
 
+/** @satisfies {ThisType<import('../types').TwoEuroPlugin>} */
 export const cacheMethods = {
   numistaCachePath() {
     return normalizePath(`${this.manifest.dir}/numista-cache.json`);
@@ -48,7 +58,9 @@ export const cacheMethods = {
     try {
       const path = this.numistaCachePath();
       if (await this.app.vault.adapter.exists(path)) {
-        const parsed = JSON.parse(await this.app.vault.adapter.read(path));
+        const parsed = /** @type {Partial<import('../types').NumistaCache>} */ (
+          parseJson(await this.app.vault.adapter.read(path))
+        );
         this._numistaCache = { types: parsed.types || {}, issues: parsed.issues || {} };
       }
     } catch (error) {
@@ -62,34 +74,64 @@ export const cacheMethods = {
     return (Number.isFinite(days) ? Math.max(0, days) : 7) * 24 * 60 * 60 * 1000;
   },
 
+  /**
+   * @template {keyof import('../types').NumistaCache} K
+   * @param {K} kind
+   * @param {unknown} id
+   * @param {() => Promise<import('../types').NumistaCache[K][string]['v']>} fetcher
+   * @param {{ fresh?: boolean }} [options]
+   * @returns {Promise<import('../types').NumistaCache[K][string]['v']>}
+   */
   async cachedNumista(kind, id, fetcher, { fresh = false } = {}) {
     const maxAge = this.numistaCacheMaxAge();
     const cache = await this.loadNumistaCache();
-    const key = String(id);
-    const entry = cache[kind][key];
+    const key = tx(id);
+    /** @type {Record<string, import('../types').CacheEntry<import('../types').NumistaCache[K][string]['v']>>} */
+    const store = cache[kind];
+    const entry = store[key];
     if (!fresh && maxAge && entry && Date.now() - entry.t < maxAge) return entry.v;
     const value = await fetcher();
     if (maxAge) {
-      cache[kind][key] = { t: Date.now(), v: value };
+      store[key] = { t: Date.now(), v: value };
       this.scheduleNumistaCacheSave();
     }
     return value;
   },
 
+  /**
+   * @param {unknown} id
+   * @param {{ fresh?: boolean }} [options]
+   * @returns {Promise<import('../types').NumistaType | null>}
+   */
   async getTypeDetails(id, options = {}) {
     return this.cachedNumista(
       'types',
       id,
-      async () => trimType(await this.api(`/types/${encodeURIComponent(id)}?lang=en`)),
+      async () =>
+        trimType(
+          /** @type {import('../types').NumistaType} */ (
+            await this.api(`/types/${encodeURIComponent(tx(id))}?lang=en`)
+          )
+        ),
       options
     );
   },
 
+  /**
+   * @param {unknown} id
+   * @param {{ fresh?: boolean }} [options]
+   * @returns {Promise<import('../types').NumistaIssue[]>}
+   */
   async getTypeIssues(id, options = {}) {
     return this.cachedNumista(
       'issues',
       id,
-      async () => trimIssues(await this.api(`/types/${encodeURIComponent(id)}/issues?lang=en`)),
+      async () =>
+        trimIssues(
+          /** @type {import('../types').NumistaIssue[]} */ (
+            await this.api(`/types/${encodeURIComponent(tx(id))}/issues?lang=en`)
+          )
+        ),
       options
     );
   },

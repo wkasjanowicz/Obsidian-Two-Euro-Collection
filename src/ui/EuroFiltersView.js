@@ -3,6 +3,10 @@ import { VIEW_TYPE_FILTERS } from '../constants.js';
 import { CoinModal } from './CoinModal.js';
 
 export class EuroFiltersView extends ItemView {
+  /**
+   * @param {import('obsidian').WorkspaceLeaf} leaf
+   * @param {import('../types').TwoEuroPlugin} plugin
+   */
   constructor(leaf, plugin) {
     super(leaf);
     this.plugin = plugin;
@@ -22,7 +26,7 @@ export class EuroFiltersView extends ItemView {
   }
   render() {
     const p = this.plugin,
-      t = (k, v) => p.t(k, v),
+      t = (/** @type {string} */ k, /** @type {Record<string, unknown>} */ v = {}) => p.t(k, v),
       c = this.contentEl;
     c.empty();
     c.addClass('twoeuro-sidebar');
@@ -98,7 +102,7 @@ export class EuroFiltersView extends ItemView {
     clearBtn.disabled = selectedCount === 0;
     clearBtn.onclick = () => {
       p.clearCoinSelection();
-      p.refreshDashboards();
+      void p.refreshDashboards();
       p.refreshFilterViews();
     };
     c.createEl('hr');
@@ -194,7 +198,7 @@ export class EuroFiltersView extends ItemView {
         sortMode: sort.value,
         groupBy: groupBy.value,
       });
-      p.refreshDashboards();
+      void p.refreshDashboards();
     };
     search.oninput = apply;
     country.onchange = apply;

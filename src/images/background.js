@@ -5,10 +5,18 @@
  * gradients and vignettes). Pixels are faded out with a soft edge.
  * Works in place on RGBA data; returns the detected background colour.
  */
+/**
+ * @param {Uint8ClampedArray} pixels RGBA data
+ * @param {number} width
+ * @param {number} height
+ * @returns {number[] | null}
+ */
 export function removeBackgroundPixels(pixels, width, height) {
   const total = width * height;
   if (!total) return null;
+  /** @type {number[]} */
   const border = [];
+  /** @param {number} index */
   const addBorder = (index) => {
     const offset = index * 4;
     if (pixels[offset + 3] > 0) border.push(index);
@@ -22,11 +30,13 @@ export function removeBackgroundPixels(pixels, width, height) {
     addBorder(y * width + width - 1);
   }
   if (!border.length) return null;
+  /** @param {number} channel */
   const median = (channel) => {
     const values = border.map((index) => pixels[index * 4 + channel]).sort((a, b) => a - b);
     return values[values.length >> 1];
   };
   const bg = [median(0), median(1), median(2)];
+  /** @param {number} index */
   const distance = (index) => {
     const offset = index * 4;
     return Math.max(
@@ -50,6 +60,10 @@ export function removeBackgroundPixels(pixels, width, height) {
   let head = 0,
     tail = 0;
   for (let index = 0; index < total; index++) dist[index] = Math.min(255, distance(index));
+  /**
+   * @param {number} from
+   * @param {number} to
+   */
   const near = (from, to) => {
     const a = from * 4,
       b = to * 4;
@@ -61,6 +75,10 @@ export function removeBackgroundPixels(pixels, width, height) {
       ) <= stepLimit
     );
   };
+  /**
+   * @param {number} index
+   * @param {number} from
+   */
   const accept = (index, from) => {
     if (seen[index]) return;
     const transparent = pixels[index * 4 + 3] === 0;

@@ -1,6 +1,14 @@
 import { Notice, TFile, parseYaml, stringifyYaml } from 'obsidian';
-import { tx, normalizeCoinTitle, coinIdentityKey } from '../utils.js';
+import { tx, normalizeCoinTitle, coinIdentityKey, asError } from '../utils.js';
 
+/**
+ * Obsidian's parseYaml without the implicit `any`.
+ * @param {string} text
+ * @returns {unknown}
+ */
+const parseYamlText = (text) => parseYaml(text);
+
+/** @satisfies {ThisType<import('../types').TwoEuroPlugin>} */
 export const maintenanceMethods = {
   async normalizeExistingTitles() {
     let updated = 0,
@@ -15,7 +23,7 @@ export const maintenanceMethods = {
           unchanged++;
           continue;
         }
-        const fm = parseYaml(match[1]) || {},
+        const fm = /** @type {Record<string, unknown> | null} */ (parseYamlText(match[1])) || {},
           rawTitle = tx(fm.title),
           normalized = normalizeCoinTitle(rawTitle);
         if (!rawTitle || rawTitle === normalized) {
@@ -64,16 +72,19 @@ export const maintenanceMethods = {
       unchanged = 0;
     for (const row of this.getRows()) {
       let changed = false;
-      await this.app.fileManager.processFrontMatter(row.file, (fm) => {
-        if (!Object.prototype.hasOwnProperty.call(fm, 'reference_year')) {
-          fm.reference_year = '';
-          changed = true;
+      await this.app.fileManager.processFrontMatter(
+        row.file,
+        (/** @type {Record<string, unknown>} */ fm) => {
+          if (!Object.prototype.hasOwnProperty.call(fm, 'reference_year')) {
+            fm.reference_year = '';
+            changed = true;
+          }
+          if (!Object.prototype.hasOwnProperty.call(fm, 'cover_locked')) {
+            fm.cover_locked = false;
+            changed = true;
+          }
         }
-        if (!Object.prototype.hasOwnProperty.call(fm, 'cover_locked')) {
-          fm.cover_locked = false;
-          changed = true;
-        }
-      });
+      );
       if (changed) updated++;
       else unchanged++;
     }
@@ -111,7 +122,7 @@ export const maintenanceMethods = {
           removed++;
         }
       } catch (error) {
-        if (this.isNumistaAuthError(error) || error?.aborted) throw error;
+        if (this.isNumistaAuthError(error) || asError(error).aborted) throw error;
         errors++;
         console.error('Remove unofficial import', row.file?.path, error);
       }
@@ -125,11 +136,12 @@ export const maintenanceMethods = {
   },
 
   async dedupe() {
+    /** @type {Map<string, import('../types').CoinRow[]>} */
     const g = new Map();
     for (const r of this.getRows()) {
       const k = coinIdentityKey(r);
       if (!g.has(k)) g.set(k, []);
-      g.get(k).push(r);
+      g.get(k)?.push(r);
     }
     let n = 0;
     for (const a of g.values()) {
@@ -146,11 +158,14 @@ export const maintenanceMethods = {
         a[0];
       const donor = a.find((x) => x !== keep && x.numista_id);
       if (!keep.numista_id && donor && keep.file instanceof TFile) {
-        await this.app.fileManager.processFrontMatter(keep.file, (fm) => {
-          fm.numista_id = donor.numista_id;
-          if (donor.numista_issue_id) fm.numista_issue_id = donor.numista_issue_id;
-          if (donor.numista_url) fm.numista_url = donor.numista_url;
-        });
+        await this.app.fileManager.processFrontMatter(
+          keep.file,
+          (/** @type {Record<string, unknown>} */ fm) => {
+            fm.numista_id = donor.numista_id;
+            if (donor.numista_issue_id) fm.numista_issue_id = donor.numista_issue_id;
+            if (donor.numista_url) fm.numista_url = donor.numista_url;
+          }
+        );
       }
       for (const r of a)
         if (r !== keep && !r.owned && r.file instanceof TFile) {
@@ -168,7 +183,7 @@ export const maintenanceMethods = {
       const cover = tx(row.cover);
       if (!cover) continue;
       const parsed = cover.replace(/^\[\[/, '').replace(/\]\]$/, '').split('|')[0];
-      // tylko stare wpisy bez ścieżki
+      // only old entries without a folder path
       if (!parsed.includes('/')) {
         const newPath = this.join(this.covers(), parsed);
         await this.upsert(
@@ -207,10 +222,13 @@ export const maintenanceMethods = {
           oldPath
         );
         if (desired !== oldPath) await this.app.fileManager.renameFile(file, desired);
-        await this.app.fileManager.processFrontMatter(row.file, (fm) => {
-          fm.cover = `[[${desired}]]`;
-          if (fm.own_cover === true) fm.cover_locked = true;
-        });
+        await this.app.fileManager.processFrontMatter(
+          row.file,
+          (/** @type {Record<string, unknown>} */ fm) => {
+            fm.cover = `[[${desired}]]`;
+            if (fm.own_cover === true) fm.cover_locked = true;
+          }
+        );
         renamed++;
       } catch (error) {
         errors++;
@@ -234,6 +252,7 @@ export const maintenanceMethods = {
   async convertPngCoversToWebpRun() {
     const rows = this.getRows(),
       prefix = `${this.covers()}/`,
+      /** @type {Map<string, { file: TFile, rows: import('../types').CoinRow[] }>} */
       groups = new Map();
     for (const row of rows) {
       const coverPath = this.localPath(row);
@@ -241,7 +260,7 @@ export const maintenanceMethods = {
       const file = this.app.vault.getAbstractFileByPath(coverPath);
       if (!(file instanceof TFile)) continue;
       if (!groups.has(coverPath)) groups.set(coverPath, { file, rows: [] });
-      groups.get(coverPath).rows.push(row);
+      groups.get(coverPath)?.rows.push(row);
     }
     if (!groups.size) {
       new Notice(this.t('notice.convertCoversNone'));
@@ -280,19 +299,22 @@ export const maintenanceMethods = {
           return;
         }
         const newPath = await this.uniqueCoverPath(oldPath.replace(/\.png$/i, '.webp'));
-        const bytes = new Uint8Array(await blob.arrayBuffer());
+        const bytes = await blob.arrayBuffer();
         await this.app.vault.adapter.writeBinary(newPath, bytes);
         for (const row of group.rows) {
           const oldLink = tx(row.cover);
-          await this.app.fileManager.processFrontMatter(row.file, (fm) => {
-            fm.cover = `[[${newPath}]]`;
-          });
+          await this.app.fileManager.processFrontMatter(
+            row.file,
+            (/** @type {Record<string, unknown>} */ fm) => {
+              fm.cover = `[[${newPath}]]`;
+            }
+          );
           await this.app.vault.process(row.file, (content) =>
             oldLink ? content.split(`!${oldLink}`).join(`![[${newPath}]]`) : content
           );
         }
         before += binary.byteLength;
-        after += bytes.length;
+        after += bytes.byteLength;
         await this.app.fileManager.trashFile(group.file);
         converted++;
       } catch (error) {

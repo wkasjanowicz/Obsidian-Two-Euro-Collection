@@ -1,9 +1,16 @@
 import { Notice, TFile } from 'obsidian';
 import { COVER_MAX_SIZE, COVER_WEBP_QUALITY } from '../constants.js';
-import { tx, clean, isTrue, countryName } from '../utils.js';
+import { tx, clean, isTrue, countryName, errorText } from '../utils.js';
 import { removeBackgroundPixels } from '../images/background.js';
 
+/** @typedef {import('../types').CoinData} CoinData */
+/** @typedef {import('../types').CoinRow} CoinRow */
+
+/** @satisfies {ThisType<import('../types').TwoEuroPlugin>} */
 export const imagesMethods = {
+  /**
+   * @param {CoinData} row
+   */
   coverFileStem(row) {
     const parts = [
       countryName(row.country),
@@ -23,6 +30,10 @@ export const imagesMethods = {
       .join('-');
   },
 
+  /**
+   * @param {string} desired
+   * @param {string} [currentPath]
+   */
   async uniqueCoverPath(desired, currentPath = '') {
     if (desired === currentPath || !(await this.app.vault.adapter.exists(desired))) return desired;
     const dot = desired.lastIndexOf('.'),
@@ -37,6 +48,9 @@ export const imagesMethods = {
     return candidate;
   },
 
+  /**
+   * @param {CoinRow} row
+   */
   async processBackgroundForRow(row) {
     const coinFile = row?.file;
     if (!(coinFile instanceof TFile)) return { ok: false, reason: 'no-file' };
@@ -56,11 +70,14 @@ export const imagesMethods = {
       image = await this.loadImageFromArrayBuffer(binary),
       canvas = this.makeTransparentBackground(image),
       pngPath = await this.saveProcessedCover(row, canvas);
-    await this.app.fileManager.processFrontMatter(coinFile, (fm) => {
-      fm.cover = `[[${pngPath}]]`;
-      fm.reference_year = tx(row.year);
-      fm.cover_locked = true;
-    });
+    await this.app.fileManager.processFrontMatter(
+      coinFile,
+      (/** @type {Record<string, unknown>} */ fm) => {
+        fm.cover = `[[${pngPath}]]`;
+        fm.reference_year = tx(row.year);
+        fm.cover_locked = true;
+      }
+    );
     return { ok: true, pngPath, usedReference: sourceRow.file?.path !== row.file.path };
   },
 
@@ -93,6 +110,10 @@ export const imagesMethods = {
     new Notice(this.t('notice.batchBackground', { done, skipped, errors }));
   },
 
+  /**
+   * @param {ArrayBuffer} arrayBuffer
+   * @returns {Promise<HTMLImageElement>}
+   */
   async loadImageFromArrayBuffer(arrayBuffer) {
     const blob = new Blob([arrayBuffer]);
     const objectUrl = URL.createObjectURL(blob);
@@ -108,6 +129,9 @@ export const imagesMethods = {
     }
   },
 
+  /**
+   * @param {HTMLImageElement} image
+   */
   makeTransparentBackground(image) {
     const canvas = activeDocument.createElement('canvas'),
       naturalWidth = image.naturalWidth || image.width,
@@ -126,6 +150,9 @@ export const imagesMethods = {
     return canvas;
   },
 
+  /**
+   * @param {HTMLImageElement} image
+   */
   makeCatalogCoinCanvas(image) {
     const segmented = this.makeTransparentBackground(image),
       source = segmented
@@ -198,6 +225,9 @@ export const imagesMethods = {
     return canvas;
   },
 
+  /**
+   * @param {CoinRow} row
+   */
   async processCatalogPresetForRow(row) {
     const coinFile = row?.file;
     if (!(coinFile instanceof TFile)) return { ok: false, reason: 'no-file' };
@@ -215,12 +245,15 @@ export const imagesMethods = {
       image = await this.loadImageFromArrayBuffer(binary),
       canvas = this.makeCatalogCoinCanvas(image),
       pngPath = await this.saveProcessedCover(row, canvas);
-    await this.app.fileManager.processFrontMatter(coinFile, (fm) => {
-      fm.cover = `[[${pngPath}]]`;
-      fm.reference_year = tx(row.year);
-      fm.cover_locked = true;
-      fm.image_preset = 'catalog-coin';
-    });
+    await this.app.fileManager.processFrontMatter(
+      coinFile,
+      (/** @type {Record<string, unknown>} */ fm) => {
+        fm.cover = `[[${pngPath}]]`;
+        fm.reference_year = tx(row.year);
+        fm.cover_locked = true;
+        fm.image_preset = 'catalog-coin';
+      }
+    );
     return {
       ok: true,
       pngPath,
@@ -236,6 +269,9 @@ export const imagesMethods = {
     };
   },
 
+  /**
+   * @param {string} preset
+   */
   async processSelectedImages(preset) {
     if (preset === 'catalog') return this.applyCatalogPresetToSelectedCoins();
     return this.removeBackgroundFromSelectedCoins();
@@ -288,7 +324,7 @@ export const imagesMethods = {
       new Notice(this.t('notice.catalogDone'));
     } catch (error) {
       console.error('Catalog preset', error);
-      new Notice(this.t('notice.backgroundError', { message: error?.message || error }));
+      new Notice(this.t('notice.backgroundError', { message: errorText(error) }));
     }
   },
 
@@ -296,7 +332,12 @@ export const imagesMethods = {
    * Encodes as WebP (much smaller than PNG, keeps transparency). Falls back to
    * PNG where the platform cannot encode WebP (older iOS/Safari WebViews).
    */
+  /**
+   * @param {HTMLCanvasElement} canvas
+   * @returns {Promise<{ blob: Blob, ext: string }>}
+   */
   async canvasToCoverBlob(canvas) {
+    /** @type {Blob | null} */
     const webp = await new Promise((resolve) =>
       canvas.toBlob((blob) => resolve(blob), 'image/webp', COVER_WEBP_QUALITY)
     );
@@ -304,6 +345,9 @@ export const imagesMethods = {
     return { blob: await this.canvasToPngBlob(canvas), ext: 'png' };
   },
 
+  /**
+   * @param {HTMLImageElement} image
+   */
   resizeImageToCanvas(image) {
     const naturalWidth = image.naturalWidth || image.width,
       naturalHeight = image.naturalHeight || image.height,
@@ -319,13 +363,17 @@ export const imagesMethods = {
     return canvas;
   },
 
+  /**
+   * @param {CoinRow} row
+   * @param {HTMLCanvasElement} canvas
+   */
   async saveProcessedCover(row, canvas) {
     await this.ensureFolder(this.covers());
     const { blob, ext } = await this.canvasToCoverBlob(canvas),
       stem = this.coverFileStem(row),
       oldPath = this.localPath(row),
       path = await this.uniqueCoverPath(this.join(this.covers(), `${stem}.${ext}`), oldPath);
-    await this.app.vault.adapter.writeBinary(path, new Uint8Array(await blob.arrayBuffer()));
+    await this.app.vault.adapter.writeBinary(path, await blob.arrayBuffer());
     /*
      * Remove the previous processed version of this coin's cover (same name,
      * different extension, e.g. an old 5 MB PNG) when no other coin uses it.
@@ -354,11 +402,16 @@ export const imagesMethods = {
     return path;
   },
 
+  /**
+   * @param {HTMLCanvasElement} canvas
+   */
   canvasToPngBlob(canvas) {
-    return new Promise((resolve, reject) =>
-      canvas.toBlob(
-        (blob) => (blob ? resolve(blob) : reject(new Error('PNG encoding failed'))),
-        'image/png'
+    return /** @type {Promise<Blob>} */ (
+      new Promise((resolve, reject) =>
+        canvas.toBlob(
+          (blob) => (blob ? resolve(blob) : reject(new Error('PNG encoding failed'))),
+          'image/png'
+        )
       )
     );
   },
@@ -384,7 +437,7 @@ export const imagesMethods = {
       new Notice(this.t('notice.backgroundRemoved', { year: tx(row.year) }));
     } catch (error) {
       console.error('2 Euro background removal', error);
-      new Notice(this.t('notice.backgroundError', { message: error?.message || error }));
+      new Notice(this.t('notice.backgroundError', { message: errorText(error) }));
     }
   },
 };

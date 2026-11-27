@@ -5,13 +5,17 @@ import { Modal } from 'obsidian';
  * (other country, not an official 2 euro coin, matched an existing coin…).
  */
 export class SyncReportModal extends Modal {
+  /**
+   * @param {import('obsidian').App} app
+   * @param {import('../types').TwoEuroPlugin} plugin
+   */
   constructor(app, plugin) {
     super(app);
     this.plugin = plugin;
   }
   onOpen() {
     const p = this.plugin,
-      t = (k, v) => p.t(k, v),
+      t = (/** @type {string} */ k, /** @type {Record<string, unknown>} */ v = {}) => p.t(k, v),
       c = this.contentEl,
       report = p.lastSyncReport;
     c.empty();

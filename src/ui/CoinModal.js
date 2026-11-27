@@ -2,6 +2,11 @@ import { Setting, Modal, Notice, TFile } from 'obsidian';
 import { tx, clean, isTrue } from '../utils.js';
 
 export class CoinModal extends Modal {
+  /**
+   * @param {import('obsidian').App} app
+   * @param {import('../types').TwoEuroPlugin} plugin
+   * @param {import('../types').CoinRow | null} [row]
+   */
   constructor(app, plugin, row) {
     super(app);
     this.plugin = plugin;
@@ -10,8 +15,9 @@ export class CoinModal extends Modal {
   }
   onOpen() {
     const p = this.plugin,
-      t = (k, v) => p.t(k, v),
+      t = (/** @type {string} */ k, /** @type {Record<string, unknown>} */ v = {}) => p.t(k, v),
       c = this.contentEl,
+      /** @type {import('../types').CoinData} */
       f = this.row
         ? { ...this.row }
         : {
@@ -34,6 +40,10 @@ export class CoinModal extends Modal {
           };
     c.empty();
     c.createEl('h2', { text: t(this.row ? 'coin.edit' : 'coin.add') });
+    /**
+     * @param {string} key
+     * @param {string} field
+     */
     const input = (key, field, ph = '', desc = '') => {
       const setting = new Setting(c).setName(t(key));
       if (desc) setting.setDesc(t(desc));

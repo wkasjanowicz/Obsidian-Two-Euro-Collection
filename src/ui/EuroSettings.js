@@ -1,14 +1,26 @@
 import { PluginSettingTab, Notice, SecretComponent } from 'obsidian';
-import { isTrue, countryName } from '../utils.js';
+import { isTrue, countryName, errorText } from '../utils.js';
 
 /*
  * Settings are described once as definitions (name, description, render).
  * Obsidian (1.13+) renders them itself and indexes them for settings search.
  */
+/**
+ * @param {unknown} value
+ * @returns {string}
+ */
+const settingText = (value) =>
+  typeof value === 'string' || typeof value === 'number' ? String(value) : '';
+
 export class EuroSettings extends PluginSettingTab {
+  /**
+   * @param {import('obsidian').App} app
+   * @param {import('../types').TwoEuroPlugin} plugin
+   */
   constructor(app, plugin) {
     super(app, plugin);
     this.plugin = plugin;
+    /** @type {Record<string, string>} */
     this.folderDraft = {};
   }
 
@@ -17,31 +29,56 @@ export class EuroSettings extends PluginSettingTab {
     this.update();
   }
 
+  /** @returns {import('obsidian').SettingDefinitionItem[]} */
   getSettingDefinitions() {
     const p = this.plugin,
-      t = (k, v) => p.t(k, v);
-    const def = (name, render, desc = '') => ({ name, desc, render });
+      t = (/** @type {string} */ k, /** @type {Record<string, unknown>} */ v = {}) => p.t(k, v);
+    /**
+     * @param {string} name
+     * @param {(setting: import('obsidian').Setting) => unknown} render
+     * @param {string} [desc]
+     * @returns {import('obsidian').SettingDefinitionRender}
+     */
+    const def = (name, render, desc = '') => ({
+      name,
+      desc,
+      render: (setting) => {
+        render(setting);
+      },
+    });
     const text =
-      (field, { placeholder = '', onChange } = {}) =>
-      (setting) =>
-        setting.addText((x) =>
-          x
-            .setPlaceholder(placeholder)
-            .setValue(p.settings[field] == null ? '' : String(p.settings[field]))
-            .onChange(onChange)
-        );
+      /**
+       * @param {string} field
+       * @param {{ placeholder?: string, onChange: (value: string) => unknown }} options
+       */
+      (field, { placeholder = '', onChange }) =>
+        /** @param {import('obsidian').Setting} setting */
+        (setting) =>
+          setting.addText((x) =>
+            x
+              .setPlaceholder(placeholder)
+              .setValue(settingText(p.settings[field]))
+              .onChange(onChange)
+          );
     const button =
+      /**
+       * @param {string} label
+       * @param {() => unknown} onClick
+       * @param {{ cta?: boolean, warning?: boolean }} [options]
+       */
       (label, onClick, { cta = false, warning = false } = {}) =>
-      (setting) =>
-        setting.addButton((b) => {
-          b.setButtonText(label).onClick(onClick);
-          if (cta) b.setCta();
-          if (warning) b.setWarning();
-        });
+        /** @param {import('obsidian').Setting} setting */
+        (setting) =>
+          setting.addButton((b) => {
+            b.setButtonText(label).onClick(onClick);
+            if (cta) b.setCta();
+            if (warning) b.setWarning();
+          });
     const month = new Date().toISOString().slice(0, 7);
     const requests =
       p.settings.numistaRequestMonth === month ? p.settings.numistaRequestCount || 0 : 0;
 
+    /** @type {import('obsidian').SettingDefinitionGroup} */
     const general = {
       type: 'group',
       items: [
@@ -91,6 +128,10 @@ export class EuroSettings extends PluginSettingTab {
      * Folder settings are applied together with a button, so that the
      * collection is moved to the new location instead of being lost.
      */
+    /**
+     * @param {string} key
+     * @param {string} field
+     */
     const folderField = (key, field) =>
       def(
         t(key),
@@ -100,6 +141,7 @@ export class EuroSettings extends PluginSettingTab {
           },
         })
       );
+    /** @type {import('obsidian').SettingDefinitionGroup} */
     const folders = {
       type: 'group',
       heading: t('settings.headingFolders'),
@@ -126,6 +168,7 @@ export class EuroSettings extends PluginSettingTab {
       ],
     };
 
+    /** @param {import('obsidian').Setting} setting */
     const apiKeySetting = (setting) => {
       // The key is kept in Obsidian's secure secret storage.
       setting.addComponent((el) =>
@@ -138,6 +181,7 @@ export class EuroSettings extends PluginSettingTab {
           })
       );
     };
+    /** @type {import('obsidian').SettingDefinitionGroup} */
     const numista = {
       type: 'group',
       heading: t('settings.headingNumista'),
@@ -183,6 +227,7 @@ export class EuroSettings extends PluginSettingTab {
       ],
     };
 
+    /** @type {import('obsidian').SettingDefinitionGroup} */
     const setup = {
       type: 'group',
       heading: t('settings.initialSetup'),
@@ -225,7 +270,7 @@ export class EuroSettings extends PluginSettingTab {
               await p.installStarterCollection();
             } catch (error) {
               console.error('Starter collection installation', error);
-              new Notice(error?.message || String(error));
+              new Notice(errorText(error));
             }
           }),
           t('settings.initStarterPackDesc')
@@ -241,6 +286,7 @@ export class EuroSettings extends PluginSettingTab {
     const additionalYears = Array.isArray(p.settings.additionalYears)
       ? p.settings.additionalYears
       : [];
+    /** @type {import('obsidian').SettingDefinitionGroup} */
     const reference = {
       type: 'group',
       heading: t('settings.referenceData'),

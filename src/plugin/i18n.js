@@ -1,8 +1,9 @@
 import { normalizePath, getLanguage as getObsidianLanguage } from 'obsidian';
 import { BASE_LANGUAGE } from '../i18n/en.js';
-import { formatText, tx } from '../utils.js';
+import { formatText, tx, parseJson } from '../utils.js';
 import { BUILTIN_LANGUAGES } from '../i18n/builtin.js';
 
+/** @satisfies {ThisType<import('../types').TwoEuroPlugin>} */
 export const i18nMethods = {
   languagesFolder() {
     return normalizePath(`${this.manifest.dir}/Languages`);
@@ -27,7 +28,9 @@ export const i18nMethods = {
       const listing = await this.app.vault.adapter.list(folder);
       for (const path of listing.files.filter((file) => file.toLowerCase().endsWith('.json'))) {
         try {
-          const parsed = JSON.parse(await this.app.vault.adapter.read(path)),
+          const parsed = /** @type {{ code?: unknown, name?: unknown, strings?: unknown }} */ (
+              parseJson(await this.app.vault.adapter.read(path))
+            ),
             code = tx(
               parsed.code ||
                 path
@@ -36,7 +39,9 @@ export const i18nMethods = {
                   .replace(/\.json$/i, '')
             ).toLowerCase(),
             name = tx(parsed.name) || code,
-            strings = parsed.strings && typeof parsed.strings === 'object' ? parsed.strings : {};
+            strings = /** @type {Record<string, string>} */ (
+              parsed.strings && typeof parsed.strings === 'object' ? parsed.strings : {}
+            );
           if (!code || code === 'en') continue;
           this.externalLanguages[code] = { ...(this.externalLanguages[code] || {}), ...strings };
           const known = this.availableLanguages.find((lang) => lang.code === code);
@@ -66,6 +71,10 @@ export const i18nMethods = {
     return this.externalLanguages?.[locale] ? locale : 'en';
   },
 
+  /**
+   * @param {string} key
+   * @param {Record<string, unknown>} [vars]
+   */
   t(key, vars = {}) {
     const lang = this.getLanguage(),
       strings = lang === 'en' ? BASE_LANGUAGE : this.externalLanguages?.[lang] || {};

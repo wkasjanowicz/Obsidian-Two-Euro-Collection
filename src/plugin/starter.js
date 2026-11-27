@@ -1,7 +1,20 @@
 import { Notice, requestUrl } from 'obsidian';
 import { GITHUB_REPO } from '../constants.js';
-import { tx, clean, normalizeCoinTitle, countryName } from '../utils.js';
+import { tx, clean, normalizeCoinTitle, countryName, parseJson } from '../utils.js';
 
+/**
+ * A starter-pack coin without its cover. coin.cover in starter-pack.json is an
+ * object with Base64 data, while upsert() expects a path in cover_path.
+ * @param {import('../types').StarterCoin} coin
+ * @returns {Omit<import('../types').StarterCoin, 'cover'>}
+ */
+const withoutCover = (coin) => {
+  const copy = { ...coin };
+  delete copy.cover;
+  return copy;
+};
+
+/** @satisfies {ThisType<import('../types').TwoEuroPlugin>} */
 export const starterMethods = {
   async installStarterCollection() {
     /*
@@ -14,7 +27,9 @@ export const starterMethods = {
       `https://raw.githubusercontent.com/${GITHUB_REPO}/starter-pack/starter-pack.json`,
       `https://raw.githubusercontent.com/${GITHUB_REPO}/main/StarterData/starter-pack.json`,
     ];
+    /** @type {import('obsidian').RequestUrlResponse | null} */
     let response = null,
+      /** @type {unknown} */
       lastError = null;
     for (const url of urls) {
       try {
@@ -28,7 +43,11 @@ export const starterMethods = {
     }
     if (!response) throw lastError || new Error('Starter collection unavailable');
 
-    const starterPack = response.json || JSON.parse(response.text || '{}');
+    /** @type {unknown} */
+    const json = response.json;
+    const starterPack = /** @type {import('../types').StarterPack} */ (
+      json || parseJson(response.text || '{}')
+    );
 
     if (starterPack.schemaVersion !== 1 || !Array.isArray(starterPack.coins)) {
       throw new Error(this.t('error.starterFormat'));
@@ -39,12 +58,8 @@ export const starterMethods = {
     const existingRows = this.getRows();
 
     /*
-     * Podstawowym identyfikatorem monety jest:
-     *
-     * numista_id + numista_issue_id
-     *
-     * Dzięki temu ponowne uruchomienie importu
-     * nie powinno tworzyć duplikatów.
+     * A coin is identified by numista_id + numista_issue_id, so running the
+     * import again does not create duplicates.
      */
     const existingNumistaKeys = new Set(
       existingRows
@@ -52,9 +67,8 @@ export const starterMethods = {
         .map((row) => `${row.numista_id}:${row.numista_issue_id}`)
     );
 
-    /*
-     * Fallback dla monet bez identyfikatorów Numista.
-     */
+    /* Fallback key for coins without Numista ids. */
+    /** @param {import('../types').StarterCoin | import('../types').CoinRow} coin */
     const getFallbackKey = (coin) =>
       [
         countryName(coin.country),
@@ -82,14 +96,8 @@ export const starterMethods = {
         const fallbackKey = getFallbackKey(coin);
 
         /*
-         * Istniejącej monety nie modyfikujemy.
-         *
-         * To chroni:
-         * - owned
-         * - quantity
-         * - acquisition data
-         * - notes
-         * - okładkę użytkownika
+         * An existing coin is never modified. This keeps the user's owned flag,
+         * quantity, acquisition data, notes and own cover.
          */
         if (
           (numistaKey && existingNumistaKeys.has(numistaKey)) ||
@@ -101,10 +109,7 @@ export const starterMethods = {
 
         let coverPath = '';
 
-        /*
-         * Odtworzenie lokalnego pliku obrazu
-         * z Base64 znajdującego się w starter-pack.json.
-         */
+        /* Recreates the local image file from the Base64 data in starter-pack.json. */
         if (coin.cover?.fileName && coin.cover?.base64) {
           const safeFileName = clean(coin.cover.fileName);
 
@@ -114,9 +119,7 @@ export const starterMethods = {
 
           coverPath = this.join(this.covers(), safeFileName);
 
-          /*
-           * Nie nadpisujemy istniejącego pliku.
-           */
+          /* An existing file is never overwritten. */
           if (await this.app.vault.adapter.exists(coverPath)) {
             coverPath = await this.uniqueCoverPath(coverPath);
           }
@@ -125,15 +128,13 @@ export const starterMethods = {
 
           const bytes = Uint8Array.from(binary, (character) => character.charCodeAt(0));
 
-          await this.app.vault.adapter.writeBinary(coverPath, bytes);
+          await this.app.vault.adapter.writeBinary(coverPath, bytes.buffer);
         }
 
-        /*
-         * Dane użytkownika zawsze zaczynają się
-         * od neutralnego stanu.
-         */
+        /* User data always starts from a neutral state. */
+        /** @type {import('../types').CoinData} */
         const data = {
-          ...coin,
+          ...withoutCover(coin),
 
           owned: false,
           quantity: 1,
@@ -146,24 +147,10 @@ export const starterMethods = {
 
           cover_path: coverPath,
 
-          /*
-           * Okładka pochodząca ze starter packa
-           * ma być chroniona przed synchronizacją
-           * z Numista.
-           */
+          /* A cover from the starter pack is protected from Numista synchronization. */
           cover_locked: Boolean(coverPath),
           own_cover: Boolean(coverPath),
         };
-
-        /*
-         * Pole coin.cover w starter-pack.json
-         * jest obiektem zawierającym Base64.
-         *
-         * upsert() oczekuje natomiast ścieżki
-         * przez cover_path, więc nie przekazujemy
-         * obiektu jako zwykłego pola cover.
-         */
-        delete data.cover;
 
         await this.upsert(data, null);
 
@@ -191,10 +178,7 @@ export const starterMethods = {
       }
     }
 
-    /*
-     * Dane w Vault zostały zmienione,
-     * więc odświeżamy oba widoki.
-     */
+    /* The vault changed, so both views are refreshed. */
     await this.refreshDashboards();
     this.refreshFilterViews();
 

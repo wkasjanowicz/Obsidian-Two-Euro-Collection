@@ -1,15 +1,24 @@
 import { TFile } from 'obsidian';
-import { tx, clean } from '../utils.js';
+import { tx, clean, parseJson } from '../utils.js';
 
+/** @typedef {import('../types').CoinRow} CoinRow */
+
+/** @satisfies {ThisType<import('../types').TwoEuroPlugin>} */
 export const historyMethods = {
   historyFolder() {
     return this.join(this.root(), '.history');
   },
 
+  /**
+   * @param {CoinRow} row
+   */
   historyKey(row) {
     return clean(row.file.path).replace(/\s+/g, '-');
   },
 
+  /**
+   * @param {CoinRow} row
+   */
   async snapshotCoinState(row) {
     await this.ensureFolder(this.historyFolder());
     const noteContent = await this.app.vault.read(row.file),
@@ -28,7 +37,7 @@ export const historyMethods = {
           backup = this.join(this.historyFolder(), `${this.historyKey(row)}.${ext}`);
         await this.app.vault.adapter.writeBinary(
           backup,
-          new Uint8Array(await this.app.vault.readBinary(coverFile))
+          await this.app.vault.readBinary(coverFile)
         );
         snapshot.backupImagePath = backup;
       }
@@ -39,10 +48,15 @@ export const historyMethods = {
     );
   },
 
+  /**
+   * @param {CoinRow} row
+   */
   async undoCoinChange(row) {
     const metaPath = this.join(this.historyFolder(), `${this.historyKey(row)}.json`);
     if (!(await this.app.vault.adapter.exists(metaPath))) return false;
-    const snapshot = JSON.parse(await this.app.vault.adapter.read(metaPath)),
+    const snapshot = /** @type {import('../types').CoinSnapshot} */ (
+        parseJson(await this.app.vault.adapter.read(metaPath))
+      ),
       current = this.getRows().find((r) => r.file.path === row.file.path),
       currentCover = current ? this.localPath(current) : '';
     if (
@@ -52,7 +66,7 @@ export const historyMethods = {
     ) {
       await this.app.vault.adapter.writeBinary(
         snapshot.coverPath,
-        new Uint8Array(await this.app.vault.adapter.readBinary(snapshot.backupImagePath))
+        await this.app.vault.adapter.readBinary(snapshot.backupImagePath)
       );
     }
     await this.app.vault.modify(row.file, snapshot.noteContent);
@@ -68,6 +82,10 @@ export const historyMethods = {
     return true;
   },
 
+  /**
+   * @param {CoinRow} row
+   * @param {File} file
+   */
   async loadCustomCoverFromDisk(row, file) {
     await this.ensureFolder(this.covers());
     const ext = (file.name.split('.').pop() || 'png').toLowerCase(),
@@ -75,12 +93,15 @@ export const historyMethods = {
         this.join(this.covers(), `${this.coverFileStem(row)}.${ext}`),
         this.localPath(row)
       );
-    await this.app.vault.adapter.writeBinary(desired, new Uint8Array(await file.arrayBuffer()));
-    await this.app.fileManager.processFrontMatter(row.file, (fm) => {
-      fm.cover = `[[${desired}]]`;
-      fm.reference_year = tx(row.year);
-      fm.cover_locked = true;
-      fm.own_cover = true;
-    });
+    await this.app.vault.adapter.writeBinary(desired, await file.arrayBuffer());
+    await this.app.fileManager.processFrontMatter(
+      row.file,
+      (/** @type {Record<string, unknown>} */ fm) => {
+        fm.cover = `[[${desired}]]`;
+        fm.reference_year = tx(row.year);
+        fm.cover_locked = true;
+        fm.own_cover = true;
+      }
+    );
   },
 };

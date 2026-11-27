@@ -1,5 +1,6 @@
 import { Notice, Platform, apiVersion } from 'obsidian';
 
+/** @satisfies {ThisType<import('../types').TwoEuroPlugin>} */
 export const diagnosticsMethods = {
   /*
    * Text for bug reports: versions, platform, folders, collection counts and
@@ -8,6 +9,7 @@ export const diagnosticsMethods = {
   diagnosticsReport() {
     const rows = this.getRows();
     const covers = this.filesInFolder(this.covers());
+    /** @type {Record<string, number>} */
     const byExtension = {};
     for (const file of covers) byExtension[file.extension] = (byExtension[file.extension] || 0) + 1;
     const { numistaApiKey, valueHistory, dashboardState, referenceIssuers, ...settings } =

@@ -1,18 +1,27 @@
 import { Notice, TFile, TFolder, normalizePath } from 'obsidian';
 import { tx, clean } from '../utils.js';
 
+/** @typedef {import('../types').Settings} Settings */
+
+/** @satisfies {ThisType<import('../types').TwoEuroPlugin>} */
 export const vaultMethods = {
   /*
    * Applies new folder settings. Existing coins, covers and the dashboard are
    * moved to the new locations (after confirmation), and cover links in coin
    * notes are updated, so the collection is not "lost" after a rename.
    */
+  /**
+   * @param {Partial<Settings>} next
+   */
   async changeFolders(next) {
     const keys = ['rootFolder', 'collectionFolder', 'coinsFolder', 'coversFolder', 'dashboardFile'];
+    /** @type {Record<string, string>} */
     const before = { coins: this.coins(), covers: this.covers(), dashboard: this.dashboard() };
     const previous = Object.fromEntries(keys.map((key) => [key, this.settings[key]]));
     for (const key of keys) if (key in next) this.settings[key] = tx(next[key]);
+    /** @type {Record<string, string>} */
     const after = { coins: this.coins(), covers: this.covers(), dashboard: this.dashboard() };
+    /** @type {[string, string][]} */
     const moves = [];
     for (const key of ['coins', 'covers', 'dashboard']) {
       if (before[key] === after[key]) continue;
@@ -33,7 +42,8 @@ export const vaultMethods = {
       for (const [from, to] of moves) {
         const parent = to.includes('/') ? to.slice(0, to.lastIndexOf('/')) : '';
         if (parent) await this.ensureFolder(parent);
-        await this.app.fileManager.renameFile(this.app.vault.getAbstractFileByPath(from), to);
+        const source = this.app.vault.getAbstractFileByPath(from);
+        if (source) await this.app.fileManager.renameFile(source, to);
       }
       if (before.covers !== after.covers) {
         for (const file of this.filesInFolder(after.coins, 'md')) {
@@ -49,6 +59,9 @@ export const vaultMethods = {
     new Notice(this.t('notice.foldersChanged', { count: moves.length }));
     return true;
   },
+  /**
+   * @param {...string} a
+   */
   join(...a) {
     return normalizePath(
       a
@@ -76,11 +89,17 @@ export const vaultMethods = {
     return this.join(this.root(), `${name}.md`);
   },
 
+  /**
+   * @param {string} path
+   */
   isSupportedImage(path) {
     const ext = (path || '').split('.').pop().toLowerCase();
     return ['png', 'jpg', 'jpeg', 'webp', 'gif', 'svg'].includes(ext);
   },
 
+  /**
+   * @param {string} path
+   */
   async ensureFolder(path) {
     if (!path || (await this.app.vault.adapter.exists(path))) return;
     let c = '';
@@ -111,6 +130,9 @@ export const vaultMethods = {
     await this.activateFiltersView();
   },
 
+  /**
+   * @param {string} p
+   */
   async uniquePath(p) {
     if (!(await this.app.vault.adapter.exists(p))) return p;
     const i = p.lastIndexOf('.');
@@ -122,6 +144,10 @@ export const vaultMethods = {
   /*
    * Lists files only inside the given collection folder (recursively), so the
    * plugin never enumerates the rest of the vault.
+   */
+  /**
+   * @param {string} path
+   * @param {string} [extension]
    */
   filesInFolder(path, extension = '') {
     const folder = path ? this.app.vault.getAbstractFileByPath(normalizePath(path)) : null;
@@ -138,6 +164,10 @@ export const vaultMethods = {
     return result;
   },
 
+  /**
+   * @param {string} source
+   * @param {string} target
+   */
   async moveFolderContents(source, target) {
     if (source === target) return 0;
     const src = this.app.vault.getAbstractFileByPath(source);
@@ -157,11 +187,14 @@ export const vaultMethods = {
       moved++;
     }
     const left = this.app.vault.getAbstractFileByPath(source);
-    if (left && left.children && left.children.length === 0)
-      await this.app.vault.delete(left, true);
+    if (left instanceof TFolder && left.children.length === 0)
+      await this.app.fileManager.trashFile(left);
     return moved;
   },
 
+  /**
+   * @param {string | undefined} path
+   */
   isCollectionPath(path) {
     const value = tx(path);
     if (!value) return false;

@@ -2,11 +2,14 @@ import { ConfirmModal } from '../ui/ConfirmModal.js';
 import { DEFAULT_REFERENCE_ISSUERS, DEFAULTS } from '../constants.js';
 import { tx, countryName } from '../utils.js';
 
+/** @satisfies {ThisType<import('../types').TwoEuroPlugin>} */
 export const settingsMethods = {
   async loadSettings() {
-    const saved = (await this.loadData()) || {};
+    /** @type {Partial<import('../types').Settings>} */
+    const saved =
+      /** @type {Partial<import('../types').Settings> | null} */ (await this.loadData()) || {};
 
-    this.settings = {
+    this.settings = /** @type {import('../types').Settings} */ ({
       ...DEFAULTS,
       ...saved,
 
@@ -15,7 +18,7 @@ export const settingsMethods = {
       additionalIssuers: Array.isArray(saved.additionalIssuers) ? saved.additionalIssuers : [],
 
       additionalYears: Array.isArray(saved.additionalYears) ? saved.additionalYears : [],
-    };
+    });
   },
 
   /*
@@ -42,6 +45,10 @@ export const settingsMethods = {
   },
 
   /* Asks the user to confirm an action in an Obsidian dialog. */
+  /**
+   * @param {string} message
+   * @param {{ warning?: boolean, confirmText?: string }} [options]
+   */
   confirm(message, { warning = false, confirmText = '' } = {}) {
     return ConfirmModal.ask(this.app, {
       message,
@@ -51,6 +58,9 @@ export const settingsMethods = {
     });
   },
   /* Saves settings shortly after the last change (used for frequent UI state changes). */
+  /**
+   * @param {number} [delayMs]
+   */
   scheduleSettingsSave(delayMs = 1000) {
     if (this._settingsSaveTimer) window.clearTimeout(this._settingsSaveTimer);
     this._settingsSaveTimer = window.setTimeout(() => {
@@ -125,6 +135,7 @@ export const settingsMethods = {
     const futureYears = Math.max(0, Math.min(10, Number.isFinite(futureRaw) ? futureRaw : 1));
 
     const lastYear = new Date().getFullYear() + futureYears;
+    /** @type {Set<string>} */
     const years = new Set();
 
     for (let year = firstYear; year <= lastYear; year++) {
@@ -154,6 +165,9 @@ export const settingsMethods = {
     return [...years].sort((a, b) => Number(b) - Number(a));
   },
 
+  /**
+   * @param {unknown} value
+   */
   async addReferenceIssuer(value) {
     const issuer = countryName(value);
 
@@ -186,6 +200,9 @@ export const settingsMethods = {
     return true;
   },
 
+  /**
+   * @param {unknown} value
+   */
   async removeReferenceIssuer(value) {
     const issuer = countryName(value);
 
@@ -200,6 +217,9 @@ export const settingsMethods = {
     this.refreshFilterViews();
   },
 
+  /**
+   * @param {unknown} value
+   */
   async addReferenceYear(value) {
     const year = Number(value);
 
@@ -226,6 +246,9 @@ export const settingsMethods = {
     return true;
   },
 
+  /**
+   * @param {unknown} value
+   */
   async removeReferenceYear(value) {
     const year = String(Number(value));
 

@@ -1,12 +1,16 @@
 import { Notice, TFile } from 'obsidian';
 import { sortRows, toCsv } from '../collection.js';
 
+/** @type {Record<string, { title: string, file: string }>} */
 const KINDS = {
   missing: { title: 'export.titleMissing', file: 'export.fileMissing' },
   owned: { title: 'export.titleOwned', file: 'export.fileOwned' },
   swap: { title: 'export.titleSwap', file: 'export.fileSwap' },
 };
 
+/** @typedef {import('../types').CoinRow} CoinRow */
+
+/** @satisfies {ThisType<import('../types').TwoEuroPlugin>} */
 export const exportMethods = {
   exportMissingCoins() {
     return this.exportCoinList('missing');
@@ -17,6 +21,9 @@ export const exportMethods = {
    * country / year / type / search filters to a Markdown checklist and a CSV
    * file in the collection folder, then opens the Markdown note.
    */
+  /**
+   * @param {string} [kind]
+   */
   async exportCoinList(kind = 'missing') {
     const config = KINDS[kind] || KINDS.missing;
     const state = this.getDashboardState();
@@ -25,13 +32,15 @@ export const exportMethods = {
       mode: ['commemorative', 'national'].includes(state.mode) ? state.mode : 'all',
     };
     const locale = this.getLanguage() === 'pl' ? 'pl' : 'en';
+    /** @param {CoinRow} row */
     const quantity = (row) => Math.max(1, Number(row.quantity) || 1);
-    const select =
-      {
-        missing: (row) => !row.owned,
-        owned: (row) => row.owned,
-        swap: (row) => row.owned && quantity(row) > 1,
-      }[kind] || ((row) => !row.owned);
+    /** @type {Record<string, (row: CoinRow) => boolean>} */
+    const selectors = {
+      missing: (row) => !row.owned,
+      owned: (row) => row.owned,
+      swap: (row) => row.owned && quantity(row) > 1,
+    };
+    const select = selectors[kind] || selectors.missing;
     const items = sortRows(
       this.filterRowsByState(this.getRows(), scopeState).filter(select),
       'countryAsc',
@@ -41,9 +50,11 @@ export const exportMethods = {
       new Notice(this.t('notice.exportNone'));
       return null;
     }
+    /** @param {CoinRow} row */
     const pieces = (row) =>
       kind === 'swap' ? quantity(row) - 1 : kind === 'owned' ? quantity(row) : null;
     const date = new Date().toISOString().slice(0, 10);
+    /** @param {CoinRow} row */
     const typeLabel = (row) =>
       row.coin_type === 'national' ? this.t('coin.national') : this.t('coin.commemorative');
     const scopeParts = [state.country, state.year, state.searchText ? `"${state.searchText}"` : '']
@@ -79,6 +90,7 @@ export const exportMethods = {
     const csv = toCsv(
       header,
       items.map((row) => {
+        /** @type {unknown[]} */
         const record = [
           row.country,
           row.year,
@@ -95,6 +107,10 @@ export const exportMethods = {
 
     await this.ensureStructure();
     const base = this.join(this.root(), this.t(config.file, { date }));
+    /**
+     * @param {string} path
+     * @param {string} content
+     */
     const write = async (path, content) => {
       const existing = this.app.vault.getAbstractFileByPath(path);
       if (existing instanceof TFile) await this.app.vault.modify(existing, content);

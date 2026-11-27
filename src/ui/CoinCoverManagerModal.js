@@ -1,23 +1,41 @@
 import { Setting, Modal, Notice } from 'obsidian';
-import { tx, clean, isTrue } from '../utils.js';
+import { tx, clean, isTrue, errorText } from '../utils.js';
+
+/** @typedef {import('../types').CoinRow} CoinRow */
 
 export class CoinCoverManagerModal extends Modal {
+  /**
+   * @param {import('obsidian').App} app
+   * @param {import('../types').TwoEuroPlugin} plugin
+   * @param {import('../types').CoinRow} row
+   * @param {string} [displaySrc]
+   */
   constructor(app, plugin, row, displaySrc = '') {
     super(app);
     this.plugin = plugin;
     this.row = row;
     this.displaySrc = displaySrc;
+    /** @type {import('../types').CoinData | null} */
     this.form = null;
   }
   async onOpen() {
     this.modalEl.addClass('twoeuro-cover-manager-modal');
     await this.render();
   }
+  /**
+   * @param {HTMLElement} container
+   * @param {CoinRow} fresh
+   */
   buildEditableForm(container, fresh) {
     const p = this.plugin,
-      t = (k, v) => p.t(k, v),
+      t = (/** @type {string} */ k, /** @type {Record<string, unknown>} */ v = {}) => p.t(k, v),
+      /** @type {import('../types').CoinData} */
       f = { ...fresh };
     this.form = f;
+    /**
+     * @param {string} key
+     * @param {string} field
+     */
     const input = (key, field, ph = '', desc = '') => {
       const item = new Setting(container).setName(t(key));
       if (desc) item.setDesc(t(desc));
@@ -88,7 +106,7 @@ export class CoinCoverManagerModal extends Modal {
   }
   render() {
     const p = this.plugin,
-      t = (k, v) => p.t(k, v),
+      t = (/** @type {string} */ k, /** @type {Record<string, unknown>} */ v = {}) => p.t(k, v),
       c = this.contentEl;
     c.empty();
     c.addClass('twoeuro-cover-manager');
@@ -115,6 +133,7 @@ export class CoinCoverManagerModal extends Modal {
       await p.upsert(this.form, fresh.file, { rename: true });
       await p.refreshDashboards();
     };
+    /** @param {() => Promise<unknown>} fn */
     const run = async (fn) => {
       try {
         await fn();
@@ -126,7 +145,7 @@ export class CoinCoverManagerModal extends Modal {
         await this.render();
       } catch (error) {
         console.error('Coin cover manager', error);
-        new Notice(error?.message || String(error));
+        new Notice(errorText(error));
       }
     };
     const saveActions = right.createDiv({ cls: 'twoeuro-cover-manager-save' });
@@ -140,7 +159,7 @@ export class CoinCoverManagerModal extends Modal {
           this.close();
         } catch (error) {
           console.error('Coin cover manager save', error);
-          new Notice(error?.message || String(error));
+          new Notice(errorText(error));
         }
       };
     left.createEl('h3', {

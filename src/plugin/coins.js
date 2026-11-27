@@ -1,7 +1,22 @@
 import { TFile, parseYaml, stringifyYaml } from 'obsidian';
 import { tx, clean, isTrue, toNum, normalizeCoinTitle, countryName } from '../utils.js';
 
+/**
+ * Obsidian's parseYaml without the implicit `any`.
+ * @param {string} text
+ * @returns {unknown}
+ */
+const parseYamlText = (text) => parseYaml(text);
+
+/** @typedef {import('../types').CoinData} CoinData */
+/** @typedef {import('../types').CoinRow} CoinRow */
+/** @typedef {import('../types').DashboardState} DashboardState */
+
+/** @satisfies {ThisType<import('../types').TwoEuroPlugin>} */
 export const coinsMethods = {
+  /**
+   * @param {CoinData} d
+   */
   notePath(d) {
     return this.join(
       this.coins(),
@@ -10,10 +25,16 @@ export const coinsMethods = {
     );
   },
 
+  /**
+   * @param {CoinData} d
+   * @param {import('obsidian').TFile | null} [file]
+   * @param {{ rename?: boolean }} [options]
+   */
   async upsert(d, file, options = {}) {
     await this.ensureStructure();
     const country = countryName(d.country);
     await this.ensureFolder(this.join(this.coins(), clean(country)));
+    /** @type {Record<string, unknown>} */
     const fm = {
       coin_id: d.coin_id || `coin-${d.numista_id || Date.now()}-${d.numista_issue_id || ''}`,
       denomination: 2,
@@ -36,7 +57,7 @@ export const coinsMethods = {
       numista_issue_id: d.numista_issue_id || undefined,
       numista_url: tx(d.numista_url) || undefined,
       mintage: d.mintage ?? undefined,
-      cover: d.cover_path ? `[[${d.cover_path}]]` : tx(d.cover) || undefined,
+      cover: d.cover_path ? `[[${tx(d.cover_path)}]]` : tx(d.cover) || undefined,
       cover_url: tx(d.cover_url) || undefined,
       reference_year: tx(d.reference_year) || undefined,
       cover_locked: isTrue(d.cover_locked) || isTrue(d.own_cover),
@@ -62,23 +83,32 @@ export const coinsMethods = {
        * (tags, custom fields) and the note body written by the user are kept.
        */
       let previousCover = '';
-      await this.app.fileManager.processFrontMatter(file, (current) => {
-        previousCover = tx(current.cover);
-        for (const key of managedKeys) {
-          if (Object.prototype.hasOwnProperty.call(fm, key)) current[key] = fm[key];
-          else delete current[key];
+      await this.app.fileManager.processFrontMatter(
+        file,
+        (/** @type {Record<string, unknown>} */ current) => {
+          previousCover = tx(current.cover);
+          for (const key of managedKeys) {
+            if (Object.prototype.hasOwnProperty.call(fm, key)) current[key] = fm[key];
+            else delete current[key];
+          }
         }
-      });
+      );
       await this.app.vault.process(file, (content) =>
-        this.updateCoinBody(content, fm.title, previousCover, tx(fm.cover))
+        this.updateCoinBody(content, tx(fm.title), previousCover, tx(fm.cover))
       );
       if (options.rename) await this.renameCoinFile(file, fm);
       return file;
     }
-    const body = `---\n${stringifyYaml(fm).trimEnd()}\n---\n\n# ${fm.title}\n\n${fm.cover ? `!${fm.cover}\n` : ''}`;
+    const body = `---\n${stringifyYaml(fm).trimEnd()}\n---\n\n# ${tx(fm.title)}\n\n${fm.cover ? `!${tx(fm.cover)}\n` : ''}`;
     return this.app.vault.create(await this.uniquePath(this.notePath(fm)), body);
   },
 
+  /**
+   * @param {string} content
+   * @param {string} title
+   * @param {string} oldCover
+   * @param {string} newCover
+   */
   updateCoinBody(content, title, oldCover, newCover) {
     const head = content.match(/^---\r?\n[\s\S]*?\r?\n---[^\S\r\n]*(\r?\n|$)/)?.[0] || '';
     let body = content.slice(head.length);
@@ -94,6 +124,10 @@ export const coinsMethods = {
     return head + body;
   },
 
+  /**
+   * @param {import('obsidian').TFile} file
+   * @param {CoinData} fm
+   */
   async renameCoinFile(file, fm) {
     const desired = this.notePath(fm),
       oldPath = file.path,
@@ -105,11 +139,16 @@ export const coinsMethods = {
     return file;
   },
 
+  /**
+   * @param {CoinData | null | undefined} form
+   * @param {import('obsidian').TFile | null} [currentFile]
+   */
   getReferenceYearSuggestions(form, currentFile = null) {
     const country = countryName(form?.country).toLowerCase();
     const title = tx(form?.title).toLowerCase().replace(/\s+/g, ' ');
     const type = tx(form?.coin_type).toLowerCase();
     if (!country || !title || !type) return [];
+    /** @type {Set<string>} */
     const years = new Set();
     for (const row of this.getRows()) {
       if (currentFile instanceof TFile && row.file.path === currentFile.path) continue;
@@ -141,6 +180,7 @@ export const coinsMethods = {
   readRows() {
     return this.filesInFolder(this.coins(), 'md')
       .map((file) => {
+        /** @type {Record<string, unknown>} */
         const m = this.app.metadataCache.getFileCache(file)?.frontmatter || {};
         return {
           file,
@@ -174,17 +214,22 @@ export const coinsMethods = {
           photo_license: tx(m.photo_license),
           photo_license_url: tx(m.photo_license_url),
           numismatic_value_currency: tx(m.numismatic_value_currency),
-          numismatic_values: Array.isArray(m.numismatic_values) ? m.numismatic_values : [],
+          numismatic_values: Array.isArray(m.numismatic_values)
+            ? /** @type {import('../types').NumistaValue[]} */ (m.numismatic_values)
+            : [],
           numismatic_value_unc: m.numismatic_value_unc,
         };
       })
       .filter((r) => r.country && r.year);
   },
 
+  /**
+   * @param {CoinData | null | undefined} r
+   */
   localPath(r) {
     const p = tx(r?.cover).replace(/^\[\[/, '').replace(/\]\]$/, '').split('|')[0].trim();
     if (!p) return '';
-    // pełna ścieżka
+    // full vault path
     if (p.includes('/')) {
       if (this.app.vault.getAbstractFileByPath(p)) return p;
       // Legacy links may use a different letter case of the covers folder.
@@ -197,6 +242,9 @@ export const coinsMethods = {
     return this.join(this.covers(), p);
   },
 
+  /**
+   * @param {CoinData | null | undefined} r
+   */
   coverSrc(r) {
     const p = this.localPath(r);
     if (!p || !this.isSupportedImage(p)) {
@@ -206,6 +254,10 @@ export const coinsMethods = {
     return file instanceof TFile ? this.app.vault.getResourcePath(file) : '';
   },
 
+  /**
+   * @param {CoinRow[]} rows
+   * @param {Partial<DashboardState>} state
+   */
   filterRowsByState(rows, state) {
     let list = rows.filter(
       (r) =>
@@ -226,6 +278,9 @@ export const coinsMethods = {
     return list;
   },
 
+  /**
+   * @param {CoinData | null | undefined} row
+   */
   formatNumismaticValue(row) {
     const values = Array.isArray(row?.numismatic_values) ? row.numismatic_values : [],
       currency = tx(row?.numismatic_value_currency) || 'EUR';
@@ -242,6 +297,10 @@ export const coinsMethods = {
     return active instanceof TFile && active.path.startsWith(prefix) ? active : null;
   },
 
+  /**
+   * @param {import('obsidian').TFile} file
+   * @param {number} [attempts]
+   */
   async waitForFreshRow(file, attempts = 8) {
     for (let i = 0; i < attempts; i++) {
       const row = this.getRows().find((r) => r.file.path === file.path);
@@ -255,19 +314,24 @@ export const coinsMethods = {
     return this.getRows().find((r) => r.file.path === file.path) || null;
   },
 
+  /**
+   * @param {import('obsidian').TFile} file
+   */
   async readCoinRowFresh(file) {
     const content = await this.app.vault.read(file),
       match = content.match(/^---\r?\n([\s\S]*?)\r?\n---/);
+    /** @type {Record<string, unknown>} */
     let fm = {};
     if (match) {
       try {
-        fm = parseYaml(match[1]) || {};
+        fm = /** @type {Record<string, unknown> | null} */ (parseYamlText(match[1])) || {};
       } catch {
         fm = {};
       }
     }
+    /** @type {Partial<CoinRow>} */
     const cached = this.getRows().find((row) => row.file.path === file.path) || { file };
-    return {
+    return /** @type {CoinRow} */ ({
       ...cached,
       file,
       country: countryName(fm.country ?? cached.country),
@@ -293,9 +357,9 @@ export const coinsMethods = {
         fm.numismatic_value_currency ?? cached.numismatic_value_currency
       ),
       numismatic_values: Array.isArray(fm.numismatic_values)
-        ? fm.numismatic_values
+        ? /** @type {import('../types').NumistaValue[]} */ (fm.numismatic_values)
         : cached.numismatic_values || [],
       numismatic_value_unc: fm.numismatic_value_unc ?? cached.numismatic_value_unc,
-    };
+    });
   },
 };

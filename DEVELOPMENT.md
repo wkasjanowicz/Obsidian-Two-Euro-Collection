@@ -8,6 +8,7 @@ npm run dev        # rebuild main.js on every change (copy it to a test vault to
 npm run build      # one-off build
 npm test           # build + automated tests
 npm run lint       # official Obsidian plugin rules (same checks as the plugin review)
+npm run typecheck  # TypeScript check of the JSDoc types (checkJs)
 npm run format     # format sources with Prettier
 ```
 
@@ -18,9 +19,14 @@ does not match a fresh build of `src/`.
 
 | Path | Contents |
 | --- | --- |
-| `src/main.js` | Plugin class: `onload` (commands, events, views) and the list of method groups |
+| `src/main.js` | Plugin class and the list of method groups mixed into it |
+| `src/plugin/lifecycle.js` | Start-up and shutdown: commands, events, views, settings tab |
+| `src/types.d.ts` | Types for JSDoc and lint only (settings, coin rows, Numista data, the plugin) |
 | `src/plugin/*.js` | Plugin methods grouped by topic and mixed into the plugin class |
-| `src/plugin/numista.js` | Numista API, synchronization, prices, cover downloads |
+| `src/plugin/numista.js` | Numista API client and catalogue rules (pictures, official 2 euro types) |
+| `src/plugin/sync.js` | Synchronization with Numista, split into steps (page, type, issue) |
+| `src/plugin/prices.js` | Numismatic values from the Numista price API |
+| `src/plugin/covers.js` | Cover downloads from Numista |
 | `src/plugin/coins.js` | Reading and writing coin notes, filtering |
 | `src/plugin/images.js` | Background removal, catalog preset, WebP saving |
 | `src/plugin/maintenance.js` | Repair commands: dedupe, WebP conversion, normalization |
@@ -38,6 +44,11 @@ does not match a fresh build of `src/`.
 
 Plugin methods live in plain objects (`export const numistaMethods = { ... }`) that
 `src/main.js` copies onto the plugin class, so `this` inside them is the plugin.
+Each object is marked `/** @satisfies {ThisType<import('../types').TwoEuroPlugin>} */`,
+so `this` is typed; parameters are typed with JSDoc. Lint runs the type-checked rules
+of the community scanner and fails on any warning: values read from JSON, YAML or
+Numista go through `parseJson` / casts to the types in `src/types.d.ts`, and caught
+errors through `asError` / `errorText` (`src/utils.js`).
 
 ## Translations
 

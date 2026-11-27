@@ -6,6 +6,10 @@ import { CoinCoverManagerModal } from '../ui/CoinCoverManagerModal.js';
 import { EuroFiltersView } from '../ui/EuroFiltersView.js';
 import { sortRows, groupRows, computeStats, formatMoney, addValueSnapshot } from '../collection.js';
 
+/** @typedef {import('../types').CoinRow} CoinRow */
+/** @typedef {import('../types').DashboardState} DashboardState */
+
+/** @satisfies {ThisType<import('../types').TwoEuroPlugin>} */
 export const dashboardMethods = {
   getDashboardState() {
     return {
@@ -21,6 +25,9 @@ export const dashboardMethods = {
     };
   },
 
+  /**
+   * @param {Partial<DashboardState>} next
+   */
   setDashboardState(next) {
     this.dashboardState = { ...this.getDashboardState(), ...next };
     // Remember filters, sorting, grouping and the statistics panel between sessions.
@@ -39,6 +46,10 @@ export const dashboardMethods = {
     return [...this._dashboards];
   },
 
+  /**
+   * @param {HTMLElement} el
+   * @param {import('obsidian').MarkdownPostProcessorContext} ctx
+   */
   registerDashboard(el, ctx) {
     if (!this._dashboards) this._dashboards = new Set();
     this._dashboards.add(el);
@@ -83,7 +94,7 @@ export const dashboardMethods = {
       leaf = this.app.workspace.getRightLeaf(false);
       await leaf.setViewState({ type: VIEW_TYPE_FILTERS, active: true });
     }
-    this.app.workspace.revealLeaf(leaf);
+    void this.app.workspace.revealLeaf(leaf);
     if (leaf.view instanceof EuroFiltersView) leaf.view.render();
   },
 
@@ -93,6 +104,9 @@ export const dashboardMethods = {
     }
   },
 
+  /**
+   * @param {number} [delayMs]
+   */
   scheduleDashboardRefresh(delayMs = 300) {
     if (this._refreshTimer) window.clearTimeout(this._refreshTimer);
     this._refreshTimer = window.setTimeout(async () => {
@@ -115,7 +129,11 @@ export const dashboardMethods = {
     return Promise.resolve();
   },
 
+  /**
+   * @param {CoinRow[]} rows
+   */
   buildReferenceCoverIndex(rows) {
+    /** @type {Map<string, CoinRow[]>} */
     const index = new Map();
     for (const row of rows) {
       const key = [
@@ -124,11 +142,15 @@ export const dashboardMethods = {
         String(row.year),
       ].join('|');
       if (!index.has(key)) index.set(key, []);
-      index.get(key).push(row);
+      index.get(key)?.push(row);
     }
     return index;
   },
 
+  /**
+   * @param {CoinRow} row
+   * @param {Map<string, CoinRow[]>} index
+   */
   resolveDisplayCover(row, index) {
     const ownSrc = this.coverSrc(row);
     const referenceYear = tx(row.reference_year);
@@ -158,6 +180,10 @@ export const dashboardMethods = {
     return { src: ownSrc, source: null, resolved: false, usesReference: true };
   },
 
+  /**
+   * @param {HTMLElement} el
+   * @param {Partial<DashboardState> | null} [initialState]
+   */
   renderDashboard(el, initialState = null) {
     const rows = this.getRows();
     const referenceCoverIndex = this.buildReferenceCoverIndex(rows);
@@ -195,11 +221,16 @@ export const dashboardMethods = {
       }
       for (const r of group.rows) this.renderCoinCard(grid, r, referenceCoverIndex);
     }
-    el._twoEuroState = this.getDashboardState();
   },
 
   /*
    * Collapsible statistics for the coins matching the current filters.
+   */
+  /**
+   * @param {HTMLElement} el
+   * @param {CoinRow[]} list
+   * @param {DashboardState} state
+   * @param {string} locale
    */
   renderStats(el, list, state, locale) {
     const stats = computeStats(list, locale);
@@ -208,12 +239,22 @@ export const dashboardMethods = {
     details.addEventListener('toggle', () => this.setDashboardState({ statsOpen: details.open }));
     details.createEl('summary', { text: this.t('stats.title') });
     details.createDiv({ cls: 'twoeuro-stats-scope', text: this.t('stats.scope') });
+    /** @param {import('../types').Amount[]} items */
     const money = (items) =>
       items.length
         ? items.map((item) => formatMoney(item.amount, item.currency, locale)).join(' + ')
         : '–';
+    /**
+     * @param {number} owned
+     * @param {number} total
+     */
     const percent = (owned, total) => (total ? Math.round((owned / total) * 100) : 0);
     const tiles = details.createDiv({ cls: 'twoeuro-stats-tiles' });
+    /**
+     * @param {string} label
+     * @param {string} value
+     * @param {string} [note]
+     */
     const tile = (label, value, note = '') => {
       const box = tiles.createDiv({ cls: 'twoeuro-stats-tile' });
       box.createDiv({ cls: 'twoeuro-stats-label', text: label });
@@ -240,6 +281,10 @@ export const dashboardMethods = {
       stats.swapCoins ? this.t('stats.swapPieces', { count: stats.swapPieces }) : ''
     );
     const tables = details.createDiv({ cls: 'twoeuro-stats-tables' });
+    /**
+     * @param {string} title
+     * @param {{ key: string, owned: number, total: number }[]} items
+     */
     const table = (title, items) => {
       const section = tables.createDiv({ cls: 'twoeuro-stats-table' });
       section.createDiv({ cls: 'twoeuro-stats-label', text: title });
@@ -266,6 +311,10 @@ export const dashboardMethods = {
     return this.settings.valueHistory.at(-1);
   },
 
+  /**
+   * @param {HTMLElement} container
+   * @param {(items: import('../types').Amount[]) => string} money
+   */
   renderValueHistory(container, money) {
     const history = Array.isArray(this.settings.valueHistory) ? this.settings.valueHistory : [];
     const section = container.createDiv({ cls: 'twoeuro-stats-history' });
@@ -274,6 +323,7 @@ export const dashboardMethods = {
       section.createDiv({ cls: 'twoeuro-stats-note', text: this.t('stats.historyEmpty') });
       return;
     }
+    /** @param {import('../types').ValueSnapshot} entry */
     const mainAmount = (entry) => entry.value?.[0]?.amount ?? null;
     const recent = history.slice(-8).reverse();
     recent.forEach((entry, index) => {
@@ -297,29 +347,49 @@ export const dashboardMethods = {
    * Keyboard: arrows move between cards, Enter opens the coin, Space toggles
    * its selection.
    */
+  /**
+   * @param {HTMLElement} grid
+   * @param {KeyboardEvent} event
+   */
   handleGridKeydown(grid, event) {
-    const card = event.target?.closest?.('.twoeuro-card');
-    if (!card) return;
-    const cards = Array.from(grid.querySelectorAll('.twoeuro-card'));
+    // instanceOf (not instanceof) also works in pop-out windows.
+    const target = /** @type {Node | null} */ (event.target);
+    const card = target?.instanceOf(HTMLElement) ? target.closest('.twoeuro-card') : null;
+    if (!card?.instanceOf(HTMLElement)) return;
+    const cards = Array.from(grid.querySelectorAll('.twoeuro-card')).filter((item) =>
+      item.instanceOf(HTMLElement)
+    );
     const index = cards.indexOf(card);
     const columns = Math.max(
       1,
       window.getComputedStyle?.(grid)?.gridTemplateColumns?.split(' ').filter(Boolean).length || 1
     );
-    const move = { ArrowRight: 1, ArrowLeft: -1, ArrowDown: columns, ArrowUp: -columns }[event.key];
+    /** @param {string} selector */
+    const clickIn = (selector) => {
+      const element = card.querySelector(selector);
+      if (element?.instanceOf(HTMLElement)) element.click();
+    };
+    /** @type {Record<string, number>} */
+    const moves = { ArrowRight: 1, ArrowLeft: -1, ArrowDown: columns, ArrowUp: -columns };
+    const move = moves[event.key];
     if (move) {
-      const target = cards[Math.min(cards.length - 1, Math.max(0, index + move))];
-      target?.focus();
+      const next = cards[Math.min(cards.length - 1, Math.max(0, index + move))];
+      if (next?.instanceOf(HTMLElement)) next.focus();
       event.preventDefault();
     } else if (event.key === 'Enter') {
-      card.querySelector('.twoeuro-info')?.click();
+      clickIn('.twoeuro-info');
       event.preventDefault();
     } else if (event.key === ' ') {
-      card.querySelector('.twoeuro-card-select input')?.click();
+      clickIn('.twoeuro-card-select input');
       event.preventDefault();
     }
   },
 
+  /**
+   * @param {HTMLElement} grid
+   * @param {CoinRow} r
+   * @param {Map<string, CoinRow[]>} referenceCoverIndex
+   */
   renderCoinCard(grid, r, referenceCoverIndex) {
     const card = grid.createDiv({
       cls: `twoeuro-card ${r.owned ? 'is-owned' : 'is-missing'} ${(this.selectedCoinPaths || new Set()).has(r.file.path) ? 'is-selected' : ''}`,
