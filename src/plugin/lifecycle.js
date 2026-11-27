@@ -99,6 +99,16 @@ export const lifecycleMethods = {
     });
 
     this.addCommand({
+      id: 'two-euro-check-new-issues',
+      name: this.t('command.checkNewIssues'),
+      callback: () => this.checkNewIssuesNow(),
+    });
+    this.addCommand({
+      id: 'two-euro-open-bases',
+      name: this.t('command.openBases'),
+      callback: () => this.openBasesView(),
+    });
+    this.addCommand({
       id: 'two-euro-sync',
       name: this.t('command.sync'),
       callback: () => this.syncNumista(),
@@ -225,6 +235,7 @@ export const lifecycleMethods = {
         el.createEl('pre', { text: `2 Euro Collection: ${errorText(e)}` });
       }
     });
+    this.scheduleNewIssuesCheck();
     this.settingTab = new EuroSettings(this.app, this);
     this.addSettingTab(this.settingTab);
   },

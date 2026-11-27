@@ -22,6 +22,8 @@ A mobile-friendly Obsidian plugin for maintaining a structured catalogue of 2 eu
 - Shows statistics: progress by country and year, collection value (UNC), money spent and coins for swap.
 - Groups the grid by country or year; filters by text, country, year, ownership, type and coins for swap.
 - Exports lists of missing, owned or swap coins to a Markdown checklist and a CSV file.
+- Checks Numista weekly for new 2 euro coins that are not in the collection yet and offers to synchronize them.
+- Creates an Obsidian Bases view of the collection: cover gallery and tables of all, missing, owned and swap coins.
 - Downloads coin covers into the vault; supports custom covers, cover locking, reference covers and photo attribution.
 - Removes image backgrounds (white, black or any uniform colour) and saves covers as compact WebP images.
 - Tracks ownership, quantity, acquisition date, price per piece, currency, condition and notes.
@@ -165,6 +167,7 @@ To configure the plugin:
 - **Cache.** Catalogue data downloaded from Numista is reused for 7 days (configurable, 0 disables it), so repeating a synchronization of the same range is almost free.
 - **Stop.** While a synchronization, price update, cover download or conversion is running, the side panel shows a **Stop** button (also available as a command).
 - If Numista rejects the API key (HTTP 401/403), synchronization stops at once with a clear message.
+- **New coins.** After start-up the plugin checks Numista (every 7 days by default, configurable, 0 turns it off) for 2 euro coins of the current year — from October also of the next year — that are not in the collection. It uses 3–6 requests and, when something is found, shows a notice with a **Synchronize** button for that year. **Check Numista for new 2 euro coins** runs the check at any time.
 - **Show the last synchronization report** (command) lists the Numista types skipped during the last synchronization with the reason (other country, not an official 2 euro coin, matched an existing coin…), which helps when a coin is missing.
 
 ### What synchronization reads from Numista
@@ -314,6 +317,15 @@ In the side panel choose **Missing coins**, **Owned coins** or **Coins for swap*
 - a CSV file for spreadsheets (UTF-8, opens correctly in Excel).
 
 The swap list includes the number of spare pieces, the owned list the quantity.
+
+## Bases view
+
+**Open collection in Bases** (command, or **Settings → Bases view → Open**) creates a `.base` file next to the dashboard and opens it. [Bases](https://help.obsidian.md/bases) is Obsidian's built-in database view of notes; the file contains:
+
+- **Gallery** – cards with the cover of every coin;
+- **All coins**, **Missing**, **Owned** and **For swap** – tables of the coin properties.
+
+You can sort, filter, group and edit coins there natively, add your own views or columns. The plugin never changes an existing file; **Recreate** restores the default views (after confirmation).
 
 ## Editing coins and using editing fields
 

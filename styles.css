@@ -150,3 +150,7 @@
 /* Side panel export row and keyboard focus */
 .twoeuro-sidebar-export{display:grid;grid-template-columns:1fr auto;gap:6px}
 .twoeuro-card:focus-visible{outline:2px solid var(--interactive-accent);outline-offset:2px}
+
+/* New coins notice */
+.twoeuro-new-issues-year{margin-top:4px;font-size:var(--font-ui-smaller)}
+.twoeuro-new-issues-sync{margin-top:6px;margin-right:6px}

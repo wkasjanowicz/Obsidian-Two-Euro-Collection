@@ -9,6 +9,8 @@ import { numistaMethods } from './plugin/numista.js';
 import { syncMethods } from './plugin/sync.js';
 import { pricesMethods } from './plugin/prices.js';
 import { coversMethods } from './plugin/covers.js';
+import { newIssuesMethods } from './plugin/newissues.js';
+import { basesMethods } from './plugin/bases.js';
 import { starterMethods } from './plugin/starter.js';
 import { selectionMethods } from './plugin/selection.js';
 import { imagesMethods } from './plugin/images.js';
@@ -54,6 +56,8 @@ Object.assign(
   syncMethods,
   pricesMethods,
   coversMethods,
+  newIssuesMethods,
+  basesMethods,
   starterMethods,
   selectionMethods,
   imagesMethods,

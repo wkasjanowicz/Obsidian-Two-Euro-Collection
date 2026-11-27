@@ -29,6 +29,24 @@ global.document = global.document || {
   querySelectorAll: () => [],
 };
 
+/* Obsidian's createFragment: records the text so notices can be checked. */
+global.createFragment =
+  global.createFragment ||
+  ((build) => {
+    const parts = [];
+    const element = (options = {}) => {
+      if (options.text) parts.push(String(options.text));
+      return { onclick: null };
+    };
+    const fragment = {
+      createDiv: element,
+      createEl: (_tag, options) => element(options),
+      toString: () => parts.join(' | '),
+    };
+    if (build) build(fragment);
+    return fragment;
+  });
+
 const built = require(path.join(__dirname, '..', '..', 'main.js'));
 const PluginClass = built.default || built;
 

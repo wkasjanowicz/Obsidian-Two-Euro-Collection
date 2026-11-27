@@ -69,6 +69,9 @@ class Plugin extends Component {
     this.commands.push(command);
   }
   registerEvent() {}
+  registerInterval(id) {
+    return id;
+  }
   registerView() {}
   addRibbonIcon() {}
   registerMarkdownCodeBlockProcessor() {}
@@ -237,6 +240,16 @@ function createApp(initialFiles = {}) {
       },
       getActiveFile() {
         return null;
+      },
+      onLayoutReady() {},
+      opened: [],
+      getLeaf() {
+        const workspace = this;
+        return {
+          async openFile(file) {
+            workspace.opened.push(file.path);
+          },
+        };
       },
     },
   };

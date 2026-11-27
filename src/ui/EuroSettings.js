@@ -224,6 +224,36 @@ export class EuroSettings extends PluginSettingTab {
               ),
           t('settings.cacheDaysDesc')
         ),
+        def(
+          t('settings.newIssuesDays'),
+          (setting) =>
+            setting
+              .addSlider((slider) =>
+                slider
+                  .setLimits(0, 30, 1)
+                  .setValue(
+                    Number.isFinite(Number(p.settings.newIssuesCheckDays))
+                      ? Number(p.settings.newIssuesCheckDays)
+                      : 7
+                  )
+                  .setDynamicTooltip()
+                  .onChange(async (value) => {
+                    p.settings.newIssuesCheckDays = value;
+                    await p.saveSettings();
+                  })
+              )
+              .addButton((b) =>
+                b.setButtonText(t('settings.newIssuesCheckNow')).onClick(async () => {
+                  await p.checkNewIssuesNow();
+                  this.refresh();
+                })
+              ),
+          t('settings.newIssuesDaysDesc', {
+            date: p.settings.newIssuesLastCheck
+              ? new Date(p.settings.newIssuesLastCheck).toLocaleString()
+              : t('settings.newIssuesNever'),
+          })
+        ),
       ],
     };
 
@@ -261,6 +291,23 @@ export class EuroSettings extends PluginSettingTab {
             { cta: true }
           ),
           t('settings.initReferenceDataDesc')
+        ),
+        def(
+          t('settings.bases'),
+          (setting) =>
+            setting
+              .addButton((b) =>
+                b
+                  .setButtonText(t('settings.basesOpen'))
+                  .setCta()
+                  .onClick(() => p.openBasesView())
+              )
+              .addButton((b) =>
+                b
+                  .setButtonText(t('settings.basesRecreate'))
+                  .onClick(() => p.openBasesView({ recreate: true }))
+              ),
+          t('settings.basesDesc')
         ),
         def(
           t('settings.initStarterPack'),

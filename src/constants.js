@@ -57,6 +57,8 @@ export const DEFAULTS = {
   numistaRequestCount: 0,
   numistaCacheDays: 7,
   valueHistory: [],
+  newIssuesCheckDays: 7,
+  newIssuesLastCheck: '',
 };
 
 /* GitHub repository of the plugin: starter pack downloads and links. */

@@ -23,7 +23,7 @@ __export(main_exports, {
   default: () => TwoEuroCollectionPlugin
 });
 module.exports = __toCommonJS(main_exports);
-var import_obsidian25 = require("obsidian");
+var import_obsidian27 = require("obsidian");
 
 // src/ui/ConfirmModal.js
 var import_obsidian = require("obsidian");
@@ -128,7 +128,9 @@ var DEFAULTS = {
   numistaRequestMonth: "",
   numistaRequestCount: 0,
   numistaCacheDays: 7,
-  valueHistory: []
+  valueHistory: [],
+  newIssuesCheckDays: 7,
+  newIssuesLastCheck: ""
 };
 var GITHUB_REPO = "wkasjanowicz/Obsidian-Two-Euro-Collection";
 
@@ -689,7 +691,30 @@ var BASE_LANGUAGE = {
   "report.title": "Last synchronization report",
   "report.none": "No synchronization has run since Obsidian was started.",
   "report.summary": "{date} · scope: {scope} · skipped Numista types: {count}",
-  "report.empty": "No Numista types were skipped."
+  "report.empty": "No Numista types were skipped.",
+  "command.checkNewIssues": "Check Numista for new 2 euro coins",
+  "command.openBases": "Open collection in Bases",
+  "notice.newIssuesNone": "No new 2 euro coins on Numista for your collection.",
+  "notice.newIssuesFound": "New 2 euro coins on Numista, not yet in your collection: {count}",
+  "notice.newIssuesSync": "Synchronize {year}",
+  "settings.newIssuesDays": "Check for new coins (days)",
+  "settings.newIssuesDaysDesc": "After start-up, checks Numista for 2 euro coins of the current year (from October also of the next year) that are not in the collection, and offers to synchronize them. Uses 3–6 API requests. 0 turns it off. Last check: {date}.",
+  "settings.newIssuesCheckNow": "Check now",
+  "settings.newIssuesNever": "never",
+  "settings.bases": "Bases view",
+  "settings.basesDesc": "A .base file next to the dashboard: cover gallery and tables of all, missing, owned and swap coins. Sort, filter and edit coins natively in Obsidian.",
+  "settings.basesOpen": "Open",
+  "settings.basesRecreate": "Recreate",
+  "confirm.recreateBases": "Replace the Bases file with the default views? Changes you made to it will be lost.",
+  "bases.fileName": "2 Euro collection",
+  "bases.owned": "Owned",
+  "bases.valueUnc": "Value (UNC, EUR)",
+  "bases.cover": "Cover",
+  "bases.viewGallery": "Gallery",
+  "bases.viewAll": "All coins",
+  "bases.viewMissing": "Missing",
+  "bases.viewOwned": "Owned",
+  "bases.viewSwap": "For swap"
 };
 
 // Languages/pl.json
@@ -977,7 +1002,30 @@ var pl_default = {
     "report.title": "Raport ostatniej synchronizacji",
     "report.none": "Od uruchomienia Obsidiana nie było synchronizacji.",
     "report.summary": "{date} · zakres: {scope} · pominięte typy Numista: {count}",
-    "report.empty": "Żaden typ Numista nie został pominięty."
+    "report.empty": "Żaden typ Numista nie został pominięty.",
+    "command.checkNewIssues": "Sprawdź w Numiście nowe monety 2 euro",
+    "command.openBases": "Otwórz kolekcję w Bazach (Bases)",
+    "notice.newIssuesNone": "Brak nowych monet 2 euro w Numiście dla Twojej kolekcji.",
+    "notice.newIssuesFound": "Nowe monety 2 euro w Numiście, których nie ma jeszcze w kolekcji: {count}",
+    "notice.newIssuesSync": "Synchronizuj {year}",
+    "settings.newIssuesDays": "Sprawdzaj nowe monety (co ile dni)",
+    "settings.newIssuesDaysDesc": "Po uruchomieniu sprawdza w Numiście monety 2 euro z bieżącego roku (od października także z następnego), których nie ma w kolekcji, i proponuje ich synchronizację. Zużywa 3–6 zapytań API. 0 wyłącza. Ostatnie sprawdzenie: {date}.",
+    "settings.newIssuesCheckNow": "Sprawdź teraz",
+    "settings.newIssuesNever": "nigdy",
+    "settings.bases": "Widok w Bazach (Bases)",
+    "settings.basesDesc": "Plik .base obok panelu kolekcji: galeria okładek oraz tabele wszystkich, brakujących, posiadanych monet i monet do wymiany. Sortuj, filtruj i edytuj monety natywnie w Obsidianie.",
+    "settings.basesOpen": "Otwórz",
+    "settings.basesRecreate": "Utwórz od nowa",
+    "confirm.recreateBases": "Zastąpić plik Baz domyślnymi widokami? Twoje zmiany w tym pliku zostaną utracone.",
+    "bases.fileName": "Kolekcja 2 Euro",
+    "bases.owned": "Posiadana",
+    "bases.valueUnc": "Wartość (UNC, EUR)",
+    "bases.cover": "Okładka",
+    "bases.viewGallery": "Galeria",
+    "bases.viewAll": "Wszystkie monety",
+    "bases.viewMissing": "Brakujące",
+    "bases.viewOwned": "Posiadane",
+    "bases.viewSwap": "Do wymiany"
   }
 };
 
@@ -1266,7 +1314,30 @@ var de_default = {
     "report.title": "Bericht der letzten Synchronisierung",
     "report.none": "Seit dem Start von Obsidian wurde keine Synchronisierung ausgeführt.",
     "report.summary": "{date} · Bereich: {scope} · übersprungene Numista-Typen: {count}",
-    "report.empty": "Es wurden keine Numista-Typen übersprungen."
+    "report.empty": "Es wurden keine Numista-Typen übersprungen.",
+    "command.checkNewIssues": "Numista auf neue 2-Euro-Münzen prüfen",
+    "command.openBases": "Sammlung in Bases öffnen",
+    "notice.newIssuesNone": "Keine neuen 2-Euro-Münzen auf Numista für deine Sammlung.",
+    "notice.newIssuesFound": "Neue 2-Euro-Münzen auf Numista, noch nicht in deiner Sammlung: {count}",
+    "notice.newIssuesSync": "{year} synchronisieren",
+    "settings.newIssuesDays": "Auf neue Münzen prüfen (Tage)",
+    "settings.newIssuesDaysDesc": "Prüft nach dem Start auf Numista 2-Euro-Münzen des laufenden Jahres (ab Oktober auch des nächsten), die nicht in der Sammlung sind, und bietet die Synchronisierung an. Benötigt 3–6 API-Anfragen. 0 schaltet es aus. Letzte Prüfung: {date}.",
+    "settings.newIssuesCheckNow": "Jetzt prüfen",
+    "settings.newIssuesNever": "nie",
+    "settings.bases": "Bases-Ansicht",
+    "settings.basesDesc": "Eine .base-Datei neben dem Dashboard: Galerie der Cover und Tabellen aller, fehlenden, vorhandenen und Tauschmünzen. Münzen direkt in Obsidian sortieren, filtern und bearbeiten.",
+    "settings.basesOpen": "Öffnen",
+    "settings.basesRecreate": "Neu erstellen",
+    "confirm.recreateBases": "Bases-Datei durch die Standardansichten ersetzen? Deine Änderungen daran gehen verloren.",
+    "bases.fileName": "2-Euro-Sammlung",
+    "bases.owned": "Vorhanden",
+    "bases.valueUnc": "Wert (UNC, EUR)",
+    "bases.cover": "Cover",
+    "bases.viewGallery": "Galerie",
+    "bases.viewAll": "Alle Münzen",
+    "bases.viewMissing": "Fehlend",
+    "bases.viewOwned": "Vorhanden",
+    "bases.viewSwap": "Zum Tausch"
   }
 };
 
@@ -1555,7 +1626,30 @@ var fr_default = {
     "report.title": "Rapport de la dernière synchronisation",
     "report.none": "Aucune synchronisation depuis le démarrage d’Obsidian.",
     "report.summary": "{date} · plage : {scope} · types Numista ignorés : {count}",
-    "report.empty": "Aucun type Numista n’a été ignoré."
+    "report.empty": "Aucun type Numista n’a été ignoré.",
+    "command.checkNewIssues": "Rechercher de nouvelles pièces de 2 euros sur Numista",
+    "command.openBases": "Ouvrir la collection dans Bases",
+    "notice.newIssuesNone": "Aucune nouvelle pièce de 2 euros sur Numista pour votre collection.",
+    "notice.newIssuesFound": "Nouvelles pièces de 2 euros sur Numista, absentes de votre collection : {count}",
+    "notice.newIssuesSync": "Synchroniser {year}",
+    "settings.newIssuesDays": "Rechercher de nouvelles pièces (jours)",
+    "settings.newIssuesDaysDesc": "Après le démarrage, recherche sur Numista les pièces de 2 euros de l'année en cours (à partir d'octobre, aussi de l'année suivante) absentes de la collection et propose de les synchroniser. Utilise 3 à 6 requêtes API. 0 désactive. Dernière vérification : {date}.",
+    "settings.newIssuesCheckNow": "Vérifier maintenant",
+    "settings.newIssuesNever": "jamais",
+    "settings.bases": "Vue Bases",
+    "settings.basesDesc": "Un fichier .base à côté du tableau de bord : galerie des images et tableaux de toutes les pièces, manquantes, possédées et à échanger. Triez, filtrez et modifiez les pièces directement dans Obsidian.",
+    "settings.basesOpen": "Ouvrir",
+    "settings.basesRecreate": "Recréer",
+    "confirm.recreateBases": "Remplacer le fichier Bases par les vues par défaut ? Vos modifications seront perdues.",
+    "bases.fileName": "Collection 2 euros",
+    "bases.owned": "Possédée",
+    "bases.valueUnc": "Valeur (UNC, EUR)",
+    "bases.cover": "Image",
+    "bases.viewGallery": "Galerie",
+    "bases.viewAll": "Toutes les pièces",
+    "bases.viewMissing": "Manquantes",
+    "bases.viewOwned": "Possédées",
+    "bases.viewSwap": "À échanger"
   }
 };
 
@@ -3220,8 +3314,273 @@ var coversMethods = {
   }
 };
 
-// src/plugin/starter.js
+// src/plugin/newissues.js
 var import_obsidian10 = require("obsidian");
+var DAY_MS = 24 * 60 * 60 * 1e3;
+var START_DELAY_MS = 60 * 1e3;
+var OBJECT_TYPES = ["1", "2", "3"];
+var PAGE_SIZE = 50;
+var MAX_PAGES = 4;
+var coversYear = (basic, year) => {
+  const min = Number(basic.min_year), max = Number(basic.max_year);
+  if (Number.isInteger(min) && min > year) return false;
+  if (Number.isInteger(max) && max < year) return false;
+  return true;
+};
+var newIssuesMethods = {
+  /**
+   * Years to check: the current one and, from October, the next one.
+   * @param {Date} [now]
+   * @returns {number[]}
+   */
+  newIssueYears(now = /* @__PURE__ */ new Date()) {
+    const year = now.getFullYear();
+    return now.getMonth() >= 9 ? [year, year + 1] : [year];
+  },
+  /** Runs the check shortly after start-up when it is due. */
+  scheduleNewIssuesCheck() {
+    this.app.workspace.onLayoutReady(() => {
+      this.registerInterval(
+        window.setTimeout(() => void this.checkNewIssuesIfDue(), START_DELAY_MS)
+      );
+    });
+  },
+  /**
+   * @param {number} [now]
+   * @returns {boolean}
+   */
+  isNewIssuesCheckDue(now = Date.now()) {
+    const days = Number(this.settings.newIssuesCheckDays);
+    if (!Number.isFinite(days) || days <= 0) return false;
+    const last = Date.parse(tx(this.settings.newIssuesLastCheck));
+    return !Number.isFinite(last) || now - last >= days * DAY_MS;
+  },
+  /**
+   * Background check: silent unless something new is found.
+   * @returns {Promise<NewIssuesResult | null>}
+   */
+  async checkNewIssuesIfDue() {
+    if (!this.getNumistaApiKey() || this.isOperationRunning() || !this.isNewIssuesCheckDue())
+      return null;
+    try {
+      return await this.checkNewIssues({ quiet: true });
+    } catch (error) {
+      console.warn("2 Euro Collection: new coins check failed", error);
+      return null;
+    }
+  },
+  /** Command: check now and always report the result. */
+  checkNewIssuesNow() {
+    return this.runOperation(() => this.checkNewIssues({ quiet: false }));
+  },
+  /**
+   * Searches Numista for 2 euro coins of the checked years that are not in
+   * the collection (by Numista id and year) and come from a euro country.
+   * @param {{ quiet?: boolean }} [options]
+   * @returns {Promise<NewIssuesResult | null>}
+   */
+  async checkNewIssues({ quiet = false } = {}) {
+    if (!this.getNumistaApiKey()) {
+      if (!quiet) new import_obsidian10.Notice(this.t("notice.apiKeyMissing"));
+      return null;
+    }
+    const known = new Set(
+      this.getRows().filter((row) => row.numista_id).map((row) => `${row.numista_id}|${row.year}`)
+    );
+    const issuers = this.officialEuroIssuers();
+    const result = { total: 0, byYear: [] };
+    for (const year of this.newIssueYears()) {
+      const found = /* @__PURE__ */ new Map();
+      for (const objectType of OBJECT_TYPES) {
+        for (const basic of await this.searchTwoEuroTypes(objectType, year)) {
+          const id = tx(basic.id);
+          if (!id || found.has(id) || known.has(`${id}|${year}`)) continue;
+          if (!coversYear(basic, year)) continue;
+          const issuer = countryName(basic.issuer?.name);
+          if (issuer && !issuers.has(issuer)) continue;
+          found.set(id, tx(basic.title));
+        }
+      }
+      if (found.size) {
+        result.byYear.push({ year: String(year), count: found.size, titles: [...found.values()] });
+        result.total += found.size;
+      }
+    }
+    this.settings.newIssuesLastCheck = (/* @__PURE__ */ new Date()).toISOString();
+    await this.saveSettings();
+    if (result.total) this.showNewIssuesNotice(result);
+    else if (!quiet) new import_obsidian10.Notice(this.t("notice.newIssuesNone"));
+    return result;
+  },
+  /**
+   * 2 euro types of one coin category issued in a year. The year is filtered
+   * on the server when Numista accepts it, otherwise locally.
+   * @param {string} objectType
+   * @param {number} year
+   * @returns {Promise<NumistaType[]>}
+   */
+  async searchTwoEuroTypes(objectType, year) {
+    const types = [];
+    let serverYear = true;
+    for (let page = 1; page <= MAX_PAGES; page++) {
+      const q = new URLSearchParams({
+        q: "2 Euros",
+        object_type: objectType,
+        page: String(page),
+        count: String(PAGE_SIZE),
+        lang: "en"
+      });
+      if (serverYear) q.set("year", String(year));
+      let listing;
+      try {
+        listing = /** @type {import('../types').NumistaTypesPage} */
+        await this.api(`/types?${q}`);
+      } catch (error) {
+        if (this.isNumistaAuthError(error) || page !== 1 || !serverYear) throw error;
+        serverYear = false;
+        q.delete("year");
+        listing = /** @type {import('../types').NumistaTypesPage} */
+        await this.api(`/types?${q}`);
+      }
+      const pageTypes = listing.types || [];
+      types.push(...pageTypes.filter((basic) => coversYear(basic, year)));
+      if (pageTypes.length < PAGE_SIZE) break;
+    }
+    return types;
+  },
+  /**
+   * Persistent notice with the coins found and a button per year that
+   * synchronizes that year.
+   * @param {NewIssuesResult} result
+   */
+  showNewIssuesNotice(result) {
+    const notice = new import_obsidian10.Notice(
+      createFragment((fragment) => {
+        fragment.createDiv({ text: this.t("notice.newIssuesFound", { count: result.total }) });
+        for (const entry of result.byYear) {
+          const preview = entry.titles.slice(0, 3).join(", ");
+          fragment.createDiv({
+            cls: "twoeuro-new-issues-year",
+            text: `${entry.year}: ${entry.count}${preview ? ` – ${preview}` : ""}${entry.titles.length > 3 ? "…" : ""}`
+          });
+          const button = fragment.createEl("button", {
+            cls: "mod-cta twoeuro-new-issues-sync",
+            text: this.t("notice.newIssuesSync", { year: entry.year })
+          });
+          button.onclick = () => {
+            notice.hide();
+            void this.syncNumista({ year: entry.year });
+          };
+        }
+      }),
+      0
+    );
+    return notice;
+  }
+};
+
+// src/plugin/bases.js
+var import_obsidian11 = require("obsidian");
+var TABLE_COLUMNS = [
+  "country",
+  "year",
+  "title",
+  "mint_mark",
+  "coin_type",
+  "owned",
+  "quantity",
+  "condition",
+  "acquisition_date",
+  "acquisition_price",
+  "numismatic_value_unc"
+];
+var LABELS = {
+  country: "coin.country",
+  year: "coin.year",
+  title: "coin.title",
+  mint_mark: "coin.mint",
+  coin_type: "coin.type",
+  owned: "bases.owned",
+  quantity: "coin.quantity",
+  condition: "coin.condition",
+  acquisition_date: "coin.date",
+  acquisition_price: "coin.price",
+  numismatic_value_unc: "bases.valueUnc",
+  cover: "bases.cover"
+};
+var basesMethods = {
+  /** Path of the .base file, next to the dashboard note. */
+  basesPath() {
+    return this.join(this.root(), `${clean(this.t("bases.fileName")) || "2 Euro"}.base`);
+  },
+  /**
+   * Contents of the .base file (see https://help.obsidian.md/bases/syntax).
+   * @returns {Record<string, unknown>}
+   */
+  buildBasesConfig() {
+    const t = (key) => this.t(key);
+    const byCountryAndYear = [
+      { property: "country", direction: "ASC" },
+      { property: "year", direction: "ASC" }
+    ];
+    const table = (name, filters = []) => ({
+      type: "table",
+      name,
+      ...filters.length ? { filters: { and: filters } } : {},
+      order: TABLE_COLUMNS,
+      sort: byCountryAndYear
+    });
+    return {
+      filters: {
+        and: [`file.inFolder(${JSON.stringify(this.coins())})`, 'file.ext == "md"']
+      },
+      properties: Object.fromEntries(
+        Object.entries(LABELS).map(([property, key]) => [property, { displayName: t(key) }])
+      ),
+      views: [
+        {
+          type: "cards",
+          name: t("bases.viewGallery"),
+          order: ["country", "year", "title", "mint_mark", "owned"],
+          sort: byCountryAndYear,
+          image: "note.cover",
+          imageFit: "contain"
+        },
+        table(t("bases.viewAll")),
+        table(t("bases.viewMissing"), ["owned != true"]),
+        table(t("bases.viewOwned"), ["owned == true"]),
+        table(t("bases.viewSwap"), ["owned == true", "quantity > 1"])
+      ]
+    };
+  },
+  /**
+   * Opens the collection in Bases, creating the .base file when it does not
+   * exist. With recreate, an existing file is replaced after confirmation
+   * (changes made to it in Obsidian are lost).
+   * @param {{ recreate?: boolean }} [options]
+   * @returns {Promise<TFile | null>}
+   */
+  async openBasesView({ recreate = false } = {}) {
+    await this.ensureStructure();
+    const path = this.basesPath();
+    const content = (0, import_obsidian11.stringifyYaml)(this.buildBasesConfig());
+    let file = this.app.vault.getAbstractFileByPath(path);
+    if (file instanceof import_obsidian11.TFile) {
+      if (recreate) {
+        if (!await this.confirm(this.t("confirm.recreateBases"), { warning: true })) return null;
+        await this.app.vault.modify(file, content);
+      }
+    } else {
+      file = await this.app.vault.create(path, content);
+    }
+    if (!(file instanceof import_obsidian11.TFile)) return null;
+    await this.app.workspace.getLeaf(true).openFile(file);
+    return file;
+  }
+};
+
+// src/plugin/starter.js
+var import_obsidian12 = require("obsidian");
 var withoutCover = (coin) => {
   const copy = { ...coin };
   delete copy.cover;
@@ -3236,7 +3595,7 @@ var starterMethods = {
     let response = null, lastError = null;
     for (const url of urls) {
       try {
-        response = await (0, import_obsidian10.requestUrl)({ url, headers: { accept: "application/json" } });
+        response = await (0, import_obsidian12.requestUrl)({ url, headers: { accept: "application/json" } });
         if (response.status < 400) break;
         lastError = new Error(`Starter collection HTTP ${response.status}`);
       } catch (error) {
@@ -3328,7 +3687,7 @@ var starterMethods = {
     }
     await this.refreshDashboards();
     this.refreshFilterViews();
-    new import_obsidian10.Notice(
+    new import_obsidian12.Notice(
       this.t("notice.starterInstalled", {
         created,
         skipped,
@@ -3344,7 +3703,7 @@ var starterMethods = {
 };
 
 // src/plugin/selection.js
-var import_obsidian11 = require("obsidian");
+var import_obsidian13 = require("obsidian");
 var selectionMethods = {
   getSelectedCoinFiles() {
     const selected = this.selectedCoinPaths || /* @__PURE__ */ new Set();
@@ -3367,7 +3726,7 @@ var selectionMethods = {
   async duplicateSelectedCoins() {
     const rows = this.getSelectedCoinFiles();
     if (!rows.length) {
-      new import_obsidian11.Notice(this.t("notice.noSelection"));
+      new import_obsidian13.Notice(this.t("notice.noSelection"));
       return;
     }
     let count = 0;
@@ -3394,12 +3753,12 @@ var selectionMethods = {
     this.selectedCoinPaths = newSelection;
     await this.refreshDashboards();
     this.refreshFilterViews();
-    new import_obsidian11.Notice(this.t("notice.batchDuplicate", { count }));
+    new import_obsidian13.Notice(this.t("notice.batchDuplicate", { count }));
   },
   async deleteSelectedCoins() {
     const rows = this.getSelectedCoinFiles();
     if (!rows.length) {
-      new import_obsidian11.Notice(this.t("notice.noSelection"));
+      new import_obsidian13.Notice(this.t("notice.noSelection"));
       return;
     }
     if (!await this.confirm(this.t("confirm.deleteSelected", { count: rows.length }), {
@@ -3425,7 +3784,7 @@ var selectionMethods = {
     for (const coverPath of coverPaths) {
       if (usedCovers.has(coverPath)) continue;
       const coverFile = this.app.vault.getAbstractFileByPath(coverPath);
-      if (!(coverFile instanceof import_obsidian11.TFile)) continue;
+      if (!(coverFile instanceof import_obsidian13.TFile)) continue;
       try {
         await this.app.fileManager.trashFile(coverFile);
       } catch (error) {
@@ -3435,12 +3794,12 @@ var selectionMethods = {
     this.clearCoinSelection();
     await this.refreshDashboards();
     this.refreshFilterViews();
-    new import_obsidian11.Notice(this.t("notice.batchDelete", { count }));
+    new import_obsidian13.Notice(this.t("notice.batchDelete", { count }));
   }
 };
 
 // src/plugin/images.js
-var import_obsidian12 = require("obsidian");
+var import_obsidian14 = require("obsidian");
 
 // src/images/background.js
 function removeBackgroundPixels(pixels, width, height) {
@@ -3552,15 +3911,15 @@ var imagesMethods = {
    */
   async processBackgroundForRow(row) {
     const coinFile = row?.file;
-    if (!(coinFile instanceof import_obsidian12.TFile)) return { ok: false, reason: "no-file" };
+    if (!(coinFile instanceof import_obsidian14.TFile)) return { ok: false, reason: "no-file" };
     const allRows = this.getRows(), referenceIndex = this.buildReferenceCoverIndex(allRows), resolution = this.resolveDisplayCover(row, referenceIndex);
     let sourceRow = row, sourcePath = this.localPath(row), sourceFile = sourcePath && this.app.vault.getAbstractFileByPath(sourcePath);
-    if (!(sourceFile instanceof import_obsidian12.TFile) && resolution?.source) {
+    if (!(sourceFile instanceof import_obsidian14.TFile) && resolution?.source) {
       sourceRow = resolution.source;
       sourcePath = this.localPath(sourceRow);
       sourceFile = sourcePath && this.app.vault.getAbstractFileByPath(sourcePath);
     }
-    if (!(sourceFile instanceof import_obsidian12.TFile)) return { ok: false, reason: "no-cover" };
+    if (!(sourceFile instanceof import_obsidian14.TFile)) return { ok: false, reason: "no-cover" };
     const binary = await this.app.vault.readBinary(sourceFile), image = await this.loadImageFromArrayBuffer(binary), canvas = this.makeTransparentBackground(image), pngPath = await this.saveProcessedCover(row, canvas);
     await this.app.fileManager.processFrontMatter(
       coinFile,
@@ -3575,7 +3934,7 @@ var imagesMethods = {
   async removeBackgroundFromSelectedCoins() {
     const rows = this.getSelectedCoinFiles();
     if (!rows.length) {
-      new import_obsidian12.Notice(this.t("notice.noSelection"));
+      new import_obsidian14.Notice(this.t("notice.noSelection"));
       return;
     }
     let done = 0, skipped = 0, errors = 0;
@@ -3596,7 +3955,7 @@ var imagesMethods = {
     await new Promise((resolve) => window.setTimeout(resolve, 50));
     await this.refreshDashboards();
     this.refreshFilterViews();
-    new import_obsidian12.Notice(this.t("notice.batchBackground", { done, skipped, errors }));
+    new import_obsidian14.Notice(this.t("notice.batchBackground", { done, skipped, errors }));
   },
   /**
    * @param {ArrayBuffer} arrayBuffer
@@ -3685,14 +4044,14 @@ var imagesMethods = {
    */
   async processCatalogPresetForRow(row) {
     const coinFile = row?.file;
-    if (!(coinFile instanceof import_obsidian12.TFile)) return { ok: false, reason: "no-file" };
+    if (!(coinFile instanceof import_obsidian14.TFile)) return { ok: false, reason: "no-file" };
     const allRows = this.getRows(), referenceIndex = this.buildReferenceCoverIndex(allRows), resolution = this.resolveDisplayCover(row, referenceIndex);
     let sourcePath = this.localPath(row), sourceFile = sourcePath && this.app.vault.getAbstractFileByPath(sourcePath);
-    if (!(sourceFile instanceof import_obsidian12.TFile) && resolution?.source) {
+    if (!(sourceFile instanceof import_obsidian14.TFile) && resolution?.source) {
       sourcePath = this.localPath(resolution.source);
       sourceFile = sourcePath && this.app.vault.getAbstractFileByPath(sourcePath);
     }
-    if (!(sourceFile instanceof import_obsidian12.TFile)) return { ok: false, reason: "no-cover" };
+    if (!(sourceFile instanceof import_obsidian14.TFile)) return { ok: false, reason: "no-cover" };
     const binary = await this.app.vault.readBinary(sourceFile), image = await this.loadImageFromArrayBuffer(binary), canvas = this.makeCatalogCoinCanvas(image), pngPath = await this.saveProcessedCover(row, canvas);
     await this.app.fileManager.processFrontMatter(
       coinFile,
@@ -3727,7 +4086,7 @@ var imagesMethods = {
   async applyCatalogPresetToSelectedCoins() {
     const rows = this.getSelectedCoinFiles();
     if (!rows.length) {
-      new import_obsidian12.Notice(this.t("notice.noSelection"));
+      new import_obsidian14.Notice(this.t("notice.noSelection"));
       return;
     }
     let done = 0, skipped = 0, errors = 0;
@@ -3745,30 +4104,30 @@ var imagesMethods = {
     this.clearCoinSelection();
     await this.refreshDashboards();
     this.refreshFilterViews();
-    new import_obsidian12.Notice(this.t("notice.batchCatalog", { done, skipped, errors }));
+    new import_obsidian14.Notice(this.t("notice.batchCatalog", { done, skipped, errors }));
   },
   async applyCatalogPresetToCurrentCoin() {
     const file = this.getCurrentCoinFile();
     if (!file) {
-      new import_obsidian12.Notice(this.t("notice.noCurrentCoin"));
+      new import_obsidian14.Notice(this.t("notice.noCurrentCoin"));
       return;
     }
     const row = this.getRows().find((item) => item.file.path === file.path);
     if (!row) {
-      new import_obsidian12.Notice(this.t("notice.noCurrentCoin"));
+      new import_obsidian14.Notice(this.t("notice.noCurrentCoin"));
       return;
     }
     try {
       const result = await this.processCatalogPresetForRow(row);
       if (!result.ok) {
-        new import_obsidian12.Notice(this.t("notice.noCover"));
+        new import_obsidian14.Notice(this.t("notice.noCover"));
         return;
       }
       await this.refreshDashboards();
-      new import_obsidian12.Notice(this.t("notice.catalogDone"));
+      new import_obsidian14.Notice(this.t("notice.catalogDone"));
     } catch (error) {
       console.error("Catalog preset", error);
-      new import_obsidian12.Notice(this.t("notice.backgroundError", { message: errorText(error) }));
+      new import_obsidian14.Notice(this.t("notice.backgroundError", { message: errorText(error) }));
     }
   },
   /*
@@ -3812,7 +4171,7 @@ var imagesMethods = {
       const oldName = oldPath.split("/").pop() || "", oldStem = oldName.replace(/\.[^.]+$/, "").replace(/-\d+$/, ""), oldFile = this.app.vault.getAbstractFileByPath(oldPath), usedElsewhere = this.getRows().some(
         (other) => other.file.path !== row.file.path && this.localPath(other) === oldPath
       );
-      if (oldStem === stem && oldPath.startsWith(`${this.covers()}/`) && oldFile instanceof import_obsidian12.TFile && !usedElsewhere) {
+      if (oldStem === stem && oldPath.startsWith(`${this.covers()}/`) && oldFile instanceof import_obsidian14.TFile && !usedElsewhere) {
         try {
           await this.app.fileManager.trashFile(oldFile);
         } catch (error) {
@@ -3839,35 +4198,35 @@ var imagesMethods = {
   async removeBackgroundFromCurrentCoin() {
     const coinFile = this.getCurrentCoinFile();
     if (!coinFile) {
-      new import_obsidian12.Notice(this.t("notice.noCurrentCoin"));
+      new import_obsidian14.Notice(this.t("notice.noCurrentCoin"));
       return;
     }
     try {
       const row = this.getRows().find((item) => item.file.path === coinFile.path);
       if (!row) {
-        new import_obsidian12.Notice(this.t("notice.noCurrentCoin"));
+        new import_obsidian14.Notice(this.t("notice.noCurrentCoin"));
         return;
       }
       const result = await this.processBackgroundForRow(row);
       if (!result.ok) {
-        new import_obsidian12.Notice(this.t("notice.noCover"));
+        new import_obsidian14.Notice(this.t("notice.noCover"));
         return;
       }
       await this.refreshDashboards();
-      new import_obsidian12.Notice(this.t("notice.backgroundRemoved", { year: tx(row.year) }));
+      new import_obsidian14.Notice(this.t("notice.backgroundRemoved", { year: tx(row.year) }));
     } catch (error) {
       console.error("2 Euro background removal", error);
-      new import_obsidian12.Notice(this.t("notice.backgroundError", { message: errorText(error) }));
+      new import_obsidian14.Notice(this.t("notice.backgroundError", { message: errorText(error) }));
     }
   }
 };
 
 // src/plugin/dashboard.js
-var import_obsidian16 = require("obsidian");
+var import_obsidian18 = require("obsidian");
 
 // src/ui/CoinModal.js
-var import_obsidian13 = require("obsidian");
-var CoinModal = class extends import_obsidian13.Modal {
+var import_obsidian15 = require("obsidian");
+var CoinModal = class extends import_obsidian15.Modal {
   /**
    * @param {import('obsidian').App} app
    * @param {import('../types').TwoEuroPlugin} plugin
@@ -3877,7 +4236,7 @@ var CoinModal = class extends import_obsidian13.Modal {
     super(app);
     this.plugin = plugin;
     this.row = row || null;
-    if (this.row?.file instanceof import_obsidian13.TFile) this.plugin.currentCoinFile = this.row.file;
+    if (this.row?.file instanceof import_obsidian15.TFile) this.plugin.currentCoinFile = this.row.file;
   }
   onOpen() {
     const p = this.plugin, t = (k, v = {}) => p.t(k, v), c = this.contentEl, f = this.row ? { ...this.row } : {
@@ -3901,7 +4260,7 @@ var CoinModal = class extends import_obsidian13.Modal {
     c.empty();
     c.createEl("h2", { text: t(this.row ? "coin.edit" : "coin.add") });
     const input = (key, field, ph = "", desc = "") => {
-      const setting = new import_obsidian13.Setting(c).setName(t(key));
+      const setting = new import_obsidian15.Setting(c).setName(t(key));
       if (desc) setting.setDesc(t(desc));
       setting.addText(
         (x) => x.setValue(tx(f[field])).setPlaceholder(ph ? t(ph) : "").onChange((v) => f[field] = v)
@@ -3911,20 +4270,20 @@ var CoinModal = class extends import_obsidian13.Modal {
     input("coin.country", "country");
     input("coin.year", "year");
     input("coin.title", "title");
-    new import_obsidian13.Setting(c).setName(t("coin.type")).addDropdown(
+    new import_obsidian15.Setting(c).setName(t("coin.type")).addDropdown(
       (d) => d.addOption("commemorative", t("coin.commemorative")).addOption("national", t("coin.national")).setValue(f.coin_type || "commemorative").onChange((v) => {
         f.coin_type = v;
       })
     );
     input("coin.mint", "mint_mark");
-    new import_obsidian13.Setting(c).setName(t("coin.owned")).addToggle((x) => x.setValue(isTrue(f.owned)).onChange((v) => f.owned = v));
+    new import_obsidian15.Setting(c).setName(t("coin.owned")).addToggle((x) => x.setValue(isTrue(f.owned)).onChange((v) => f.owned = v));
     input("coin.quantity", "quantity");
     input("coin.date", "acquisition_date");
     input("coin.price", "acquisition_price");
     input("coin.currency", "acquisition_currency");
     input("coin.condition", "condition");
     input("coin.coverUrl", "cover_url");
-    const referenceSetting = new import_obsidian13.Setting(c).setName(t("coin.referenceYear")).setDesc(t("coin.referenceYearDesc"));
+    const referenceSetting = new import_obsidian15.Setting(c).setName(t("coin.referenceYear")).setDesc(t("coin.referenceYearDesc"));
     const datalistId = `twoeuro-reference-years-${Date.now()}-${Math.random().toString(36).slice(2)}`;
     const datalist = c.createEl("datalist", { attr: { id: datalistId } });
     const updateReferenceSuggestions = () => {
@@ -3942,8 +4301,8 @@ var CoinModal = class extends import_obsidian13.Modal {
       });
     });
     updateReferenceSuggestions();
-    new import_obsidian13.Setting(c).setName(t("coin.coverLocked")).setDesc(t("coin.coverLockedDesc")).addToggle((x) => x.setValue(isTrue(f.cover_locked)).onChange((v) => f.cover_locked = v));
-    new import_obsidian13.Setting(c).setName(t("coin.ownCover")).setDesc(t("coin.ownCoverDesc")).addToggle(
+    new import_obsidian15.Setting(c).setName(t("coin.coverLocked")).setDesc(t("coin.coverLockedDesc")).addToggle((x) => x.setValue(isTrue(f.cover_locked)).onChange((v) => f.cover_locked = v));
+    new import_obsidian15.Setting(c).setName(t("coin.ownCover")).setDesc(t("coin.ownCoverDesc")).addToggle(
       (x) => x.setValue(isTrue(f.own_cover)).onChange((v) => {
         f.own_cover = v;
         if (v) f.cover_locked = true;
@@ -3951,29 +4310,29 @@ var CoinModal = class extends import_obsidian13.Modal {
     );
     input("coin.photoAuthor", "photo_author");
     input("coin.photoLicense", "photo_license");
-    new import_obsidian13.Setting(c).setName(t("coin.numismaticValue")).setDesc(t("coin.numismaticValueDesc")).addTextArea((x) => {
+    new import_obsidian15.Setting(c).setName(t("coin.numismaticValue")).setDesc(t("coin.numismaticValueDesc")).addTextArea((x) => {
       x.setValue(p.formatNumismaticValue(f));
       x.inputEl.readOnly = true;
     });
-    new import_obsidian13.Setting(c).setName(t("coin.notes")).addTextArea((x) => x.setValue(tx(f.notes)).onChange((v) => f.notes = v));
+    new import_obsidian15.Setting(c).setName(t("coin.notes")).addTextArea((x) => x.setValue(tx(f.notes)).onChange((v) => f.notes = v));
     const actions = c.createDiv({ cls: "twoeuro-actions" });
     actions.createEl("button", { text: t("action.cancel") }).onclick = () => this.close();
     actions.createEl("button", { text: t("action.save"), cls: "mod-cta" }).onclick = async () => {
       if (!clean(f.country) || !tx(f.year) || !clean(f.title)) {
-        new import_obsidian13.Notice(t("error.required"));
+        new import_obsidian15.Notice(t("error.required"));
         return;
       }
       await p.upsert(f, this.row && this.row.file, { rename: true });
       await p.refreshDashboards();
-      new import_obsidian13.Notice(t("notice.saved"));
+      new import_obsidian15.Notice(t("notice.saved"));
       this.close();
     };
   }
 };
 
 // src/ui/CoinCoverManagerModal.js
-var import_obsidian14 = require("obsidian");
-var CoinCoverManagerModal = class extends import_obsidian14.Modal {
+var import_obsidian16 = require("obsidian");
+var CoinCoverManagerModal = class extends import_obsidian16.Modal {
   /**
    * @param {import('obsidian').App} app
    * @param {import('../types').TwoEuroPlugin} plugin
@@ -3999,7 +4358,7 @@ var CoinCoverManagerModal = class extends import_obsidian14.Modal {
     const p = this.plugin, t = (k, v = {}) => p.t(k, v), f = { ...fresh };
     this.form = f;
     const input = (key, field, ph = "", desc = "") => {
-      const item = new import_obsidian14.Setting(container).setName(t(key));
+      const item = new import_obsidian16.Setting(container).setName(t(key));
       if (desc) item.setDesc(t(desc));
       item.addText(
         (x) => x.setValue(tx(f[field])).setPlaceholder(ph ? t(ph) : "").onChange((v) => f[field] = v)
@@ -4008,18 +4367,18 @@ var CoinCoverManagerModal = class extends import_obsidian14.Modal {
     input("coin.country", "country");
     input("coin.year", "year");
     input("coin.title", "title");
-    new import_obsidian14.Setting(container).setName(t("coin.type")).addDropdown(
+    new import_obsidian16.Setting(container).setName(t("coin.type")).addDropdown(
       (d) => d.addOption("commemorative", t("coin.commemorative")).addOption("national", t("coin.national")).setValue(f.coin_type || "commemorative").onChange((v) => f.coin_type = v)
     );
     input("coin.mint", "mint_mark");
-    new import_obsidian14.Setting(container).setName(t("coin.owned")).addToggle((x) => x.setValue(isTrue(f.owned)).onChange((v) => f.owned = v));
+    new import_obsidian16.Setting(container).setName(t("coin.owned")).addToggle((x) => x.setValue(isTrue(f.owned)).onChange((v) => f.owned = v));
     input("coin.quantity", "quantity");
     input("coin.date", "acquisition_date");
     input("coin.price", "acquisition_price");
     input("coin.currency", "acquisition_currency");
     input("coin.condition", "condition");
     input("coin.coverUrl", "cover_url");
-    const ref = new import_obsidian14.Setting(container).setName(t("coin.referenceYear")).setDesc(t("coin.referenceYearDesc")), listId = `cover-manager-years-${Date.now()}`, list = container.createEl("datalist", { attr: { id: listId } });
+    const ref = new import_obsidian16.Setting(container).setName(t("coin.referenceYear")).setDesc(t("coin.referenceYearDesc")), listId = `cover-manager-years-${Date.now()}`, list = container.createEl("datalist", { attr: { id: listId } });
     for (const year of p.getReferenceYearSuggestions(f, fresh.file))
       list.createEl("option", { attr: { value: String(year) } });
     ref.addText((x) => {
@@ -4027,17 +4386,17 @@ var CoinCoverManagerModal = class extends import_obsidian14.Modal {
       x.inputEl.setAttribute("list", listId);
       x.onChange((v) => f.reference_year = v);
     });
-    new import_obsidian14.Setting(container).setName(t("coin.coverLocked")).setDesc(t("coin.coverLockedDesc")).addToggle((x) => x.setValue(isTrue(f.cover_locked)).onChange((v) => f.cover_locked = v));
-    new import_obsidian14.Setting(container).setName(t("coin.ownCover")).setDesc(t("coin.ownCoverDesc")).addToggle(
+    new import_obsidian16.Setting(container).setName(t("coin.coverLocked")).setDesc(t("coin.coverLockedDesc")).addToggle((x) => x.setValue(isTrue(f.cover_locked)).onChange((v) => f.cover_locked = v));
+    new import_obsidian16.Setting(container).setName(t("coin.ownCover")).setDesc(t("coin.ownCoverDesc")).addToggle(
       (x) => x.setValue(isTrue(f.own_cover)).onChange((v) => {
         f.own_cover = v;
         if (v) f.cover_locked = true;
       })
     );
-    new import_obsidian14.Setting(container).setName(t("coin.notes")).addTextArea((x) => x.setValue(tx(f.notes)).onChange((v) => f.notes = v));
+    new import_obsidian16.Setting(container).setName(t("coin.notes")).addTextArea((x) => x.setValue(tx(f.notes)).onChange((v) => f.notes = v));
     input("coin.photoAuthor", "photo_author");
     input("coin.photoLicense", "photo_license");
-    new import_obsidian14.Setting(container).setName(t("coin.numismaticValue")).setDesc(t("coin.numismaticValueDesc")).addTextArea((x) => {
+    new import_obsidian16.Setting(container).setName(t("coin.numismaticValue")).setDesc(t("coin.numismaticValueDesc")).addTextArea((x) => {
       x.setValue(p.formatNumismaticValue(f));
       x.inputEl.readOnly = true;
     });
@@ -4075,7 +4434,7 @@ var CoinCoverManagerModal = class extends import_obsidian14.Modal {
         await this.render();
       } catch (error) {
         console.error("Coin cover manager", error);
-        new import_obsidian14.Notice(errorText(error));
+        new import_obsidian16.Notice(errorText(error));
       }
     };
     const saveActions = right.createDiv({ cls: "twoeuro-cover-manager-save" });
@@ -4084,11 +4443,11 @@ var CoinCoverManagerModal = class extends import_obsidian14.Modal {
         await saveRow();
         await p.refreshDashboards();
         p.refreshFilterViews();
-        new import_obsidian14.Notice(t("notice.saved"));
+        new import_obsidian16.Notice(t("notice.saved"));
         this.close();
       } catch (error) {
         console.error("Coin cover manager save", error);
-        new import_obsidian14.Notice(errorText(error));
+        new import_obsidian16.Notice(errorText(error));
       }
     };
     left.createEl("h3", {
@@ -4111,7 +4470,7 @@ var CoinCoverManagerModal = class extends import_obsidian14.Modal {
       if (!file) return;
       await p.snapshotCoinState(fresh);
       await p.loadCustomCoverFromDisk(fresh, file);
-      new import_obsidian14.Notice(t("coverManager.diskDone"));
+      new import_obsidian16.Notice(t("coverManager.diskDone"));
     });
     coverActions.createEl("button", { text: t("coverManager.disk") }).onclick = () => fileInput.click();
     left.createEl("h3", {
@@ -4122,12 +4481,12 @@ var CoinCoverManagerModal = class extends import_obsidian14.Modal {
     numista.createEl("button", { text: t("coverManager.numistaCover") }).onclick = () => run(async () => {
       await p.snapshotCoinState(fresh);
       await p.downloadNumistaCoverForCoin(fresh);
-      new import_obsidian14.Notice(t("coverManager.numistaCoverDone"));
+      new import_obsidian16.Notice(t("coverManager.numistaCoverDone"));
     });
     numista.createEl("button", { text: t("coverManager.numistaData") }).onclick = () => run(async () => {
       await p.snapshotCoinState(fresh);
       await p.updateSingleCoinFromNumista(fresh);
-      new import_obsidian14.Notice(t("coverManager.numistaDone"));
+      new import_obsidian16.Notice(t("coverManager.numistaDone"));
     });
     left.createEl("h3", {
       cls: "twoeuro-cover-manager-section",
@@ -4136,7 +4495,7 @@ var CoinCoverManagerModal = class extends import_obsidian14.Modal {
     const history = left.createDiv({ cls: "twoeuro-cover-manager-action-group" });
     history.createEl("button", { text: t("coverManager.undo") }).onclick = () => run(async () => {
       const ok = await p.undoCoinChange(fresh);
-      new import_obsidian14.Notice(ok ? t("coverManager.undoDone") : t("coverManager.noUndo"));
+      new import_obsidian16.Notice(ok ? t("coverManager.undoDone") : t("coverManager.noUndo"));
     });
     history.createEl("button", { text: t("coverManager.close") }).onclick = () => this.close();
     return Promise.resolve();
@@ -4148,8 +4507,8 @@ var CoinCoverManagerModal = class extends import_obsidian14.Modal {
 };
 
 // src/ui/EuroFiltersView.js
-var import_obsidian15 = require("obsidian");
-var EuroFiltersView = class extends import_obsidian15.ItemView {
+var import_obsidian17 = require("obsidian");
+var EuroFiltersView = class extends import_obsidian17.ItemView {
   /**
    * @param {import('obsidian').WorkspaceLeaf} leaf
    * @param {import('../types').TwoEuroPlugin} plugin
@@ -4530,7 +4889,7 @@ var dashboardMethods = {
   registerDashboard(el, ctx) {
     if (!this._dashboards) this._dashboards = /* @__PURE__ */ new Set();
     this._dashboards.add(el);
-    const child = new import_obsidian16.MarkdownRenderChild(el);
+    const child = new import_obsidian18.MarkdownRenderChild(el);
     child.onunload = () => {
       this._dashboards.delete(el);
       this.closeFiltersViewIfDashboardClosed();
@@ -4891,7 +5250,7 @@ var dashboardMethods = {
 };
 
 // src/plugin/history.js
-var import_obsidian17 = require("obsidian");
+var import_obsidian19 = require("obsidian");
 var historyMethods = {
   historyFolder() {
     return this.join(this.root(), ".history");
@@ -4916,7 +5275,7 @@ var historyMethods = {
     };
     if (coverPath) {
       const coverFile = this.app.vault.getAbstractFileByPath(coverPath);
-      if (coverFile instanceof import_obsidian17.TFile) {
+      if (coverFile instanceof import_obsidian19.TFile) {
         const ext = coverFile.extension || "bin", backup = this.join(this.historyFolder(), `${this.historyKey(row)}.${ext}`);
         await this.app.vault.adapter.writeBinary(
           backup,
@@ -4978,7 +5337,7 @@ var historyMethods = {
 };
 
 // src/plugin/export.js
-var import_obsidian18 = require("obsidian");
+var import_obsidian20 = require("obsidian");
 var KINDS = {
   missing: { title: "export.titleMissing", file: "export.fileMissing" },
   owned: { title: "export.titleOwned", file: "export.fileOwned" },
@@ -5017,7 +5376,7 @@ var exportMethods = {
       locale
     );
     if (!items.length) {
-      new import_obsidian18.Notice(this.t("notice.exportNone"));
+      new import_obsidian20.Notice(this.t("notice.exportNone"));
       return null;
     }
     const pieces = (row) => kind === "swap" ? quantity(row) - 1 : kind === "owned" ? quantity(row) : null;
@@ -5070,24 +5429,24 @@ var exportMethods = {
     const base = this.join(this.root(), this.t(config.file, { date }));
     const write = async (path, content) => {
       const existing = this.app.vault.getAbstractFileByPath(path);
-      if (existing instanceof import_obsidian18.TFile) await this.app.vault.modify(existing, content);
+      if (existing instanceof import_obsidian20.TFile) await this.app.vault.modify(existing, content);
       else await this.app.vault.create(path, content);
       return this.app.vault.getAbstractFileByPath(path);
     };
     const mdFile = await write(`${base}.md`, markdown);
     await write(`${base}.csv`, `\uFEFF${csv}`);
     const name = base.split("/").pop();
-    new import_obsidian18.Notice(
+    new import_obsidian20.Notice(
       this.t("notice.exportDone", { count: items.length, md: `${name}.md`, csv: `${name}.csv` })
     );
-    if (mdFile instanceof import_obsidian18.TFile && this.app.workspace.getLeaf)
+    if (mdFile instanceof import_obsidian20.TFile && this.app.workspace.getLeaf)
       await this.app.workspace.getLeaf(true).openFile(mdFile);
     return { count: items.length, markdownPath: `${base}.md`, csvPath: `${base}.csv` };
   }
 };
 
 // src/plugin/operations.js
-var import_obsidian19 = require("obsidian");
+var import_obsidian21 = require("obsidian");
 var operationsMethods = {
   isOperationRunning() {
     return Boolean(this._operation);
@@ -5099,7 +5458,7 @@ var operationsMethods = {
    */
   async runOperation(fn) {
     if (this._operation) {
-      new import_obsidian19.Notice(this.t("notice.operationRunning"));
+      new import_obsidian21.Notice(this.t("notice.operationRunning"));
       return null;
     }
     const operation = { aborted: false, requests: 0, notices: [] };
@@ -5110,13 +5469,13 @@ var operationsMethods = {
     } catch (error) {
       if (!asError(error).aborted) throw error;
       for (const notice of operation.notices) notice.hide();
-      new import_obsidian19.Notice(this.t("notice.aborted"));
+      new import_obsidian21.Notice(this.t("notice.aborted"));
       await this.refreshDashboards();
       return null;
     } finally {
       this._operation = null;
       if (operation.requests)
-        new import_obsidian19.Notice(
+        new import_obsidian21.Notice(
           this.t("notice.requestsUsed", {
             count: operation.requests,
             month: this.settings.numistaRequestCount
@@ -5129,7 +5488,7 @@ var operationsMethods = {
   abortOperation() {
     if (!this._operation) return;
     this._operation.aborted = true;
-    new import_obsidian19.Notice(this.t("notice.aborting"));
+    new import_obsidian21.Notice(this.t("notice.aborting"));
   },
   throwIfAborted() {
     if (!this._operation?.aborted) return;
@@ -5142,7 +5501,7 @@ var operationsMethods = {
    * @param {string} message
    */
   progressNotice(message) {
-    const notice = new import_obsidian19.Notice(message, 0);
+    const notice = new import_obsidian21.Notice(message, 0);
     this._operation?.notices.push(notice);
     return notice;
   },
@@ -5160,7 +5519,7 @@ var operationsMethods = {
 };
 
 // src/plugin/cache.js
-var import_obsidian20 = require("obsidian");
+var import_obsidian22 = require("obsidian");
 var trimType = (d) => d && {
   id: d.id,
   title: d.title,
@@ -5190,7 +5549,7 @@ var trimIssues = (raw) => (Array.isArray(raw) ? raw : raw?.issues || []).map((is
 }));
 var cacheMethods = {
   numistaCachePath() {
-    return (0, import_obsidian20.normalizePath)(`${this.manifest.dir}/numista-cache.json`);
+    return (0, import_obsidian22.normalizePath)(`${this.manifest.dir}/numista-cache.json`);
   },
   async loadNumistaCache() {
     if (this._numistaCache) return this._numistaCache;
@@ -5295,7 +5654,7 @@ var cacheMethods = {
 };
 
 // src/plugin/diagnostics.js
-var import_obsidian21 = require("obsidian");
+var import_obsidian23 = require("obsidian");
 var diagnosticsMethods = {
   /*
    * Text for bug reports: versions, platform, folders, collection counts and
@@ -5310,8 +5669,8 @@ var diagnosticsMethods = {
     const lines = [
       "## 2 Euro Collection – diagnostics",
       `- Plugin: ${this.manifest.version}`,
-      `- Obsidian API: ${import_obsidian21.apiVersion || "?"}`,
-      `- Platform: ${import_obsidian21.Platform?.isMobile ? "mobile" : "desktop"}${import_obsidian21.Platform?.isIosApp ? " (iOS)" : ""}${import_obsidian21.Platform?.isAndroidApp ? " (Android)" : ""}${import_obsidian21.Platform?.isMacOS ? " (macOS)" : ""}${import_obsidian21.Platform?.isWin ? " (Windows)" : ""}${import_obsidian21.Platform?.isLinux ? " (Linux)" : ""}`,
+      `- Obsidian API: ${import_obsidian23.apiVersion || "?"}`,
+      `- Platform: ${import_obsidian23.Platform?.isMobile ? "mobile" : "desktop"}${import_obsidian23.Platform?.isIosApp ? " (iOS)" : ""}${import_obsidian23.Platform?.isAndroidApp ? " (Android)" : ""}${import_obsidian23.Platform?.isMacOS ? " (macOS)" : ""}${import_obsidian23.Platform?.isWin ? " (Windows)" : ""}${import_obsidian23.Platform?.isLinux ? " (Linux)" : ""}`,
       `- Interface language: ${this.getLanguage()} (setting: ${this.settings.language})`,
       `- Collection folder: ${this.root()}`,
       `- Coins: ${rows.length} (owned ${rows.filter((r) => r.owned).length}, linked to Numista ${rows.filter((r) => r.numista_id).length})`,
@@ -5333,22 +5692,22 @@ var diagnosticsMethods = {
     const report = this.diagnosticsReport();
     try {
       await navigator.clipboard.writeText(report);
-      new import_obsidian21.Notice(this.t("notice.diagnosticsCopied"));
+      new import_obsidian23.Notice(this.t("notice.diagnosticsCopied"));
     } catch {
       console.warn(report);
-      new import_obsidian21.Notice(this.t("notice.diagnosticsConsole"));
+      new import_obsidian23.Notice(this.t("notice.diagnosticsConsole"));
     }
     return report;
   }
 };
 
 // src/plugin/lifecycle.js
-var import_obsidian24 = require("obsidian");
+var import_obsidian26 = require("obsidian");
 
 // src/ui/EuroSettings.js
-var import_obsidian22 = require("obsidian");
+var import_obsidian24 = require("obsidian");
 var settingText = (value) => typeof value === "string" || typeof value === "number" ? String(value) : "";
-var EuroSettings = class extends import_obsidian22.PluginSettingTab {
+var EuroSettings = class extends import_obsidian24.PluginSettingTab {
   /**
    * @param {import('obsidian').App} app
    * @param {import('../types').TwoEuroPlugin} plugin
@@ -5474,7 +5833,7 @@ var EuroSettings = class extends import_obsidian22.PluginSettingTab {
     };
     const apiKeySetting = (setting) => {
       setting.addComponent(
-        (el) => new import_obsidian22.SecretComponent(this.app, el).setValue(p.settings.numistaSecretId || "").onChange(async (id) => {
+        (el) => new import_obsidian24.SecretComponent(this.app, el).setValue(p.settings.numistaSecretId || "").onChange(async (id) => {
           p.settings.numistaSecretId = id || "";
           if (id) p.settings.numistaApiKey = "";
           await p.saveSettings();
@@ -5508,10 +5867,29 @@ var EuroSettings = class extends import_obsidian22.PluginSettingTab {
           ).addButton(
             (b) => b.setButtonText(t("settings.cacheClear")).onClick(async () => {
               await p.clearNumistaCache();
-              new import_obsidian22.Notice(t("settings.cacheCleared"));
+              new import_obsidian24.Notice(t("settings.cacheCleared"));
             })
           ),
           t("settings.cacheDaysDesc")
+        ),
+        def(
+          t("settings.newIssuesDays"),
+          (setting) => setting.addSlider(
+            (slider) => slider.setLimits(0, 30, 1).setValue(
+              Number.isFinite(Number(p.settings.newIssuesCheckDays)) ? Number(p.settings.newIssuesCheckDays) : 7
+            ).setDynamicTooltip().onChange(async (value) => {
+              p.settings.newIssuesCheckDays = value;
+              await p.saveSettings();
+            })
+          ).addButton(
+            (b) => b.setButtonText(t("settings.newIssuesCheckNow")).onClick(async () => {
+              await p.checkNewIssuesNow();
+              this.refresh();
+            })
+          ),
+          t("settings.newIssuesDaysDesc", {
+            date: p.settings.newIssuesLastCheck ? new Date(p.settings.newIssuesLastCheck).toLocaleString() : t("settings.newIssuesNever")
+          })
         )
       ]
     };
@@ -5525,7 +5903,7 @@ var EuroSettings = class extends import_obsidian22.PluginSettingTab {
             t("settings.initStructureButton"),
             async () => {
               await p.ensureDashboard();
-              new import_obsidian22.Notice(t("settings.initStructureDone"));
+              new import_obsidian24.Notice(t("settings.initStructureDone"));
             },
             { cta: true }
           ),
@@ -5537,7 +5915,7 @@ var EuroSettings = class extends import_obsidian22.PluginSettingTab {
             t("settings.initReferenceDataButton"),
             async () => {
               const result = await p.initializeReferenceData();
-              new import_obsidian22.Notice(
+              new import_obsidian24.Notice(
                 t("settings.initReferenceDataDone", {
                   issuers: result.issuers,
                   years: result.years
@@ -5550,6 +5928,15 @@ var EuroSettings = class extends import_obsidian22.PluginSettingTab {
           t("settings.initReferenceDataDesc")
         ),
         def(
+          t("settings.bases"),
+          (setting) => setting.addButton(
+            (b) => b.setButtonText(t("settings.basesOpen")).setCta().onClick(() => p.openBasesView())
+          ).addButton(
+            (b) => b.setButtonText(t("settings.basesRecreate")).onClick(() => p.openBasesView({ recreate: true }))
+          ),
+          t("settings.basesDesc")
+        ),
+        def(
           t("settings.initStarterPack"),
           button(t("settings.initStarterPackButton"), async () => {
             if (!await p.confirm(t("confirm.installStarter"))) return;
@@ -5557,7 +5944,7 @@ var EuroSettings = class extends import_obsidian22.PluginSettingTab {
               await p.installStarterCollection();
             } catch (error) {
               console.error("Starter collection installation", error);
-              new import_obsidian22.Notice(errorText(error));
+              new import_obsidian24.Notice(errorText(error));
             }
           }),
           t("settings.initStarterPackDesc")
@@ -5611,9 +5998,9 @@ var EuroSettings = class extends import_obsidian22.PluginSettingTab {
               const issuer = countryName(issuerToAdd);
               if (!issuer) return;
               if (await p.addReferenceIssuer(issuer)) {
-                new import_obsidian22.Notice(t("settings.issuerAdded", { issuer }));
+                new import_obsidian24.Notice(t("settings.issuerAdded", { issuer }));
                 this.refresh();
-              } else new import_obsidian22.Notice(t("settings.issuerExists"));
+              } else new import_obsidian24.Notice(t("settings.issuerExists"));
             })
           ),
           `${t("settings.additionalIssuerDesc")} ${t("settings.referenceDataDesc")}`
@@ -5644,13 +6031,13 @@ var EuroSettings = class extends import_obsidian22.PluginSettingTab {
             (b) => b.setButtonText(t("settings.addYearButton")).setCta().onClick(async () => {
               const year = Number(yearToAdd);
               if (!Number.isInteger(year) || year < 1999 || year > 2200) {
-                new import_obsidian22.Notice(t("settings.invalidYear"));
+                new import_obsidian24.Notice(t("settings.invalidYear"));
                 return;
               }
               if (await p.addReferenceYear(year)) {
-                new import_obsidian22.Notice(t("settings.yearAdded", { year }));
+                new import_obsidian24.Notice(t("settings.yearAdded", { year }));
                 this.refresh();
-              } else new import_obsidian22.Notice(t("settings.yearExists"));
+              } else new import_obsidian24.Notice(t("settings.yearExists"));
             })
           ),
           t("settings.additionalYearDesc")
@@ -5675,8 +6062,8 @@ var EuroSettings = class extends import_obsidian22.PluginSettingTab {
 };
 
 // src/ui/SyncReportModal.js
-var import_obsidian23 = require("obsidian");
-var SyncReportModal = class extends import_obsidian23.Modal {
+var import_obsidian25 = require("obsidian");
+var SyncReportModal = class extends import_obsidian25.Modal {
   /**
    * @param {import('obsidian').App} app
    * @param {import('../types').TwoEuroPlugin} plugin
@@ -5794,9 +6181,19 @@ var lifecycleMethods = {
           await this.installStarterCollection();
         } catch (error) {
           console.error("Starter collection installation", error);
-          new import_obsidian24.Notice(errorText(error));
+          new import_obsidian26.Notice(errorText(error));
         }
       }
+    });
+    this.addCommand({
+      id: "two-euro-check-new-issues",
+      name: this.t("command.checkNewIssues"),
+      callback: () => this.checkNewIssuesNow()
+    });
+    this.addCommand({
+      id: "two-euro-open-bases",
+      name: this.t("command.openBases"),
+      callback: () => this.openBasesView()
     });
     this.addCommand({
       id: "two-euro-sync",
@@ -5837,7 +6234,7 @@ var lifecycleMethods = {
       name: this.t("command.valueSnapshot"),
       callback: async () => {
         await this.recordValueSnapshot();
-        new import_obsidian24.Notice(this.t("notice.valueSnapshot"));
+        new import_obsidian26.Notice(this.t("notice.valueSnapshot"));
         await this.refreshDashboards();
       }
     });
@@ -5874,14 +6271,14 @@ var lifecycleMethods = {
     this.addCommand({
       id: "two-euro-dedupe",
       name: this.t("command.dedupe"),
-      callback: async () => new import_obsidian24.Notice(this.t("notice.dedupe", { count: await this.dedupe() }))
+      callback: async () => new import_obsidian26.Notice(this.t("notice.dedupe", { count: await this.dedupe() }))
     });
     this.addCommand({
       id: "two-euro-init-reference-fields",
       name: this.t("command.initFields"),
       callback: async () => {
         const result = await this.initializeReferenceFields();
-        new import_obsidian24.Notice(this.t("notice.initFields", result));
+        new import_obsidian26.Notice(this.t("notice.initFields", result));
       }
     });
     this.addCommand({
@@ -5889,13 +6286,13 @@ var lifecycleMethods = {
       name: this.t("command.migrateCovers"),
       callback: async () => {
         const fixed = await this.migrateCoverLinks();
-        new import_obsidian24.Notice(this.t("notice.coversMigrated", { count: fixed }));
+        new import_obsidian26.Notice(this.t("notice.coversMigrated", { count: fixed }));
       }
     });
     this.addCommand({
       id: "two-euro-normalize-folders",
       name: this.t("command.normalizeFolders"),
-      callback: async () => new import_obsidian24.Notice(
+      callback: async () => new import_obsidian26.Notice(
         this.t("notice.foldersNormalized", { count: await this.normalizeCountryFolders() })
       )
     });
@@ -5924,13 +6321,14 @@ var lifecycleMethods = {
         el.createEl("pre", { text: `2 Euro Collection: ${errorText(e)}` });
       }
     });
+    this.scheduleNewIssuesCheck();
     this.settingTab = new EuroSettings(this.app, this);
     this.addSettingTab(this.settingTab);
   }
 };
 
 // src/main.js
-var TwoEuroCollectionPlugin = class extends import_obsidian25.Plugin {
+var TwoEuroCollectionPlugin = class extends import_obsidian27.Plugin {
   async onload() {
     await asPlugin(this).setup();
   }
@@ -5957,6 +6355,8 @@ Object.assign(
   syncMethods,
   pricesMethods,
   coversMethods,
+  newIssuesMethods,
+  basesMethods,
   starterMethods,
   selectionMethods,
   imagesMethods,

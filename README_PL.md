@@ -22,6 +22,8 @@ Mobilna wtyczka do Obsidian służąca do prowadzenia uporządkowanego katalogu 
 - Statystyki: postęp według krajów i lat, wartość kolekcji (UNC), wydatki i monety do wymiany.
 - Grupowanie siatki według kraju lub roku; filtry: tekst, kraj, rok, posiadanie, typ i monety do wymiany.
 - Eksport list brakujących, posiadanych lub wymiennych monet do listy Markdown i pliku CSV.
+- Cotygodniowe sprawdzanie w Numiście nowych monet 2 euro, których nie ma jeszcze w kolekcji, z propozycją synchronizacji.
+- Widok kolekcji w Bazach (Bases) Obsidiana: galeria okładek i tabele wszystkich, brakujących, posiadanych monet i monet do wymiany.
 - Pobieranie okładek do vaulta; własne okładki, blokada okładki, okładki referencyjne i dane o autorze zdjęcia.
 - Usuwanie tła ze zdjęć (białego, czarnego lub dowolnego jednolitego) i zapis okładek w lekkim formacie WebP.
 - Oznaczanie posiadania, liczby sztuk, daty i ceny zakupu za sztukę, waluty, stanu oraz uwag.
@@ -165,6 +167,7 @@ Konfiguracja we wtyczce:
 - **Pamięć podręczna.** Dane katalogu pobrane z Numista są używane ponownie przez 7 dni (do zmiany, 0 wyłącza), więc powtórna synchronizacja tego samego zakresu prawie nic nie kosztuje.
 - **Przerwanie.** W trakcie synchronizacji, aktualizacji cen, pobierania okładek lub konwersji panel boczny pokazuje przycisk **Przerwij** (dostępny też jako polecenie).
 - Jeśli Numista odrzuci klucz API (HTTP 401/403), synchronizacja od razu się zatrzymuje z czytelnym komunikatem.
+- **Nowe monety.** Po uruchomieniu wtyczka sprawdza w Numiście (domyślnie co 7 dni, do zmiany w ustawieniach, 0 wyłącza) monety 2 euro z bieżącego roku — od października także z następnego — których nie ma w kolekcji. Zużywa 3–6 zapytań, a gdy coś znajdzie, pokazuje powiadomienie z przyciskiem **Synchronizuj** dla danego roku. Polecenie **Sprawdź w Numiście nowe monety 2 euro** uruchamia sprawdzenie w dowolnej chwili.
 - Polecenie **Pokaż raport ostatniej synchronizacji** wyświetla typy Numista pominięte przy ostatniej synchronizacji wraz z powodem (inny kraj, nie jest oficjalną monetą 2 euro, dopasowano istniejącą monetę…) — pomaga, gdy jakiejś monety brakuje.
 
 ### Dane odczytywane z Numista
@@ -314,6 +317,15 @@ W panelu bocznym wybierz **Brakujące monety**, **Posiadane monety** albo **Mone
 - plik CSV do arkusza kalkulacyjnego (UTF-8, poprawnie otwiera się w Excelu).
 
 Lista do wymiany zawiera liczbę zapasowych sztuk, lista posiadanych — liczbę sztuk.
+
+## Widok w Bazach (Bases)
+
+Polecenie **Otwórz kolekcję w Bazach (Bases)** (albo **Ustawienia → Widok w Bazach → Otwórz**) tworzy plik `.base` obok panelu kolekcji i go otwiera. [Bazy (Bases)](https://help.obsidian.md/bases) to wbudowany w Obsidiana widok notatek w formie bazy danych; plik zawiera:
+
+- **Galerię** – karty z okładką każdej monety;
+- **Wszystkie monety**, **Brakujące**, **Posiadane** i **Do wymiany** – tabele właściwości monet.
+
+Możesz tam natywnie sortować, filtrować, grupować i edytować monety, dodawać własne widoki i kolumny. Wtyczka nigdy nie zmienia istniejącego pliku; **Utwórz od nowa** przywraca domyślne widoki (po potwierdzeniu).
 
 ## Edycja monet i filtry edycyjne
 

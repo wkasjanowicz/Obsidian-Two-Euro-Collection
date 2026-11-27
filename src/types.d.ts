@@ -11,6 +11,8 @@ import type { numistaMethods } from './plugin/numista.js';
 import type { syncMethods } from './plugin/sync.js';
 import type { pricesMethods } from './plugin/prices.js';
 import type { coversMethods } from './plugin/covers.js';
+import type { newIssuesMethods } from './plugin/newissues.js';
+import type { basesMethods } from './plugin/bases.js';
 import type { starterMethods } from './plugin/starter.js';
 import type { selectionMethods } from './plugin/selection.js';
 import type { imagesMethods } from './plugin/images.js';
@@ -33,6 +35,8 @@ type Mixins = typeof lifecycleMethods &
   typeof syncMethods &
   typeof pricesMethods &
   typeof coversMethods &
+  typeof newIssuesMethods &
+  typeof basesMethods &
   typeof starterMethods &
   typeof selectionMethods &
   typeof imagesMethods &
@@ -89,6 +93,8 @@ export interface Settings {
   numistaRequestCount: number;
   numistaCacheDays: number;
   valueHistory: ValueSnapshot[];
+  newIssuesCheckDays: number;
+  newIssuesLastCheck: string;
   [key: string]: unknown;
 }
 
@@ -242,6 +248,12 @@ export interface CoinSnapshot {
   coverPath: string;
   backupImagePath: string;
   createdAt: string;
+}
+
+/* Coins found on Numista that the collection does not have (newissues.js). */
+export interface NewIssuesResult {
+  total: number;
+  byYear: { year: string; count: number; titles: string[] }[];
 }
 
 export interface SyncCounts {
